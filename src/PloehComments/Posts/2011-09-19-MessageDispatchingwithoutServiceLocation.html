@@ -1,0 +1,450 @@
+---
+layout: post
+tags: [Dependency Injection, Software Design]
+date: 2011-09-19 14:44:47 UTC
+title: "Message Dispatching without Service Location"
+description: "How to do loosely-coupled message dispatching without the Service Locator anti-pattern."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		Once upon a time I wrote a blog post about why <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern">Service Locator is an anti-pattern</a>, and ever since then, I occasionally receive rebuffs from people who agree with me in principle, but think that, still: in various special cases (the argument goes), Service Locator does have its uses.
+	</p>
+	<p>
+		Most of these arguments actually stem from mistaking the <a href="/2011/08/25/ServiceLocatorrolesvs.mechanics">mechanics for the role of a Service Locator</a>. Still, once in a while a compelling argument seems to come my way. One of the <a href="http://smart421.wordpress.com/2011/08/12/to-iservicelocator-or-not/">most insistent arguments concerns message dispatching</a>  -  a pattern which is currently gaining in prominence due to the increasing popularity of <a href="http://abdullin.com/cqrs/">CQRS</a>, <a href="http://www.udidahan.com/2009/06/14/domain-events-salvation/">Domain Events</a> and kindred architectural styles.
+	</p>
+	<p>
+		In this article I'll first provide a quick sketch of the scenario, followed by a typical implementation based on a ‘Service Locator', and then conclude by demonstrating why a Service Locator isn't necessary.
+	</p>
+	<h3 id="d44fdf738fa24e8f8c986075478955ea">
+		Scenario: Message Dispatching <a href="#d44fdf738fa24e8f8c986075478955ea" title="permalink">#</a>
+	</h3>
+	<p>
+		Appropriate use of message dispatching internally in an application can significantly help decouple the code and make roles explicit. A common implementation utilizes a messaging interface like this one:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">public</font></font></span><font style="font-size: 10pt"> <span style="color: "><font color="#0000ff">interface</font></span> </font><span style="color: "><font style="font-size: 10pt" color="#2b91af">IChannel</font></span>
+<font style="font-size: 10pt">{</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">void</font></span> Send&lt;T&gt;(T message);</font>
+<font style="font-size: 10pt">}</font></pre>
+	</p>
+	<p>
+		Personally, I find that the generic typing of the Send method is entirely redundant (not to mention heavily reminiscent of the <a href="/2010/11/01/PatternRecognitionAbstractFactoryorServiceLocator">shape of a Service Locator</a>), but it's very common and not particularly important right now (but more about that later).
+	</p>
+	<p>
+		An application might use the IChannel interface like this:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">var</font></font></span><font style="font-size: 10pt"> registerUser = <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">RegisterUserCommand</font></span>(</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#2b91af">Guid</font></span>.NewGuid(),</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#a31515">"Jane Doe"</font></span>,</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#a31515">"password"</font></span>,</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#a31515">"jane@ploeh.dk"</font></span>);</font>
+<span style="color: "><font color="#0000ff"><font style="font-size: 10pt">this</font></font></span><font style="font-size: 10pt">.channel.Send(registerUser);</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<span style="color: "><font style="font-size: 10pt" color="#008000">// ...</font></span>
+<font style="font-size: 10pt">&nbsp;</font>
+<span style="color: "><font color="#0000ff"><font style="font-size: 10pt">var</font></font></span><font style="font-size: 10pt"> changeUserName = <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">ChangeUserNameCommand</font></span>(</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; registerUser.UserId,</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#a31515">"Jane Ploeh"</font></span>);</font>
+<span style="color: "><font color="#0000ff"><font style="font-size: 10pt">this</font></font></span><font style="font-size: 10pt">.channel.Send(changeUserName);</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<span style="color: "><font style="font-size: 10pt" color="#008000">// ...</font></span>
+<font style="font-size: 10pt">&nbsp;</font>
+<span style="color: "><font color="#0000ff"><font style="font-size: 10pt">var</font></font></span><font style="font-size: 10pt"> resetPassword = <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">ResetPasswordCommand</font></span>(</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; registerUser.UserId);</font>
+<span style="color: "><font color="#0000ff"><font style="font-size: 10pt">this</font></font></span><font style="font-size: 10pt">.channel.Send(resetPassword);</font></pre>
+	</p>
+	<p>
+		Obviously, in this example, the channel variable is an injected instance of the IChannel interface.
+	</p>
+	<p>
+		On the receiving end, these messages must be dispatched to appropriate consumers, which must all implement this interface:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">public</font></font></span><font style="font-size: 10pt"> <span style="color: "><font color="#0000ff">interface</font></span> <span style="color: "><font color="#2b91af">IConsumer</font></span>&lt;T&gt;</font>
+<font style="font-size: 10pt">{</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">void</font></span> Consume(T message);</font>
+<font style="font-size: 10pt">}</font></pre>
+	</p>
+	<p>
+		Thus, each of the command messages in the example have a corresponding consumer:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">public</font></font></span><font style="font-size: 10pt"> <span style="color: "><font color="#0000ff">class</font></span> <span style="color: "><font color="#2b91af">RegisterUserConsumer</font></span> : <span style="color: "><font color="#2b91af">IConsumer</font></span>&lt;<span style="color: "><font color="#2b91af">RegisterUserCommand</font></span>&gt;</font>
+<span style="color: "><font color="#0000ff"><font style="font-size: 10pt">public</font></font></span><font style="font-size: 10pt"> <span style="color: "><font color="#0000ff">class</font></span> <span style="color: "><font color="#2b91af">ChangeUserNameConsumer</font></span> : <span style="color: "><font color="#2b91af">IConsumer</font></span>&lt;<span style="color: "><font color="#2b91af">ChangeUserNameCommand</font></span>&gt;</font>
+<span style="color: "><font color="#0000ff"><font style="font-size: 10pt">public</font></font></span><font style="font-size: 10pt"> <span style="color: "><font color="#0000ff">class</font></span> <span style="color: "><font color="#2b91af">ResetPasswordConsumer</font></span> : <span style="color: "><font color="#2b91af">IConsumer</font></span>&lt;<span style="color: "><font color="#2b91af">ResetPasswordCommand</font></span>&gt;</font></pre>
+	</p>
+	<p>
+		This certainly <em>is</em> a very powerful pattern, so it's often used as an argument to prove that Service Locator is, after all, not an anti-pattern.
+	</p>
+	<h3 id="d0b4617c83c14670bfa810e4c3ed8ce6">
+		Message Dispatching using a DI Container <a href="#d0b4617c83c14670bfa810e4c3ed8ce6" title="permalink">#</a>
+	</h3>
+	<p>
+		In order to implement IChannel it's necessary to match messages to their appropriate consumers. One easy way to do this is by employing a DI Container. Here's an example that uses <a href="http://autofac.org">Autofac</a> to implement IChannel, but any other container would do as well:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">private</font></font></span><font style="font-size: 10pt"> <span style="color: "><font color="#0000ff">class</font></span> <span style="color: "><font color="#2b91af">AutofacChannel</font></span> : </font><span style="color: "><font style="font-size: 10pt" color="#2b91af">IChannel</font></span>
+<font style="font-size: 10pt">{</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">private</font></span> <span style="color: "><font color="#0000ff">readonly</font></span> <span style="color: "><font color="#2b91af">IComponentContext</font></span> container;</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">public</font></span> AutofacChannel(<span style="color: "><font color="#2b91af">IComponentContext</font></span> container)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">if</font></span> (container == <span style="color: "><font color="#0000ff">null</font></span>)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">throw</font></span> <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">ArgumentNullException</font></span>(<span style="color: "><font color="#a31515">"container"</font></span>);</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">this</font></span>.container = container;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">public</font></span> <span style="color: "><font color="#0000ff">void</font></span> Send&lt;T&gt;(T message)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">var</font></span> consumer = <span style="color: "><font color="#0000ff">this</font></span>.container.Resolve&lt;<span style="color: "><font color="#2b91af">IConsumer</font></span>&lt;T&gt;&gt;();</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; consumer.Consume(message);</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">}</font></pre>
+	</p>
+	<p>
+		This class is an <a href="http://en.wikipedia.org/wiki/Adapter_pattern">Adapter</a> from Autofac's IComponentContext interface to the IChannel interface. At this point I can always see the “Q.E.D.” around the corner: “look! Service Locator isn't an anti-pattern after all! I'd like to see you implement IChannel without a Service Locator.”
+	</p>
+	<p>
+		While I'll do the latter in just a moment, I'd like to dwell on the DI Container-based implementation for a moment.
+	</p>
+	<ul>
+		<li>Is it simple? Yes.</li>
+		<li>Is it flexible? Yes, although it has shortcomings.</li>
+		<li>Would I use it like this? Perhaps. It depends :)</li>
+		<li>Is it the only way to implement IChannel? No  -  see the next section.</li>
+		<li>Does it use a Service Locator? No.</li>
+	</ul>
+	<p>
+		While AutofacChannel uses Autofac (a DI Container) to implement the functionality, it's not (necessarily) a Service Locator in action. This was the point I already tried to get across in my <a href="/2011/08/25/ServiceLocatorrolesvs.mechanics">previous post about the subject</a>: just because its mechanics look like Service Locator it doesn't mean that it <em>is</em> one. In my implementation, the AutofacChannel class is a piece of pure infrastructure code. I even made it a private nested class in my <a href="/2011/07/28/CompositionRoot">Composition Root</a> to underscore the point. The container is still not available to the application code, so is never used in the Service Locator <em>role</em>.
+	</p>
+	<p>
+		One of the shortcomings about the above implementations is that it provides no fallback mechanism. What happens if the container can't resolve the matching consumer? Perhaps there isn't a consumer for the message. That's entirely possible because there are no safeguards in place to ensure that there's a consumer for every possibly message.
+	</p>
+	<p>
+		The shape of the Send method enables the client to send any conceivable message type, and the code still compiles even if no consumer exists. That may look like a problem, but is actually an important insight into implementing an alternative IChannel class.
+	</p>
+	<h3 id="38191c1d7c89498a828142ca511b4274">
+		Message Dispatching using weakly typed matching <a href="#38191c1d7c89498a828142ca511b4274" title="permalink">#</a>
+	</h3>
+	<p>
+		Consider the IChannel.Send method once again:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">void</font></font></span><font style="font-size: 10pt"> Send&lt;T&gt;(T message);</font></pre>
+	</p>
+	<p>
+		Despite its generic signature it's important to realize that this is, in fact, a weakly typed method (at least when used with type inferencing, as in the above example). Equivalently to a bona fide Service Locator, it's possible for a developer to define a new class (Foo) and send it  -  and the code still compiles:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">this</font></font></span><font style="font-size: 10pt">.channel.Send(<span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">Foo</font></span>());</font></pre>
+	</p>
+	<p>
+		However, at run-time, this will fail because there's no matching consumer. Despite the generic signature of the Send method, it contains no type safety. This insight can be used to implement IChannel without a DI Container.
+	</p>
+	<blockquote>
+		<p>
+			Before I go on I should point out that I don't consider the following solution intrinsically superior to using a DI Container. However, readers of <a href="http://amzn.to/12p90MG">my book</a> will know that I consider it a very illuminating exercise to try to implement everything with Poor Man's DI once in a while.
+		</p>
+		<p>
+			Using Poor Man's DI often helps unearth some important design elements of DI because it helps to think about solutions in terms of patterns and principles instead of in terms of technology.
+		</p>
+		<p>
+			However, once I have arrived at an appropriate conclusion while considering Poor Man's DI, I still tend to prefer mapping it back to an implementation that involves a DI Container.
+		</p>
+		<p>
+			Thus, the purpose of this section is first and foremost to outline how message dispatching can be implemented without relying on a Service Locator.
+		</p>
+	</blockquote>
+	<p>
+		While this alternative implementation isn't allowed to change any of the existing API, it's a pure implementation detail to encapsulate the insight about the weakly typed nature of IChannel into a similarly weakly typed consumer interface:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">private</font></font></span><font style="font-size: 10pt"> <span style="color: "><font color="#0000ff">interface</font></span> </font><span style="color: "><font style="font-size: 10pt" color="#2b91af">IConsumer</font></span>
+<font style="font-size: 10pt">{</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">void</font></span> Consume(<span style="color: "><font color="#0000ff">object</font></span> message);</font>
+<font style="font-size: 10pt">}</font></pre>
+	</p>
+	<p>
+		Notice that this is a private nested interface of my Poor Man's DI Composition Root  -  it's a pure implementation detail. However, given this private interface, it's now possible to implement IChannel like this:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">private</font></font></span><font style="font-size: 10pt"> <span style="color: "><font color="#0000ff">class</font></span> <span style="color: "><font color="#2b91af">PoorMansChannel</font></span> : </font><span style="color: "><font style="font-size: 10pt" color="#2b91af">IChannel</font></span>
+<font style="font-size: 10pt">{</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">private</font></span> <span style="color: "><font color="#0000ff">readonly</font></span> <span style="color: "><font color="#2b91af">IEnumerable</font></span>&lt;<span style="color: "><font color="#2b91af">IConsumer</font></span>&gt; consumers;</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">public</font></span> PoorMansChannel(<span style="color: "><font color="#0000ff">params</font></span> <span style="color: "><font color="#2b91af">IConsumer</font></span>[] consumers)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">this</font></span>.consumers = consumers;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">public</font></span> <span style="color: "><font color="#0000ff">void</font></span> Send&lt;T&gt;(T message)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">foreach</font></span> (<span style="color: "><font color="#0000ff">var</font></span> c <span style="color: "><font color="#0000ff">in</font></span> <span style="color: "><font color="#0000ff">this</font></span>.consumers)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; c.Consume(message);</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">}</font></pre>
+	</p>
+	<p>
+		Notice that this is another private nested type that belongs to the Composition Root. It loops though all injected consumers, so it's up to each consumer to decide whether or not to do anything about the message.
+	</p>
+	<p>
+		A final private nested class bridges the generically typed world with the weakly typed world:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">private</font></font></span><font style="font-size: 10pt"> <span style="color: "><font color="#0000ff">class</font></span> <span style="color: "><font color="#2b91af">Consumer</font></span>&lt;T&gt; : </font><span style="color: "><font style="font-size: 10pt" color="#2b91af">IConsumer</font></span>
+<font style="font-size: 10pt">{</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">private</font></span> <span style="color: "><font color="#0000ff">readonly</font></span> <span style="color: "><font color="#2b91af">IConsumer</font></span>&lt;T&gt; consumer;</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">public</font></span> Consumer(<span style="color: "><font color="#2b91af">IConsumer</font></span>&lt;T&gt; consumer)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">this</font></span>.consumer = consumer;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">public</font></span> <span style="color: "><font color="#0000ff">void</font></span> Consume(<span style="color: "><font color="#0000ff">object</font></span> message)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">if</font></span> (message <span style="color: "><font color="#0000ff">is</font></span> T)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">this</font></span>.consumer.Consume((T)message);</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">}</font></pre>
+	</p>
+	<p>
+		This generic class is another Adapter  -  this time adapting the generic IConsumer&lt;T&gt; interface to the weakly typed (private) IConsumer interface. Notice that it only delegates the message to the adapted consumer if the type of the message matches the consumer.
+	</p>
+	<p>
+		Each implementer of IConsumer&lt;T&gt; can be wrapped in the (private) Consumer&lt;T&gt; class and injected into the PoorMansChannel class:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: "><font color="#0000ff"><font style="font-size: 10pt">var</font></font></span><font style="font-size: 10pt"> channel = <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">PoorMansChannel</font></span>(</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">Consumer</font></span>&lt;<span style="color: "><font color="#2b91af">ChangeUserNameCommand</font></span>&gt;(</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">ChangeUserNameConsumer</font></span>(store)),</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">Consumer</font></span>&lt;<span style="color: "><font color="#2b91af">RegisterUserCommand</font></span>&gt;(</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">RegisterUserConsumer</font></span>(store)),</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">Consumer</font></span>&lt;<span style="color: "><font color="#2b91af">ResetPasswordCommand</font></span>&gt;(</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: "><font color="#0000ff">new</font></span> <span style="color: "><font color="#2b91af">ResetPasswordConsumer</font></span>(store)));</font></pre>
+	</p>
+	<p>
+		So there you have it: type-based message dispatching without a DI Container in sight. However, it would be easy to use convention-based configuration to scan an assembly and register all IConsumer&lt;T&gt; implementations and wrap them in Consumer&lt;T&gt; instances and use this list to compose a PoorMansChannel instance. However, I will leave this as an exercise to the reader (or a later blog post).
+	</p>
+	<h3 id="668c6127b4c24bd2a6bbb7120b4ab84d">
+		My claim still stands <a href="#668c6127b4c24bd2a6bbb7120b4ab84d" title="permalink">#</a>
+	</h3>
+	<p>
+		In conclusion, I find that I can still defend my original claim: <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern">Service Locator is an anti-pattern</a>.
+	</p>
+	<p>
+		That claim, by the way, is <a href="http://en.wikipedia.org/wiki/Falsifiability">falsifiable</a>, so I do appreciate that people take it seriously enough by attempting to disprove it. However, until now, I've yet to be presented with a scenario where I couldn't come up with a better solution that didn't involve a Service Locator.
+	</p>
+	<p>
+		Keep in mind that a Service Locator is defined by the role it plays  -  not the shape of the API.
+	</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="2f78b02498f5477db8b655a6ba22b7d5">
+	<div class="comment-author">SO User</div>
+	<div class="comment-content">I'm not clear on how you would send a command (or inject IChannel) from another class if AutofacChannel is private to your Composition Root.</div>
+	<div class="comment-date">2011-09-19 19:37 UTC</div>
+</div>
+<div class="comment" id="43a6faa1888a4dd080aa76758713fe89">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">AutofacChannel (and PoorMansChannel) is a private class that implements a public interface (IChannel). Since IChannel is a public interface, it can be consumed by any class that needs it.</div>
+	<div class="comment-date">2011-09-19 19:46 UTC</div>
+</div>
+<div class="comment" id="fc1b9e773d064952b7ae470301dba51b">
+	<div class="comment-author">Bob walsh</div>
+	<div class="comment-content">Hi Mark,<br>
+<br>
+I'm helping a .NET vendor improve their blog by finding respected developers who will contribute guest posts. Each post will include your byline, URL, book link (with your Amazon affiliate link) and a small honorarium. It can either be a new post or one of your popular older posts.<br>
+Being an author myself, I know that getting in front of new audiences boosts sales, generates consulting opportunities and in this case, a little cash. Would you be interested? If so, let me know and I'll set you up.<br>
+<br>
+Cheers,<br>
+<br>
+Bob Walsh </div>
+	<div class="comment-date">2011-09-19 20:03 UTC</div>
+</div>
+<div class="comment" id="04b0354b94a7432481ba8eb08a946ab2">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Thanks for contacting me about this. Yes, I'd like to discuss this further, but I think we should take this via e-mail so as to not tire all my other readers :) You can email me at mark(guess which sign goes here)seemann.ms.</div>
+	<div class="comment-date">2011-09-19 20:10 UTC</div>
+</div>
+<div class="comment" id="a258b5b1bde34ea0b83c64963bdc91c9">
+	<div class="comment-author">Phil Sandler</div>
+	<div class="comment-content">Hey Mark,<br>
+<br>
+Looking forward to getting your book later this month.<br>
+<br>
+I think it comes down to the definition of Service Locator.  I'm not sure that the AutofacChannel  example is much different than a common example I come up against, which is a ViewModel factory that more or less wraps a call to the container, and then gets injected as a IViewModelFactory into classes that need to create VMs.  I don't feel that this is &quot;wrong,&quot; as I only allow this kind of thing in cases where more explicit injection is significantly more painful.  However I do still think of it as Service Location, and it does violate the Three Calls Pattern.  As long as I limit the number of places this is allowed and everyone is aware of them, I see little risk in doing it this way.  Some might argue it's a slippery slope . . .</div>
+	<div class="comment-date">2011-09-19 20:39 UTC</div>
+</div>
+<div class="comment" id="c1667cd7915b42eabbb55a4c59dec25f">
+	<div class="comment-author">Phil Sandler</div>
+	<div class="comment-content">Off-topic question: in the Domain Events post you linked (Udi's), he uses a static Dispatcher for events, which gets called directly from the AR.  In the comments, you talk about favoring having the Dispatcher injected into the AR.<br>
+<br>
+Whether it is a static dependency or an injected instance, it seems unnatural to me to call a service directly from a domain object.  I think I've seen you say the same thing, but I'm not sure in what context.<br>
+<br>
+Anyway, was wondering if you had any additional thoughts on the subject.  I've been struggling with it for a while, and have settled (temporarily) on firing events outside of the domain object (i.e. call the domain.Method, then fire the event from the command handler).<br>
+</div>
+	<div class="comment-date">2011-09-19 20:48 UTC</div>
+</div>
+<div class="comment" id="79e5758f193d43eba2ca18c5c2420591">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Phil<br>
+<br>
+Thanks for writing.<br>
+<br>
+It's my experience that in MVVM one definitely needs some kind of factory to create ViewModels. However, there's no reason to define it as a Service Locator. A normal (generic) Abstract Factory is preferable, and achieves the same thing.<br>
+<br>
+Regarding the question about whether or not to raise Domain Events from within Entities: it bothered me for a while until I realized that when you move towards CQRS and Event Sourcing, Commands and Events become first-class citizens and this problem tends to go away because you can keep the logic about which commands raises which events decoupled from the Entities. In this architectural style, Entities are immutable, so nothing ever changes <em>within</em> them.<br>
+<br>
+In CQRS we have consumers that consume Commands and Events, and typically we have a single consumer which is responsible for receiving a Command and (upon validation) convert it to an Event. Such a consumer is a Service which can easily hold other Services, such as a channel upon which Events can be published.</div>
+	<div class="comment-date">2011-09-20 07:48 UTC</div>
+</div>
+<div class="comment" id="762b68a9556b4b3cb1567d1451bf4e0e">
+	<div class="comment-author">Martin</div>
+	<div class="comment-content">Hi Mark, just an off-topic comment: code samples in your posts are almost unreadable in google reader. Somehow there are lots of empty lines and indenting is wrong. Don't know if there is anything you can do about it?<br>
+Thanks.</div>
+	<div class="comment-date">2011-09-20 14:41 UTC</div>
+</div>
+<div class="comment" id="69b824a751d24b399fdd116ef7327f8e">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Martin<br>
+<br>
+I had that problem previously, but I thought I fixed it months ago. From where I'm sitting, the code looks OK both in Google Reader on the Web, Google Reader on Android as well as FeedDemon. Can you share exactly where and how it looks unreadable?</div>
+	<div class="comment-date">2011-09-21 06:23 UTC</div>
+</div>
+<div class="comment" id="f348dbd8f2994a80bfe9f93e67b73dd0">
+	<div class="comment-author">Martin</div>
+	<div class="comment-content">Hi Mark, I don't know if my previous post got lost or not. So again, here's a picture of how code snippets look like when I read them via google reader (in FF7, IE9, Chrome15):<br>
+<br>
+http://imgur.com/LvCfJ<br>
+<br>
+Thanks.</div>
+	<div class="comment-date">2011-09-25 15:06 UTC</div>
+</div>
+<div class="comment" id="52de65b2de8845dd9a95c595e2e7b24d">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Martin, I agree that the screen shot looks strange, but across multiple machines and browsers I've been unable to reproduce it, so it's quite difficult for me to troubleshoot. Do you have any idea what might cause this problem?</div>
+	<div class="comment-date">2011-09-26 10:48 UTC</div>
+</div>
+<div class="comment" id="7211a7c9c11a4bea875628a449136291">
+	<div class="comment-author">Martin</div>
+	<div class="comment-content">Update: I found the reason for the problem: it seems I was subscribed to the Atom feed (/SyndicationService.asmx/GetAtom). After unsubscribing and resubscribing to the Rss feed (/SyndicationService.asmx/GetRss), the code snippets look OK.<br>
+<br>
+Thanks.</div>
+	<div class="comment-date">2011-09-26 13:15 UTC</div>
+</div>
+<div class="comment" id="d6f495ae8e5048f9a69716a71840ded0">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Good :) Thanks for the update.</div>
+	<div class="comment-date">2011-09-26 14:20 UTC</div>
+</div>
+<div class="comment" id="9f7477459f0c4908be63689b2d754235">
+	<div class="comment-author"><a href="http://stackoverflow.com/users/572644/daniel-hilgarth">Daniel Hilgarth</a></div>
+	<div class="comment-content">Hi Mark, Daniel again - sorry about not responding to your latest mails on the AutoNSubstitute fork - it's not dead on my side, I am just buried in work currently... I hope I can continue working on it in the next weeks.<br>
+Why I am posting:<br>
+I am currently designing the architecture of a new application and I want to design my domain models persistent ignorant but still use them directly in the NHibernate mapping to benefit from lazy loading and to not have near identical entity objects. One part of a PI domain model is that the models might rely on services to do their work which get injected using constructor injection. Now, NHibernate needs a default constructor by default but that can be changed (see: http://fabiomaulo.blogspot.com/2008/11/entities-behavior-injection.html). In the middle of this post there is a class implementation called ReflectionOptimizer that is responsible for creating the entities. It uses an injected container to receive an instance of the requested entity type or falls back to the default implementation of NHibernate if that type is unknown to the container.<br>
+Do you think this is using the container in a service locator role?<br>
+I think not, because a Poor Man's DI implementation of this class would get a list of factories, one for each supported entity and all of this is pure infrastructure.<br>
+The biggest benefit of changing the implementation in a way that it receives factories is that it fails fast: I am constructing all factories along with their dependencies in the composition root.<br>
+<br>
+<br>
+What is your view on this matter?</div>
+	<div class="comment-date">2011-10-09 10:14 UTC</div>
+</div>
+<div class="comment" id="4765dbc2246f4df393b8fbf8844eefcb">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Daniel, I think you reached the correct conclusion already. As you say, you could always create a Poor Man's implementation of that factory.<br>
+<br>
+It'd be particularly clean if you could inject an Abstract Factory into your NHibernate infrastructure and keep the container itself isolated to the Composition Root. In any case I agree that this sounds like pure infrastructure code, so it doesn't sound like Service Location.<br>
+<br>
+However, I'd <a href="http://stackoverflow.com/questions/4835046/why-not-use-an-ioc-container-to-resolve-dependencies-for-entities-business-object/4836790#4836790">think twice about injecting Services into Entities</a> - see also <a href="http://misko.hevery.com/2008/09/30/to-new-or-not-to-new/">this post</a> from <a href="http://misko.hevery.com">Miško Hevery</a>.</div>
+	<div class="comment-date">2011-10-11 16:12 UTC</div>
+</div>
+<div class="comment" id="ac86c7ec3d394ec897ce81fc2b822e42">
+	<div class="comment-author">Simple</div>
+	<div class="comment-content">My questions are about Service Bus - I havent found any other place in your blog to ask it =)<br>
+<br>
+If Message Bus is used - how is about Layers? Should it be some kind of &quot;Superlayer&quot; (visible for all other layers?)<br>
+<br>
+How do you think - in which situation should Message Bus be involved? <br>
+<br>
+Should it better be implemented or is there some good products? (C#, not commerce licence)</div>
+	<div class="comment-date">2012-05-04 08:29 UTC</div>
+</div>
+<div class="comment" id="e06b00080ed34e6c98966c52c12d9095">
+	<div class="comment-author"><a href="/">Mark Seemann</a></div>
+	<div class="comment-content">The way we tend to think about messaging-based applications today (e.g. with CQRS, or Udi Dahan-style SOA), messages are only related to the domain models. Thus, any messaging gateway (like an IBus interface or similar) is only required by the domain model.<br>
+<br>
+It's not too hard to implement a message bus on top of a queue system, but it might be worth taking a look at NServiceBus or Rebus.</div>
+	<div class="comment-date">2012-05-04 08:46 UTC</div>
+</div>
+<div class="comment" id="a1be1df8bf8c4e0cbe3b26e066cc8ca1">
+	<div class="comment-author"><a href="http://www.kenneth-truyers.net">Kenneth Truyers</a></div>
+	<div class="comment-content">Hi Mark, sorry about a very late question on this 2 year old post.<br>
+I have implemented this pattern before and everything is well when the return type is void.<br>
+So, for dispatching messages, this is a really usefull and flexible pattern<br><br>
+However, I was looking into implementing the same thing for a query dispatcher. The structure is similar, with the difference that your messages are queries and that the consumer actually returns a result.<br>
+I do have a working implementation but I cannot get type inference to work on my query dispatcher. That means that every time I call the query dispatcher I need to specify the return type and the query type<br>
+This may seem a bit abstract, but you can check out it this question on StackoverFlow: <a href="http://stackoverflow.com/questions/21958086/type-inference-with-interfaces-and-generic-constraints">type inference with interfaces and generic constraints</a>.<br>
+I'm aware that the way I'm doing it there is not possible with c#, but I was wondering if you'd see a pattern that would allow me to do that.<br>
+What is your view on this matter?<br>
+Many thanks!
+</div>
+<div class="comment-date">2014-02-23 04:41 UTC</div>
+</div>
+
+<div class="comment" id="010b29b554b444ec8340896567970aa8">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">
+		<p>
+			Kenneth, thank you for writing. Your question reminded my of my <a href="/2013/01/07/RoleHints">series about Role Hints</a>, particularly <a href="/2013/01/09/MetadataRoleHint">Metadata</a>, <a href="/2013/01/10/RoleInterfaceRoleHint">Role Interface</a>, and <a href="/2013/01/11/PartialTypeNameRoleHint">Partial Type Name</a> Role Hints. The examples in those posts aren't generically typed, but I wonder if you might still find those patterns useful?
+		</p>
+	</div>
+	<div class="comment-date">2014-02-23 08:11 UTC</div>
+</div>
+
+<div class="comment" id="dad603faf7ab4ed4ab78aae1e84fa46b">
+	<div class="comment-author"><a href="http://www.martijnburgers.net/">Martijn Burgers</a></div>
+	<div class="comment-content">
+		<p>Hi Mark,<br/>
+		I am also using this pattern as an in-process mediator for commands, queries and events. My mediator (channel in your case) now uses a dependency resolver, which is a pure wrapper around a DI container and only contains resolve methods.
+		</p>
+		<p>
+		I am now trying to refactor the dependency resolver away by creating separate factories for the command, query and event handlers (in your example this are the consumers). In my current code and also in yours and dozens of other implementations on the net don’t deal with releasing the handlers. My question is should this be a responsibility of the mediator (channel)? I think so because the mediator is the only place that knows about the existence of the handler. The problem I have with my answer is that the release of the handler is always called after a dispatch (send) even though the handler could be used again for sending another command of the same type during the same request (HTTP request for example). This implies that the handler’s lifetime is per HTTP request.
+		</p>
+		<p>
+		Maybe I am thinking in the wrong direction but I would like to hear your opinion about the releasing handler’s problem.<br/>
+		Many thanks in advance,<br/>
+		Martijn Burgers
+		</p>
+	</div>
+	<div class="comment-date">2014-07-12 08:50 UTC</div>
+</div>
+
+<div class="comment" id="571afec8e13b4f2899ea5cc4e46fa2bf">
+  <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+  <div class="comment-content">
+    <p>
+      Martijn, thank you for writing. The golden rule for decommissioning is that the object responsible for composing the object graph should also be responsible for releasing it. That's what some DI Containers (Castle Windsor, Autofac, MEF) do - typically using a Release method. The reason for that is that only the Composer knows if there are any nodes in the object graph that should be disposed of, so only the Composer can properly decommission an object graph.
+    </p>
+    <p>
+      You can also implement that Resolve/Release pattern using <a href="/2014/06/10/pure-di">Pure DI</a>. If you're writing a framework, <a href="/2014/05/19/di-friendly-framework">you may need to define an Abstract Factory with an associated Release method</a>, but otherwise, you can just release the graph when you're done with it.
+    </p>
+    <p>
+      In the present article, you're correct that I haven't addressed the lifetime management aspect. The Composer here is the last code snippet that composes the PoorMansChannel object. As shown here, the entire object graph has the same lifetime as the PoorMansChannel object, but I don't describe whether or not it's a Singleton, Per Graph, Transient, or something else. However, the code that creates the PoorMansChannel object should also be the code that releases it, if that's required.
+    </p>
+    <p>
+      In <a href="http://amzn.to/12p90MG">my book</a>'s chapter 8, I cover decommissioning in much more details, although I don't cover this particular example. I hope this answer helps; otherwise, please write again.
+    </p>
+  </div>
+  <div class="comment-date">2014-07-12 14:35 UTC</div>
+</div>
+</div>

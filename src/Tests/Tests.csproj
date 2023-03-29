@@ -25,4 +25,10 @@
     <ProjectReference Include="..\PloehComments\PloehComments.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="AnchoredPosts\TextFile1.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -1,0 +1,432 @@
+---
+layout: post
+title: "Monomorphic functors"
+description: "Non-generic mappable containers, with a realistic example."
+date: 2020-10-19 7:36 UTC
+tags: [Software Design]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is an instalment in <a href="/2018/03/22/functors">an article series about functors</a>. Previous articles have covered <a href="/2018/03/26/the-maybe-functor">Maybe</a>, <a href="/2018/09/10/the-lazy-functor">Lazy</a>, and other functors. This article looks at what happens when you weaken one of the conditions that the article series so far has implied.
+	</p>
+	<p>
+		In the <a href="/2018/03/22/functors">introductory article</a>, I wrote:
+		<blockquote>
+			As a rule of thumb, if you have a type with a generic type argument, it's a candidate to be a functor.
+		</blockquote>
+		That still holds, but then <a href="https://about.me/tysonwilliams">Tyson Williams</a> <a href="/2018/03/22/functors#dee7ec216a464248b6103ea0979948ab">asks if that's a required condition</a>. It turns out that it isn't. In this article, you'll learn about the implications of weakening this condition.
+	</p>
+	<p>
+		As is my habit with many of the articles in this article series, I'll start by uncovering the structure of the concept, and only later show a more realistic example.
+	</p>
+	<h3 id="bea56fadde1e4e9da8389a6c31937216">
+		Mapping strings <a href="#bea56fadde1e4e9da8389a6c31937216" title="permalink">#</a>
+	</h3>
+	<p>
+		So far in this article series, you've seen examples of <a href="https://bartoszmilewski.com/2014/01/14/functors-are-containers">containers</a> with a generic type argument: <code>Tree&lt;T&gt;</code>, <code>Task&lt;T&gt;</code>, and so on. Furthermore, you've seen how a functor is a container with a <em>structure-preserving map</em>. This function has various names in different languages: <code>Select</code>, <code>fmap</code>, <code>map</code>, etcetera.
+	</p>
+	<p>
+		Until now, you've only seen examples where this mapping enables you to translate from one type argument to another. You can, for example, translate the characters in a string to Boolean values, like this:
+	</p>
+	<p>
+		<pre>&gt; <span style="color:#a31515;">&quot;Safe&nbsp;From&nbsp;Harm&quot;</span>.<span style="color:#2b91af;">Select</span>(c&nbsp;=&gt;&nbsp;c.IsVowel())
+Enumerable.WhereSelectEnumerableIterator&lt;char, bool&gt;
+&nbsp;&nbsp;{ false, true, false, true, false, false, false, true, false, false, false, true, false, false }</pre>
+	</p>
+	<p>
+		This works because in C#, <a href="https://docs.microsoft.com/dotnet/api/system.string">the String class</a> implements various interfaces, among these <code>IEnumerable&lt;char&gt;</code>. By treating a <code>string</code> as an <code>IEnumerable&lt;char&gt;</code>, you can map each element. That's the standard IEnumerable functor (AKA <em>the list functor</em>).
+	</p>
+	<p>
+		What if you'd like to map the characters in a string to other characters? Perhaps you'd like to map vowels to upper case, and all other characters to lower case. You could try this:
+	</p>
+	<p>
+		<pre>&gt; <span style="color:#a31515;">&quot;Safe&nbsp;From&nbsp;Harm&quot;</span>.<span style="color:#2b91af;">Select</span>(c&nbsp;=&gt;&nbsp;c.IsVowel()&nbsp;?&nbsp;<span style="color:blue;">char</span>.ToUpper(c)&nbsp;:&nbsp;<span style="color:blue;">char</span>.ToLower(c))
+Enumerable.WhereSelectEnumerableIterator&lt;char, char&gt;
+&nbsp;&nbsp;{ 's', 'A', 'f', 'E', ' ', 'f', 'r', 'O', 'm', ' ', 'h', 'A', 'r', 'm' }</pre>
+	</p>
+	<p>
+		That sort of works, but as you can tell, the result isn't a <code>string</code>, it's an <code>IEnumerable&lt;char&gt;</code>.
+	</p>
+	<p>
+		This isn't a big problem, because one of the <code>string</code> constructor overloads take a <code>char</code> array as input, so you can do this:
+	</p>
+	<p>
+		<pre>&gt; <span style="color:blue;">new</span>&nbsp;<span style="color:blue;">string</span>&nbsp;(<span style="color:#a31515;">&quot;Safe&nbsp;From&nbsp;Harm&quot;</span>.<span style="color:#2b91af;">Select</span>(c&nbsp;=&gt;&nbsp;c.IsVowel()&nbsp;?&nbsp;<span style="color:blue;">char</span>.ToUpper(c)&nbsp;:&nbsp;<span style="color:blue;">char</span>.ToLower(c)).<span style="color:#2b91af;">ToArray</span>())
+"sAfE frOm hArm"</pre>
+	</p>
+	<p>
+		It isn't the prettiest, but it gets the job done.
+	</p>
+	<h3 id="fd3da7dcd560415d81ab82bfb772d94c">
+		Monomorphic functor in C# <a href="#fd3da7dcd560415d81ab82bfb772d94c" title="permalink">#</a>
+	</h3>
+	<p>
+		If you contemplate the last example, you may arrive at the conclusion that you could package some of that boilerplate code in a reusable function. Since we're already talking about functors, why not call it <code>Select</code>?
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">string</span>&nbsp;Select(<span style="color:blue;">this</span>&nbsp;<span style="color:blue;">string</span>&nbsp;source,&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:blue;">char</span>,&nbsp;<span style="color:blue;">char</span>&gt;&nbsp;selector)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:blue;">string</span>(source.AsEnumerable().Select(selector).ToArray());
+}</pre>
+	</p>
+	<p>
+		It somewhat simplifies things:
+	</p>
+	<p>
+		<pre>&gt; <span style="color:#a31515;">&quot;Safe&nbsp;From&nbsp;Harm&quot;</span>.Select(c&nbsp;=&gt;&nbsp;c.IsVowel()&nbsp;?&nbsp;<span style="color:blue;">char</span>.ToUpper(c)&nbsp;:&nbsp;<span style="color:blue;">char</span>.ToLower(c))
+"sAfE frOm hArm"</pre>
+	</p>
+	<p>
+		Since I deliberately wrote the <code>Select</code> method in the style of other <code>Select</code> methods (apart from the generics), you may wonder if C# query syntax also works?
+	</p>
+	<p>
+		<pre>&gt; <span style="color:blue;">from</span>&nbsp;c&nbsp;<span style="color:blue;">in</span>&nbsp;<span style="color:#a31515;">&quot;Army&nbsp;of&nbsp;Me&quot;</span>
+. <span style="color:blue;">select</span>&nbsp;c.IsVowel()&nbsp;?&nbsp;<span style="color:blue;">char</span>.ToUpper(c)&nbsp;:&nbsp;<span style="color:blue;">char</span>.ToLower(c)
+"ArmY Of mE"</pre>
+	</p>
+	<p>
+		It compiles and works! The C# compiler understands monomorphic containers!
+	</p>
+	<p>
+		I admit that I was quite surprised when I first tried this out.
+	</p>
+	<h3 id="8ef3808c11a34d9aaa1c25b94539f843">
+		Monomorphic functor in Haskell <a href="#8ef3808c11a34d9aaa1c25b94539f843" title="permalink">#</a>
+	</h3>
+	<p>
+		Surprisingly, in this particular instance, C# comes out looking more flexible than <a href="https://www.haskell.org">Haskell</a>. This is mainly because in C#, functors are implemented as a special compiler feature, whereas in Haskell, <code>Functor</code> is defined using the general-purpose <em>type class</em> language feature.
+	</p>
+	<p>
+		There's <a href="https://hackage.haskell.org/package/mono-traversable">a package</a> that defines a <code>MonoFunctor</code> type class, as well as some instances. With it, you can write code like this:
+	</p>
+	<p>
+		<pre><span style="color:#2b91af;">ftg</span>&nbsp;::&nbsp;<span style="color:blue;">Text</span>
+ftg&nbsp;=&nbsp;omap&nbsp;(\c&nbsp;-&gt;&nbsp;<span style="color:blue;">if</span>&nbsp;isVowel&nbsp;c&nbsp;<span style="color:blue;">then</span>&nbsp;toUpper&nbsp;c&nbsp;<span style="color:blue;">else</span>&nbsp;toLower&nbsp;c)&nbsp;<span style="color:#a31515;">&quot;Fade&nbsp;to&nbsp;Grey&quot;</span></pre>
+	</p>
+	<p>
+		Even though <code>Text</code> isn't a <code>Functor</code> instance, it <em>is</em> a <code>MonoFunctor</code> instance. The value of <code>ftg</code> is <code>"fAdE tO grEY"</code>.
+	</p>
+	<p>
+		All the normal functors (<code>[]</code>, <code>Maybe</code>, etc.) are also <code>MonoFunctor</code> instances, since the normal <code>Functor</code> instance is more capable than a <code>MonoFunctor</code>.
+	</p>
+	<h3 id="30dd605a3bb34d1985e1d277e1c9b0a5">
+		Restaurant example <a href="#30dd605a3bb34d1985e1d277e1c9b0a5" title="permalink">#</a>
+	</h3>
+	<p>
+		While I've introduced the concept of a monomorphic functor with a trivial string example, I actually discovered the C# feature when I was working on some more realistic code. As I often do, I was working on a variation of an online restaurant reservation system. <ins datetime="2021-07-18T08:45Z">The code shown in the following is part of the sample code base that accompanies my book <a href="/code-that-fits-in-your-head">Code That Fits in Your Head</a>.</ins>
+	</p>
+	<p>
+		The code base contained a rather complex variation of an implementation of the <a href="/2020/01/27/the-maitre-d-kata">Maître d' kata</a>. The <code>MaitreD</code> constructor looked like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">MaitreD</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">TimeOfDay</span>&nbsp;opensAt,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">TimeOfDay</span>&nbsp;lastSeating,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">TimeSpan</span>&nbsp;seatingDuration,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IEnumerable</span>&lt;<span style="color:#2b91af;">Table</span>&gt;&nbsp;tables)</pre>
+	</p>
+	<p>
+		This had worked well when the system only dealt with a single restaurant, but I was now expanding it to a multi-tenant system and I needed to keep track of some more information about each restaurant, such as its name and ID. While I could have added such information to the <code>MaitreD</code> class, I didn't want to pollute that class with data it didn't need. While the restaurant's opening time and seating duration are necessary for the decision algorithm, the name isn't.
+	</p>
+	<p>
+		So I introduced a wrapper class:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Restaurant</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Restaurant</span>(<span style="color:blue;">int</span>&nbsp;id,&nbsp;<span style="color:blue;">string</span>&nbsp;name,&nbsp;<span style="color:#2b91af;">MaitreD</span>&nbsp;maitreD)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Id&nbsp;=&nbsp;id;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;name;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;MaitreD&nbsp;=&nbsp;maitreD;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">int</span>&nbsp;Id&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">string</span>&nbsp;Name&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">MaitreD</span>&nbsp;MaitreD&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;More&nbsp;code&nbsp;follows...</span></pre>
+	</p>
+	<p>
+		I also added copy-and-update methods (AKA 'withers'):
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Restaurant</span>&nbsp;WithId(<span style="color:blue;">int</span>&nbsp;newId)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Restaurant</span>(newId,&nbsp;Name,&nbsp;MaitreD);
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Restaurant</span>&nbsp;WithName(<span style="color:blue;">string</span>&nbsp;newName)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Restaurant</span>(Id,&nbsp;newName,&nbsp;MaitreD);
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Restaurant</span>&nbsp;WithMaitreD(<span style="color:#2b91af;">MaitreD</span>&nbsp;newMaitreD)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Restaurant</span>(Id,&nbsp;Name,&nbsp;newMaitreD);
+}</pre>
+	</p>
+	<p>
+		Still, if you need to modify the <code>MaitreD</code> within a given <code>Restaurant</code> object, you first have to have a reference to the <code>Restaurant</code> so that you can read its <code>MaitreD</code> property, then you can edit the <code>MaitreD</code>, and finally call <code>WithMaitreD</code>. Doable, but awkward:
+	</p>
+	<p>
+		<pre>restaurant.WithMaitreD(restaurant.MaitreD.WithSeatingDuration(<span style="color:#2b91af;">TimeSpan</span>.FromHours(.5)))</pre>
+	</p>
+	<p>
+		So I got the idea that I might try to add a structure-preserving map to <code>Restaurant</code>, which I did:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Restaurant</span>&nbsp;Select(<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">MaitreD</span>,&nbsp;<span style="color:#2b91af;">MaitreD</span>&gt;&nbsp;selector)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(selector&nbsp;<span style="color:blue;">is</span>&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:blue;">nameof</span>(selector));
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;WithMaitreD(selector(MaitreD));
+}</pre>
+	</p>
+	<p>
+		The first time around, it enabled me to rewrite the above expression as:
+	</p>
+	<p>
+		<pre>restaurant.Select(m&nbsp;=&gt;&nbsp;m.WithSeatingDuration(<span style="color:#2b91af;">TimeSpan</span>.FromHours(.5)))</pre>
+	</p>
+	<p>
+		That's already a little nicer. It also handles the situation where you may not have a named <code>Restaurant</code> variable you can query; e.g. if you have a method that returns a <code>Restaurant</code> object, and you just want to continue calling into a <a href="https://martinfowler.com/bliki/FluentInterface.html">Fluent API</a>.
+	</p>
+	<p>
+		Then I thought, <em>I wonder if query syntax works, too...</em>
+	</p>
+	<p>
+		<pre><span style="color:blue;">from</span>&nbsp;m&nbsp;<span style="color:blue;">in</span>&nbsp;restaurant
+<span style="color:blue;">select</span>&nbsp;m.WithSeatingDuration(<span style="color:#2b91af;">TimeSpan</span>.FromHours(.5))</pre>
+	</p>
+	<p>
+		And it <em>does</em> work!
+	</p>
+	<p>
+		I know that a lot of people don't like query syntax, but I think it has certain advantages. In this case, it actually isn't shorter, but it's a nice alternative. I particularly find that if I try to <a href="/2019/11/04/the-80-24-rule">fit my code into a tight box</a>, query syntax sometimes gives me an opportunity to format code over multiple lines in a way that's more natural than with method-call syntax.
+	</p>
+	<h3 id="c386660f74424f33921f35265e61ecf0">
+		Conclusion <a href="#c386660f74424f33921f35265e61ecf0" title="permalink">#</a>
+	</h3>
+	<p>
+		A monomorphic functor is still a functor, only it constrains the type of mapping you can perform. It can be useful to map monomorphic containers like strings, or immutable nested data structures like the above <code>Restaurant</code> class.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2018/12/03/set-is-not-a-functor">Set is not a functor</a>.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	<div class="comment" id="bb0bb9d1bf094c1897f9dd42fb49712c">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				Excellent article!  I was planning to eventually write a blog post on this topic, but now there is no need.
+			</p>
+			<blockquote>
+				<p>
+					I know that a lot of people don't like query syntax, but I think it has certain advantages. In this case, it actually isn't shorter, but it's a nice alternative. I particularly find that if I try to <a href="/2019/11/04/the-80-24-rule">fit my code into a tight box</a>, query syntax sometimes gives me an opportunity to format code over multiple lines in a way that's more natural than with method-call syntax.
+				</p>
+			</blockquote>
+			<p>
+				Said another way, one objective measure that is better in this case when using query syntax is that the maximum line width is smaller.  It is objective primarily in the sense that maximum line width is objective and secondarily in the sense that we generally agree that code with a lower maximum line width is typically easier to understand.
+			</p>
+			<p>
+				Another such objective measure of quality that I value is the maximum number of matching pairs of parentheses that are nested.  This measure improves to two in your query syntax code from three in your previous code.  The reason it was three before is because there are four levels of detail and your code decreases the level of detail three times: <code>Restaurant</code> to <code>MaitreD</code>, <code>MaitreD</code> to <code>TimeSpan</code>, and <code>TimeSpan</code> to <code>double</code>.  Query syntax is one way to decrease the level of detail without having to introduce a pair of matching parentheses.
+			</p>
+			<p>
+				I find more success minimizing this measure of quality when taking a bottom-up approach.  Using the <a href="https://github.com/louthy/language-ext/blob/3df8c837961a502d7a03268b6cac636a57c49056/LanguageExt.Core/DataTypes/Cond/Cond.cs#L56-L70"><code>Apply</code> extension method from <code>language-ext</code></a>, which is like the <a href="https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/symbol-and-operator-reference/#table-of-symbols-and-operators:~:text=Passes%20the%20result%20of%20the%20left%20side%20to%20the%20function%20on%20the%20right%20side%20(forward%20pipe%20operator).">forward pipe operator in F#</a>, we can rewrite this code without any nested pairs of matching parentheses as
+			</p>
+			<p>
+				<pre>.5.Apply(<span style="color:#2b91af;">TimeSpan</span>.FromHours).Apply(m&nbsp;=&gt;&nbsp;m.WithSeatingDuration).Apply(restaurant.Select)</pre>
+			</p>
+			<p>
+				(I did not check if this code compiles.  If it does not, it would be because the C# compiler is unsure how to implicitly convert some method group to its intended <code>Func&lt;,&gt;</code> delegate.)  This code also has natural line-breaking points before each dot operator, which leads to a comfortable value for the maximum line width.
+			</p>
+			<p>
+				Another advantage of this code that I value is that the execution happens in the same order in which I (as an English speaker) read it: left to right.  Your code before using the query syntax executed from right to left as dictated by the matching parentheses.  In fact, since the dot operator is left associative, the degree to which execution occurs from left to right is inversely correlated to the number of nested pairs of parentheses.  (One confusing thing here is the myriad of different semantic meanings in C# to the syntactic use of a pair of parentheses.)
+			</p>
+		</div>
+		<div class="comment-date">2020-10-19 14:05 UTC</div>
+	</div>
+
+	<div class="comment" id="8e6b870ce4aa44aa98a16a7969def6e9">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Tyson, thank you for writing. I've never thought about measuring complexity by nested parentheses, but I like it! It makes intuitive sense.
+			</p>
+			<p>
+				I'm not sure it applies to LISP-like languages, but perhaps some reader comes by some day who can enlighten us.
+			</p>
+		</div>
+		<div class="comment-date">2020-10-21 13:55 UTC</div>
+	</div>
+	<div class="comment" id="393e63b1e52c4e9bad31ee579d5e9c80">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				While reading your articles about <a href="https://blog.ploeh.dk/2021/09/02/contravariant-functors/">contravairant functors</a>, a better name occured to me for what you called a monomorphic functor in this article.
+			</p>
+			<p>
+				For a covariant functor, its mapping function accepts a function with types that vary (i.e. differ).  The order in which they vary matches the order that the types vary in the corresponding elevated function.  For a contravariant functor, its mapping function also accepts a function with types that vary.  However, the order in which they vary is reversed compared to the order that the types vary in the corresponding elevated function.  For the functor in this article that you called a monomorphic functor, its mapping function accepts a function with types that do <i>not vary</i>.  As such, we should call such a functor an <i>invariant</i> functor.
+			</p>
+		</div>
+		<div class="comment-date">2021-09-14 01:01 UTC</div>
+	</div>
+
+	<div class="comment" id="3462f8e2c4a44593889f4816ba41ed88">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Tyson, thank you for writing. That's a great suggestion that makes a lot of sense.
+			</p>
+			<p>
+				The term <em>invariant functor</em> seems, however, to be taken by a wider definition.
+			</p>
+			<blockquote>
+				<p>
+					"an invariant type <code>T</code> allows you to map from <code>a</code> to <code>b</code> if and only if <code>a</code> and <code>b</code> are isomorphic. In a very real sense, this isn't an interesting property - an isomorphism between <code>a</code> and <code>b</code> means that they're already the same thing to begin with."
+				</p>
+				<footer><cite><a href="https://reasonablypolymorphic.com">Sandy Maguire</a>, <a href="https://thinkingwithtypes.com">Thinking with Types</a></cite></footer>
+			</blockquote>
+			<p>
+				This seems, at first glance, to fit your description quite well, but when we try to encode this in a programming language, something surprising happens. We'd typically say that the types <code>a</code> and <code>b</code> are isomorphic if and only if there exists two functions <code>a -&gt; b</code> <em>and</em> <code>b -&gt; a</code>. Thus, we can encode this in a Haskell type class like this one:
+			</p>
+			<p>
+				<pre><span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Invariant</span>&nbsp;f&nbsp;<span style="color:blue;">where</span>
+&nbsp;&nbsp;<span style="color:#2b91af;">invmap</span>&nbsp;::&nbsp;(a&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;b)&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;(b&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;a)&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;f&nbsp;a&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;f&nbsp;b</pre>
+			</p>
+			<p>
+				I've taken the name of both type class and method from <em>Thinking with Types</em>, but we find the same naming in <a href="https://hackage.haskell.org/package/invariant/docs/Data-Functor-Invariant.html">Data.Functor.Invariant</a>. The <a href="https://hackage.haskell.org/package/invariant-0.1.0">first version of the invariant package</a> is from 2012, so assume that Sandy Maguire has taken the name from there (and not the other way around).
+			</p>
+			<p>
+				There's <a href="https://typelevel.org/cats/typeclasses/invariant.html">a similar-looking definition in Cats</a> (although I generally don't read Scala), and in C# we might define a method like this:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Invariant</span>&lt;<span style="color:#2b91af;">A</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;Invariant&lt;B&gt;&nbsp;<span style="color:#74531f;">InvMap</span>&lt;<span style="color:#2b91af;">B</span>&gt;(Func&lt;A,&nbsp;B&gt;&nbsp;<span style="color:#1f377f;">selector1</span>,&nbsp;Func&lt;B,&nbsp;A&gt;&nbsp;<span style="color:#1f377f;">selector2</span>)
+}</pre>
+			</p>
+			<p>
+				This seems, at first glance, to describe monomorphic functors quite well, but it turns out that it's not quite the same. Consider mapping of <code>String</code>, as discussed in this article. The <code>MonoFunctor</code> instance of <code>String</code> (or, generally, <code>[a]</code>) lifts a <code>Char -&gt; Char</code> function to <code>String -&gt; String</code>.
+			</p>
+			<p>
+				In Haskell, <code>String</code> is really a type alias for <code>[Char]</code>, but what happens if we attempt to describe <code>String</code> as an <code>Invariant</code> instance? We can't, because <code>String</code> has no type argument.
+			</p>
+			<p>
+				We can, however, see what happens if we try to make <code>[a]</code> an <code>Invariant</code> instance. If we can do that, we can try to experiment with <code>Char</code>'s underlying implementation as a number:
+			</p>
+			<blockquote>
+				<p>
+					"To convert a <code>Char</code> to or from the corresponding <code>Int</code> value defined by Unicode, use <code>toEnum</code> and <code>fromEnum</code> from the <code>Enum</code> class respectively (or equivalently <code>ord</code> and <code>chr</code>)."
+				</p>
+				<footer><cite><a href="https://hackage.haskell.org/package/base/docs/Data-Char.html#t:Char">Char documentation</a></cite></footer>
+			</blockquote>
+			<p>
+				<code>ord</code> and <code>chr</code> enable us to treat <code>Char</code> and <code>Int</code> as isomorphic:
+			</p>
+			<p>
+				<pre>&gt; ord 'h'
+104
+&gt; chr 104
+'h'</pre>
+			</p>
+			<p>
+				Since we have both <code>Char -&gt; Int</code> and <code>Int -&gt; Char</code>, we should be able to use <code>invmap ord chr</code>, and indeed, it works:
+			</p>
+			<p>
+				<pre>&gt; invmap ord chr "foo"
+[102,111,111]</pre>
+			</p>
+			<p>
+				When, however, we look at the <code>Invariant []</code> instance, we may be in for a surprise:
+			</p>
+			<p>
+				<pre><span style="color:blue;">instance</span>&nbsp;<span style="color:blue;">Invariant</span>&nbsp;[]&nbsp;<span style="color:blue;">where</span>
+&nbsp;&nbsp;invmap&nbsp;f&nbsp;_&nbsp;=&nbsp;<span style="color:blue;">fmap</span>&nbsp;f</pre>
+			</p>
+			<p>
+				The instance uses only the <code>a -&gt; b</code> function, while it completely ignores the <code>b -&gt; a</code> function! Since the instance uses <code>fmap</code>, rather than <code>map</code>, it also strongly suggests that all (covariant) <code>Functor</code> instances are also <code>Invariant</code> instances. That's <a href="https://hackage.haskell.org/package/invariant/docs/Data-Functor-Invariant.html#v:invmapFunctor">also the conclusion reached by the invariant package</a>. Not only that, but <a href="https://hackage.haskell.org/package/invariant/docs/Data-Functor-Invariant.html#v:invmapContravariant">every Contravariant functor is also an Invariant functor</a>.
+			</p>
+			<p>
+				That seems to completely counter the idea that <code>a</code> and <code>b</code> should be isomorphic. I can't say that I've entirely <a href="/ref/stranger-in-a-strange-land">grokked</a> this disconnect yet, but it seems to me to be an artefact of instances' ability to ignore either of the functions passed to <code>invmap</code>. At least we can say that client code can't <em>call</em> <code>invmap</code> unless it supplies both functions (here I pretend that <code>undefined</code> doesn't exist).
+			</p>
+			<p>
+				If we go with the Haskell definition of things, an invariant functor is a much wider concept than a monomorphic functor. <code>Invariant</code> describes a superset that contains both (covariant) <code>Functor</code> and <code>Contravariant</code> functor. This superset is more than just the union of those two sets, since it also includes containers that are neither <code>Functor</code> nor <code>Contravariant</code>, for example <a href="https://hackage.haskell.org/package/base/docs/Data-Monoid.html#t:Endo">Endo</a>:
+			</p>
+			<p>
+				<pre><span style="color:blue;">instance</span>&nbsp;<span style="color:blue;">Invariant</span>&nbsp;<span style="color:blue;">Endo</span>&nbsp;<span style="color:blue;">where</span>
+&nbsp;&nbsp;invmap&nbsp;f&nbsp;g&nbsp;(Endo&nbsp;h)&nbsp;=&nbsp;Endo&nbsp;(f&nbsp;.&nbsp;h&nbsp;.&nbsp;g)</pre>
+			</p>
+			<p>
+				For example, <a href="https://hackage.haskell.org/package/base/docs/Data-Char.html#v:toUpper">toUpper</a> is an <a href="https://en.wikipedia.org/wiki/Endomorphism">endomorphism</a>, so we can apply it to <code>invmap</code> and evaluate it like this:
+			</p>
+			<p>
+				<pre>&gt; (appEndo $ invmap ord chr $ Endo toUpper) 102
+70</pre>
+			</p>
+			<p>
+				This example takes the <code>Int</code> <code>102</code> and converts it to a <code>String</code> with <code>chr</code>:
+			</p>
+			<p>
+				<pre>&gt; chr 102
+'f'</pre>
+			</p>
+			<p>
+				It then applies <code>'f'</code> to <code>toUpper</code>:
+			</p>
+			<p>
+				<pre>&gt; toUpper 'f'
+'F'</pre>
+			</p>
+			<p>
+				Finally, it converts <code>'F'</code> with <code>ord</code>:
+			</p>
+			<p>
+				<pre>&gt; ord 'F'
+70</pre>
+			</p>
+			<p>
+				Endomorphisms are neither covariant nor contravariant functors - they are invariant functors. They may also be monomorphic functors. The <a href="https://hackage.haskell.org/package/mono-traversable">mono-traversable</a> package doesn't define a <code>MonoFunctor</code> instance for <code>Endo</code>, but that may just be an omission. It'd be an interesting exercise to see if such an instance is possible. I don't know yet, but I think that it is...
+			</p>
+			<p>
+				For now, though, I'm going to leave that as an exercise. Readers who manage to implement a lawful instance of <code>MonoFunctor</code> for <code>Endo</code> should send a pull request to the <em>mono-traversable</em> package.
+			</p>
+			<p>
+				Finally, a note on words. I agree that <em>invariant functor</em> would also have been a good description of monomorphic functors. It seems to me that in both mathematics and programming, there's sometimes a 'land-grab' of terms. The first person to think of a concept gets to pick the word. If the concept is compelling, the word may stick.
+			</p>
+			<p>
+				This strikes me as an unavoidable consequence of how knowledge progresses. Ideas rarely spring forth fully formed. Often, someone gets a half-baked idea and names it before fully understanding it. When later, more complete understanding emerges, it may be too late to change the terminology.
+			</p>
+			<p>
+				This has happened to me in <a href="/2017/10/04/from-design-patterns-to-category-theory">this very article series</a>, which I titled <em>From design patterns to category theory</em> before fully understanding where it'd lead me. I've later come to realise that we need only <a href="https://en.wikipedia.org/wiki/Abstract_algebra">abstract algebra</a> to describe <a href="/2017/10/05/monoids-semigroups-and-friends">monoids, semigroups, et cetera</a>. Thus, the article series turned out to have little to do with category theory, but I couldn't (wouldn't) change the title and the URL of the original article, since it was already published.
+			</p>
+			<p>
+				The same may be the case with the terms <em>invariant functors</em> and <em>monomorphic functors</em>. Perhaps <em>invariant functors</em> should instead have been called <em>isomorphic functors</em>...
+			</p>
+		</div>
+		<div class="comment-date">2021-09-14 8:22 UTC</div>
+	</div>
+
+	<div class="comment" id="fb3ba7e051c64b8fa2606a14085205e2">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				I've started <a href="/2022/08/01/invariant-functors">a small article series on invariant functors</a>.
+			</p>
+		</div>
+		<div class="comment-date">2022-08-01 5:58 UTC</div>
+	</div>
+</div>

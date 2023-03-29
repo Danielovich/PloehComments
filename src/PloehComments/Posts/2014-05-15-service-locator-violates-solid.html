@@ -1,0 +1,247 @@
+---
+layout: post
+title: "Service Locator violates SOLID"
+description: "Yet another reason to avoid the Service Locator anti-pattern is that it violates the principles of Object-Oriented Design."
+date: 2014-05-15 18:51 UTC
+tags: [Software Design, Dependency Injection, Design Patterns]
+---
+{% include JB/setup %}
+
+<div id="post">
+  <p>
+    <em>{{ page.description }}</em>
+  </p>
+  <p>
+    Years ago, I wrote an article about <a href="http://martinfowler.com/articles/injection.html">Service Locator</a>. Regular readers of this blog may already know that <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern">I consider Service Locator an anti-pattern</a>. That hasn't changed, but I recently realized that there's another way to explain why Service Locator is the inverse of good Object-Oriented Design (OOD). My original article didn't include that perspective at all, so perhaps this is a clearer way of explaining it.
+  </p>
+  <p>
+    In this article, I'll assume that you're familiar with the <a href="http://en.wikipedia.org/wiki/SOLID_(object-oriented_design)">SOLID principles</a> (also known as <em>the Principles of OOD</em>), and that you accept them as generally correct. It's not because I wish to argue by an appeal to authority, but rather because threre's already a large body of work that explains why these principles are beneficial to software design.
+  </p>
+  <p>
+    In short, Service Locator violates SOLID because it violates the <a href="http://en.wikipedia.org/wiki/Interface_segregation_principle">Interface Segregation Principle</a> (ISP). That's because a Service Locator effectively has <em>infinitely</em> many members.
+  </p>
+  <h3 id="9e85d0c9b4424f5981e2bb1acdd8380b">
+    Service Locator deconstructed <a href="#9e85d0c9b4424f5981e2bb1acdd8380b" title="permalink">#</a>
+  </h3>
+  <p>
+    In order to understand why a Service Locator has infinitely many members, you'll need to understand what a Service Locator is. Often, it's a class or interface with various members, but it all boils down to a single member:
+  </p>
+  <p>
+    <pre>T&nbsp;Create&lt;T&gt;();
+</pre>
+  </p>
+  <p>
+    Sometimes the method <a href="/2010/11/01/PatternRecognitionAbstractFactoryorServiceLocator">takes one or more parameters</a>, but that doesn't change the conclusion, so I'm leaving out those input parameters to keep things simple.
+  </p>
+  <p>
+    A common variation is the untyped, non-generic variation:
+  </p>
+  <p>
+    <pre><span style="color:blue;">object</span>&nbsp;Create(<span style="color:#2b91af;">Type</span>&nbsp;type);
+</pre>
+  </p>
+  <p>
+    Since my overall argument relies on the generic version, first I'll need to show you why those two methods are equivalent. If you imagine that all you have is the non-generic version, you can easily write a generic extension method for it:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">ServiceLocatorEnvy</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;T&nbsp;Create&lt;T&gt;(<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">IServiceLocator</span>&nbsp;serviceLocator)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;(T)serviceLocator.Create(<span style="color:blue;">typeof</span>(T));
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+  </p>
+  <p>
+    As you can see, this extension method has exactly the same signature as the generic version; you can always create a generic Service Locator based on a non-generic Service Locator. Thus, while my main argument (coming up next) is based on a generic Service Locator, it also applies to non-generic Service Locators.
+  </p>
+  <h3 id="af2607487fd64bbfb9fc4e72a335c761">
+    Infinite methods <a href="#af2607487fd64bbfb9fc4e72a335c761" title="permalink">#</a>
+  </h3>
+  <p>
+    From a client's perspective, there's no limit to how many variations of the Create method it can invoke:
+  </p>
+  <p>
+    <pre><span style="color:blue;">var</span>&nbsp;foo&nbsp;=&nbsp;serviceLocator.Create&lt;<span style="color:#2b91af;">IFoo</span>&gt;();
+<span style="color:blue;">var</span>&nbsp;bar&nbsp;=&nbsp;serviceLocator.Create&lt;<span style="color:#2b91af;">IBar</span>&gt;();
+<span style="color:blue;">var</span>&nbsp;baz&nbsp;=&nbsp;serviceLocator.Create&lt;<span style="color:#2b91af;">IBaz</span>&gt;();
+<span style="color:green;">//&nbsp;etc.</span></pre>
+  </p>
+  <p>
+    Again, from the client's perspective, that's equivalent to multiple method definitions like:
+  </p>
+  <p>
+    <pre><span style="color:#2b91af;">IFoo</span>&nbsp;CreateFoo();
+<span style="color:#2b91af;">IBar</span>&nbsp;CreateBar();
+<span style="color:#2b91af;">IBaz</span>&nbsp;CreateBaz();
+<span style="color:green;">//&nbsp;etc.</span></pre>
+  </p>
+  <p>
+    However, the client can <em>keep coming up with new types to request</em>, so effectively, the number of Create methods is infinite!
+  </p>
+  <h3 id="6ddef7c7a5f0461f9ea1674dbfd250cf">
+    Relation to the Interface Segregation Principle <a href="#6ddef7c7a5f0461f9ea1674dbfd250cf" title="permalink">#</a>
+  </h3>
+  <p>
+    By now, you understand that a Service Locator is an interface or class with effectively an infinite number of methods. That violates the ISP, which states:
+    <blockquote>
+      <a href="http://amzn.to/19W4JHk">Clients should not be forced to depend on methods they do not use.</a>
+    </blockquote>
+    However, since a Service Locator exposes an infinite number of methods, any client using it is forced to depend on infinitely many methods it doesn't use.
+  </p>
+  <h3 id="fd996a05d9774565bbcb65821deb8009">
+    Quod Erat Demonstrandum <a href="#fd996a05d9774565bbcb65821deb8009" title="permalink">#</a>
+  </h3>
+  <p>
+    The Service Locator anti-pattern violates the ISP, and thus it also violates SOLID as a whole. SOLID is also known as <em>the Principles of OOD</em>. Therefore, Service Locator is bad Objected-Oriented Design.
+  </p>
+  <p>
+    <strong>Update 2015-10-26:</strong> The fundamental problem with Service Locator is that <a href="/2015/10/26/service-locator-violates-encapsulation">it violates encapsulation</a>.
+  </p>
+</div>
+
+
+<div id="comments">
+  <hr>
+  <h2 id="comments-header">
+	  Comments
+  </h2>
+	<div class="comment" id="40d8890f708f4bd5994eb8005302c93e">
+		<div class="comment-author">Nelson LaQuet</div>
+		<div class="comment-content">
+		  Doesn't this argument also apply to any method that takes a generic parameter? Meaning
+		  any use of generic methods also violates ISP?
+		</div>
+		<div class="comment-date">2014-05-15 21:06 UTC</div>
+	</div>
+
+  <div class="comment" id="b7b4a2bf0e4c4ddfb4cff0159ae361a6">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Nelson, thank you for writing. First, it's important to realize that this overall argument applies to methods with 'free' generic type parameters; that is, a method where the type in itself isn't generic, but the method is. One example of the difference I mean is that a <a href="/2010/11/01/PatternRecognitionAbstractFactoryorServiceLocator">generic Abstract Factory is benign, whereas a Server Locator isn't</a>.
+      </p>
+      <p>
+        Second, that still leaves the case where you may have a generic parameter that determines the return type of the method. The LINQ <a href="http://msdn.microsoft.com/en-us/library/bb548891.aspx">Select</a> method is an example of such a method. These tend not to be problematic, but <a href="https://plus.google.com/u/0/+MarkSeemann/posts/dELcbR54zYK">I had some trouble explaining why that is</a> until <a href="http://dotnetdom.blogspot.dk/2014/05/service-locators-and-interface.html">James Jensen explained it to me</a>.
+      </p>
+    </div>
+    <div class="comment-date">2014-05-16 11:33 UTC</div>
+  </div>
+    <div class="comment" id="acb6985852ff43b08bd4c4cdf3d2f42e">
+        <div class="comment-author"><a href="http://www.feo2x.com">Kenny Pflug</a></div>
+        <div class="comment-content">
+            <p>Dear Mark,</p>
+            <p>
+                I totally agree with your advise on Service Locator being an anti-pattern, specifically if it is used within the core logic. However, I don't think
+                that your argumentation in this post is correct. I think that you apply Object-Oriented Programming Principles to Metaprogramming, which should not be done, but I'm 
+                not quite sure if my argument is completely reasonable.
+            </p>
+            <p>
+                All .NET DI Containers that I know of use the <a href="https://msdn.microsoft.com/en-us/library/f7ykdhsy.aspx">Reflection API</a> to solve the problem of
+                dynamically composing an object graph. The very essence of this API is it's ability to inspect and call members of any .NET type, even the ones that
+                the code was not compiled against. Thus you do not use Strong Object-Oriented Typing any longer, but access the members of a e.g. a class indirectly using a model
+                that relies on the <a href="https://msdn.microsoft.com/en-us/library/system.type.aspx">Type</a> class and its associated types. And this is the gist of it:
+                code is treated as data, this is <a href="https://en.wikipedia.org/wiki/Metaprogramming">Metaprogramming</a>, as we all know.
+            </p>
+            <p>
+                Without these capabilities, DI containers wouldn't be able to do their job because they couldn't e.g. analyze the arguments of a class's constructor to further
+                instantiate other objects needed. Thus we can say that <em>DI containers are just an abstraction over the Metaprogramming API of .NET</em>.
+                And of course, these containers offer an API that is shaped by their Metaprogramming foundation. This can be seen in your post: although you discuss the 
+                generic variation <code>T Create&lt;T&gt;()</code>, this is just syntactic sugar for the actual important method: <code>object Create(Type type)</code>.
+            </p>
+            <p>
+                Metaprogramming in C# is totally resolved at runtime, and therefore one shouldn't apply the Interface Segregation Principle to APIs that are
+                formed by it. These are designed to help you improve the Object-Oriented APIs which particularly incorporate Static Typing enforced by the compiler. A DI container
+                does not have an unlimited number of Create methods, it has a single one and it receives a Type argument - the generic version just creates the Type object for you.
+                And the parameter has to be as "weak" as Type, because we cannot use Static Typing - this technically allows the client to pass in types that the container is not
+                configured for, but you cannot prevent this using the compiler because of the dynamic nature of the Reflection API.
+            </p>
+            <p>
+                What is your opinion on that?
+            </p>
+        </div>
+        <div class="comment-date">2016-01-06 21:55 UTC</div>
+    </div>
+
+  <div class="comment" id="af735817fa054ad5b60110502bc524a1">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Kenny, thank you for writing. The point that this post is making is mainly that Service Locator violates the Interface Segregation Principle (ISP). The appropriate perspective on ISP (and LSP and DIP as well) is from a client. The client of a Service Locator effectively sees an API with infinitely many methods. That's where the damage is done.
+      </p>
+      <p>
+        How the Service Locator is implemented isn't important to ISP, LSP, or DIP. (The SRP and OCP, on the other hand, relate to implementations.) You may notice that this article doesn't use the word <em>container</em> a single time.
+      </p>
+    </div>
+    <div class="comment-date">2016-01-07 19:16 UTC</div>
+  </div>
+  <div class="comment" id="9bbf8fd4a7e04574a623660aa025844d">
+      <div class="comment-author"><a href="http://www.feo2x.com">Kenny Pflug</a></div>
+      <div class="comment-content">
+          <p>Dear Mark,</p>
+          <p>
+              I get the point that you are talking from the client's perspective - but even so, a client programming against a
+              Service Locator should be aware that it is programming against an abstraction of a Metaprogramming API
+              (and not an Object-Oriented API). If you think about the call to the Create method, then you basically say
+              "Give me an object graph with the specified type as the object graph root" as a client - how do you implement
+              this with the possibilities that OOP provides? You can't model this with classes, interfaces, and the means
+              of Procedural and Structural Programming that are integrated in OOP - because these techniques do not allow
+              you to treat code as data.
+          </p>
+          <p>
+              And again, your argument is based on the generic version of the Create method, but that shouldn't be the
+              point of focus. It is the non-generic version <code>object Create (Type type)</code> which clearly indicates
+              that it is a Metaprogramming API because of the Type parameter and the object return type -
+              <a href="https://msdn.microsoft.com/en-us/library/system.type.aspx">Type</a> is the entry point to .NET
+              Reflection and object is the only type the Service Locator can guarantee as the object graph is dynamically resolved
+              at runtime - no Strong Typing involved. The existence of the generic Create variation is merely justified
+              because software developers are lazy - they don't want to manually downcast the returned object to the type they
+              actually need. Well, one could argue that this comforts the Single Point of Truth / Don't repeat yourself
+              principles, too, as all information to create the object graph and to downcast the root object are derived
+              from the generic type argument, but that doesn't change the fact that Service Locator is a Metaprogramming API.
+          </p>
+          <p>
+              And that's why I solely used the term DI container throughout my previous comment, because Service Locator
+              is just the part of the API of a DI container that is concerned with resolving object graphs (and the
+              Metainformation to create these object graphs was registered beforehand). Sure, you can implement
+              Service Locators as a hard-wired registry of Singleton objects (or even Factories that create objects on the fly)
+              to circumvent the use of the Reflection API (although one probably had to use some sort of Type ID in this case,
+              maybe in form of a string or GUID). But honestly, these are half-baked solutions that do not solve the problem
+              in a reusable way. A reusable Service Locator must treat code as data, especially if you want additional
+              features like lifetime management.
+          </p>
+          <p>
+              Another point: take for example the <a href="https://msdn.microsoft.com/en-us/library/system.web.security.membershipprovider(v=vs.110).aspx">MembershipProvider</a>
+              class - this polymorphic abstraction is truly a violation of the Interface Segregation Principle because
+              it offers way too many members that a client probably won't need. But notice that each of these members has a different
+              meaning, which is not the case with the Create methods of the Service Locator. The generic Create method is just
+              another abstraction over the non-generic version to simplify the access to the Service Locator.
+          </p>
+          <p>
+              Long story short: Service Locator is a Metaprogramming API, the SOLID principles target Object-Oriented APIs,
+              thus the latter shouldn't be used to assess the former. There's is no real way to hide the fact that
+              clients need to be aware that they are calling a Metaprogramming API if they directly reference a 
+              Service Locator (which shouldn't be done in core logic).
+          </p>
+      </div>
+      <div class="comment-date">2016-01-08 09:40 UTC</div>
+  </div>
+  <div class="comment" id="351cbdc09c704ed2964533f7ddf0ad38">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Kenny, thank you for writing. While I don't agree with <em>everything</em> you wrote, your arguments are well made, and I have no problems following them. If we disagree, I think we disagree about semantics, because the way I read your comment, I think it eventually leads you to the same conclusions that I have arrived at.
+      </p>
+      <p>
+        Ultimately, you also state that Service Locator isn't an Object-Oriented Design, and in that, I entirely agree. The SOLID principles are also known as the <em>principles of Object-Oriented Design</em>, so when I'm stating that I think that Service Locator violates SOLID, my more general point is that Service Locator isn't Object-Oriented because it violates a fundamental principle of OOD. You seem to have arrived at the same conclusion, although via a different route. I always like when that happens, because it confirms that the conclusion may be true.
+      </p>
+      <p>
+        To be honest, though, I don't consider the arguments I put forth in the present article as my strongest ever. Sometimes, I write articles on topics that I've thought about for years, but I also often write articles that are half-baked ideas; I put these articles out in order to start a discussion, so I appreciate your comments.
+      </p>
+      <p>
+        I'm much happier with the article that argues that <a href="/2015/10/26/service-locator-violates-encapsulation">Service Locator violates Encapsulation</a>.
+      </p>
+    </div>
+    <div class="comment-date">2016-01-08 10:55 UTC</div>
+  </div>
+</div>

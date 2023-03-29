@@ -1,0 +1,133 @@
+---
+layout: post
+tags: [AutoFixture, Unit Testing]
+date: 2010-03-17 21:54:53 UTC
+title: "AutoFixture Freeze"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>One of the important points of <a href="http://autofixture.codeplex.com/">AutoFixture</a> is to hide away all the boring details that you don't care about when you are writing a unit test, but that the compiler seems to insist upon. One of these details is how you create a new instance of your <a href="http://xunitpatterns.com/SUT.html">SUT</a>.</p> <p>Every time you create an instance of your SUT using its constructor, you make it more difficult to refactor that constructor. This is particularly true when it comes to Constructor Injection because you often need to define a <a href="http://xunitpatterns.com/Test%20Double.html">Test Double</a> in each unit test, but even for primitive types, it's more maintenance-friendly to use a <a href="/2009/02/13/SUTFactory">SUT Factory</a>.</p> <p>AutoFixture is a SUT Factory, so we can use it to create instances of our SUTs. However, how do we correlate constructor parameters with variables in the test when we will not use the constructor directly?</p> <p>This is where the Freeze method comes in handy, but let's first examine how to do it with the core API methods <a href="/2009/04/02/CreatingStringsWithAutoFixture">CreateAnonymous</a> and <a href="/2009/04/23/DealingWithTypesWithoutPublicConstructors">Register</a>.</p> <p>Imagine that we want to write a unit test for a Pizza class that takes a name in its constructor and exposes that name as a property. We can write this test like this:</p>
+  <p>
+    <pre style="margin: 0px">[<span style="color: #2b91af">TestMethod</span>]
+<span style="color: blue">public</span> <span style="color: blue">void</span> NameIsCorrect()
+{
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Fixture setup</span>
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> fixture = <span style="color: blue">new</span> <span style="color: #2b91af">Fixture</span>();
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> expectedName = fixture.CreateAnonymous(<span style="color: #a31515">"Name"</span>);
+&nbsp;&nbsp;&nbsp; fixture.Register(expectedName);
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> sut = fixture.CreateAnonymous&lt;<span style="color: #2b91af">Pizza</span>&gt;();
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Exercise system</span>
+&nbsp;&nbsp;&nbsp; <span style="color: blue">string</span> result = sut.Name;
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Verify outcome</span>
+&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Assert</span>.AreEqual(expectedName, result, <span style="color: #a31515">"Name"</span>);
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Teardown</span>
+}</pre>
+</p>
+<p>The important lines are these two:</p>
+<p>
+  <pre style="margin: 0px"><span style="color: blue">var</span> expectedName = fixture.CreateAnonymous(<span style="color: #a31515">"Name"</span>);
+fixture.Register(expectedName);</pre>
+</p>
+<p>What's going on here is that we create a new string, and then we subsequently Register this string so that <em>every time</em> the fixture instance is asked to create a string, it will return this particular string. This also means that when we ask AutoFixture to create an instance of Pizza, it will use that string as the constructor parameter.</p>
+<p>It turned out that we used this coding idiom so much that we decided to encapsulate it in a convenience method. After some debate we arrived at the name Freeze, because we essentially freeze a single anonymous variable in the fixture, bypassing the default algorithm for creating new instances. Incidentally, this is one of very few methods in AutoFixture that breaks CQS, but although that bugs me a little, the Freeze concept has turned out to be so powerful that I live with it.</p>
+<p>Here is the same test rewritten to use the Freeze method:</p>
+<p>
+  <pre style="margin: 0px">[<span style="color: #2b91af">TestMethod</span>]
+<span style="color: blue">public</span> <span style="color: blue">void</span> NameIsCorrect_Freeze()
+{
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Fixture setup</span>
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> fixture = <span style="color: blue">new</span> <span style="color: #2b91af">Fixture</span>();
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> expectedName = fixture.Freeze(<span style="color: #a31515">"Name"</span>);
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> sut = fixture.CreateAnonymous&lt;<span style="color: #2b91af">Pizza</span>&gt;();
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Exercise system</span>
+&nbsp;&nbsp;&nbsp; <span style="color: blue">string</span> result = sut.Name;
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Verify outcome</span>
+&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Assert</span>.AreEqual(expectedName, result, <span style="color: #a31515">"Name"</span>);
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Teardown</span>
+}</pre>
+</p>
+<p>In this example, we only save a single line of code, but apart from that, the test also becomes a little more communicative because it explicitly calls out that this particular string is frozen.</p>
+<p>However, this is still a pretty lame example, but while I intend to follow up with a more complex example, I wanted to introduce the concept gently.</p>
+<p>For completeness sake, here's the Pizza class:</p>
+<p>
+  <pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">Pizza</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">readonly</span> <span style="color: blue">string</span> name;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> Pizza(<span style="color: blue">string</span> name)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">if</span> (name == <span style="color: blue">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">throw</span> <span style="color: blue">new</span> <span style="color: #2b91af">ArgumentNullException</span>(<span style="color: #a31515">"name"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.name = name;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">string</span> Name
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">get</span> { <span style="color: blue">return</span> <span style="color: blue">this</span>.name; }
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+</p>
+<p>As you can see, the test simply verifies that the constructor parameter is echoed by the Name property, and the Freeze method makes this more explicit while we still enjoy the indirection of not invoking the constructor directly.</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="aec0c28ac69345b7b613cc85afa19ac2">
+	<div class="comment-author">DavidS</div>
+	<div class="comment-content">Hi,<br>
+<br>
+I am trying to understand how, in this particular example, AutoFixture makes the set up impervious to changes in the constructor. <br>
+<br>
+Say that for whatever reason the Pizza constructor takes another parameter e.g.<br>
+<br>
+ public Pizza(string name, price decimal)<br>
+<br>
+Then surely, we'd have to update the test given. Am I missing something?</div>
+	<div class="comment-date">2012-12-05 22:51 UTC</div>
+</div>
+<div class="comment" id="cfe4a7db41404587a1b511ba5b15e5e6">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">The CreateAnonymous method reflects over the constructor to figure out which arguments are required. If you add a decimal to the constructor, it's just going to pick that up and supply an anonymous value of decimal. No update of the test is required.<br>
+<br>
+Try it out :)</div>
+	<div class="comment-date">2012-12-06 08:45 UTC</div>
+</div>
+<div class="comment" id="470c13de1edb4845aba76705755f9943">
+	<div class="comment-author">DavidS</div>
+	<div class="comment-content">Hey Mark,<br>
+<br>
+Thanks for the prompt reply. Now, I think I understand what's going. Effectively, I was not appreciating that the purpose of &quot;Freezing&quot;  was to have the string parameter &quot;Name&quot; &quot;frozen&quot; so that the assertion could be made against a known value. <br>
+<br>
+But your explanation has clarified the issue. Thanks very much. </div>
+	<div class="comment-date">2012-12-06 13:37 UTC</div>
+</div>
+
+	<div class="comment" id="8033e0960f09480c937aed0bb3168148">
+      <div class="comment-author">WesM</div>
+      <div class="comment-content">I&#39;m curious about how to have different customizations for the same type of object. Example:
+      <br />
+      <pre><span style='color:#800000; font-weight:bold;'>new</span> Pizza<span style='color:#808030;'>(</span><span style='color:#800000; font-weight:bold;'>string</span> fancyName<span style='color:#808030;'>,</span> <span style='color:#800000; font-weight:bold;'>string</span> boringName<span style='color:#808030;'>)</span></pre>
+  	  </div>
+      <div class="comment-date">2014-03-18 03:46 UTC</div>
+    </div>
+
+    <div class="comment" id="4d4fb9c184db44ecb99009e62ab1be00">
+    	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+      <div class="comment-content">
+        <p>
+          WesM, thank you for writing. Perhaps you'll find <a href="/2010/10/19/Convention-basedCustomizationswithAutoFixture">this article</a> helpful.
+        </p>
+      </div>
+      <div class="comment-date">2014-03-18 07:33 UTC</div>
+    </div>
+
+</div>

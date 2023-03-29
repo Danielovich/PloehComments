@@ -1,0 +1,157 @@
+---
+layout: post
+tags: [Dependency Injection, Services]
+date: 2010-05-17 05:42:33 UTC
+title: "ServiceHostFactory lifetime"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>For a while I've been wondering about the lifetime behavior of custom <a href="http://msdn.microsoft.com/en-us/library/system.servicemodel.activation.servicehostfactory.aspx">ServiceHostFactory</a> classes hosted in IIS. Does IIS create an instance per request? Or a single instance to handle all requests?</p> <p>I decided to find out, so I wrote a little test service. The conclusion seems to be that there is only a single instance that servers as a factory for all requests. This is very fortunate, since it gives us an excellent place to host a DI Container. The container can then manage the lifetime of all components, including Singletons that will live for the duration of the process.</p> <p>If you are curious how I arrived at this conclusion, here's the code I wrote. I started out with this custom ServiceHostFactory:</p>
+  <p>
+  	<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">PocServiceHostFactory</span> : <span style="color: #2b91af">ServiceHostFactory</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">static</span> <span style="color: blue">int</span> number = 1;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> PocServiceHostFactory()
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Interlocked</span>.Increment(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">ref</span> <span style="color: #2b91af">PocServiceHostFactory</span>.number);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">protected</span> <span style="color: blue">override</span> <span style="color: #2b91af">ServiceHost</span> CreateServiceHost(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Type</span> serviceType, <span style="color: #2b91af">Uri</span>[] baseAddresses)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> <span style="color: blue">new</span> <span style="color: #2b91af">PocServiceHost</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">PocServiceHostFactory</span>.number, serviceType,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; baseAddresses);
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+</p>
+<p>The idea is that every time a new instance of ServiceHostFactory is created, the static number is incremented.</p>
+<p>The PocServiceHostFactory just forwards the number to the PocServiceHost:</p>
+<p>
+	<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">PocServiceHost</span> : <span style="color: #2b91af">ServiceHost</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> PocServiceHost(<span style="color: blue">int</span> number, <span style="color: #2b91af">Type</span> serviceType,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Uri</span>[] baseAddresses)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : <span style="color: blue">base</span>(serviceType, baseAddresses)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">foreach</span> (<span style="color: blue">var</span> cd <span style="color: blue">in</span> 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.ImplementedContracts.Values)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cd.Behaviors.Add(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">new</span> <span style="color: #2b91af">NumberServiceInstanceProvider</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; number));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+</p>
+<p>The PocServiceHost just forwards the number to the NumberServiceInstanceProvider:</p>
+<p>
+	<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">NumberServiceInstanceProvider</span> : 
+&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">IInstanceProvider</span>, <span style="color: #2b91af">IContractBehavior</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">readonly</span> <span style="color: blue">int</span> number;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> NumberServiceInstanceProvider(<span style="color: blue">int</span> number)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.number = number;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #region</span> IInstanceProvider Members
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">object</span> GetInstance(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">InstanceContext</span> instanceContext,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Message</span> message)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> <span style="color: blue">this</span>.GetInstance(instanceContext);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">object</span> GetInstance(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">InstanceContext</span> instanceContext)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> <span style="color: blue">new</span> <span style="color: #2b91af">NumberService</span>(<span style="color: blue">this</span>.number);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">void</span> ReleaseInstance(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">InstanceContext</span> instanceContext,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">object</span> instance)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #endregion</span>
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #region</span> IContractBehavior Members
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">void</span> AddBindingParameters(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ContractDescription</span> contractDescription,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ServiceEndpoint</span> endpoint,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">BindingParameterCollection</span> bindingParameters)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">void</span> ApplyClientBehavior(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ContractDescription</span> contractDescription,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ServiceEndpoint</span> endpoint,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ClientRuntime</span> clientRuntime)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">void</span> ApplyDispatchBehavior(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ContractDescription</span> contractDescription,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ServiceEndpoint</span> endpoint,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">DispatchRuntime</span> dispatchRuntime)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dispatchRuntime.InstanceProvider = <span style="color: blue">this</span>;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">void</span> Validate(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ContractDescription</span> contractDescription,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ServiceEndpoint</span> endpoint)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #endregion</span>
+}</pre>
+</p>
+<p>The relevant part of NumberServiceInstanceProvider is the GetInstanceMethod that simply forwards the number to the NumberService:</p>
+<p>
+	<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">NumberService</span> : <span style="color: #2b91af">INumberService</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">readonly</span> <span style="color: blue">int</span> number;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> NumberService(<span style="color: blue">int</span> number)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.number = number;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #region</span> INumberService Members
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">int</span> GetNumber()
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> <span style="color: blue">this</span>.number;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #endregion</span>
+}</pre>
+</p>
+<p>As you can see, NumberService simply returns the injected number.</p>
+<p>The experiment is now to host NumberService in IIS using PocServiceHostFactory. If there is only one ServiceHostFactory per application process, we would expect that the same number (2) is returned every time we invoke the GetNumber operation. If, on the other hand, a new instance of ServiceHostFactory is created per request, we would expect the number to increase for every request.</p>
+<p>To test this I spun up a few instances of WcfTestClient.exe and invoked the operation. It consistently returns <em>2</em> across multiple clients and multiple requests. This supports the hypothesis that there is only one ServiceHostFactory per service process.</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="72c772ae704f402d9721cca0d3e2e117">
+	<div class="comment-author">onof</div>
+	<div class="comment-content">There's a project on codeplex<br>
+<br>
+http://containerservicehost.codeplex.com/documentation<br>
+</div>
+	<div class="comment-date">2010-05-17 07:10 UTC</div>
+</div>
+</div>

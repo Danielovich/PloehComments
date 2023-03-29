@@ -1,0 +1,315 @@
+---
+layout: post
+title: "EnsureSuccessStatusCode as an assertion"
+description: "It finally dawned on me that EnsureSuccessStatusCode is a fine test assertion."
+date: 2020-09-28 5:50 UTC
+tags: [Unit Testing]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		Okay, I admit that sometimes I can be too literal and rigid in my thinking. At least as far back as 2012 I've been doing <a href="/outside-in-tdd">outside-in TDD</a> against self-hosted HTTP APIs. When you do that, you'll regularly need to verify that an HTTP response is successful.
+	</p>
+	<h3 id="77cb250db1ab4278bad68cf7736ae62e">
+		Assert equality <a href="#77cb250db1ab4278bad68cf7736ae62e" title="permalink">#</a>
+	</h3>
+	<p>
+		You can, of course, write an assertion like this:
+	</p>
+	<p>
+		<pre><span style="color:#2b91af;">Assert</span>.Equal(<span style="color:#2b91af;">HttpStatusCode</span>.OK,&nbsp;response.StatusCode);</pre>
+	</p>
+	<p>
+		If the assertion fails, it'll produce a comprehensible message like this:
+	</p>
+	<p>
+		<pre>Assert.Equal() Failure
+Expected: OK
+Actual:   BadRequest</pre>
+	</p>
+	<p>
+		What's not to like?
+	</p>
+	<h3 id="2ba5bb17d1f8423184a50b2fa1fcb667">
+		Assert success <a href="#2ba5bb17d1f8423184a50b2fa1fcb667" title="permalink">#</a>
+	</h3>
+	<p>
+		The problem with testing strict equality in this context is that it's often too narrow a definition of success.
+	</p>
+	<p>
+		You may start by returning <code>200 OK</code> as response to a <code>POST</code> request, but then later evolve the API to return <code>201 Created</code> or <code>202 Accepted</code>. Those status codes still indicate success, and are typically accompanied by more information (e.g. a <code>Location</code> header). Thus, evolving a REST API from returning <code>200 OK</code> to <code>201 Created</code> or <code>202 Accepted</code> isn't a breaking change.
+	</p>
+	<p>
+		It does, however, break the above assertion, which may now fail like this:
+	</p>
+	<p>
+		<pre>Assert.Equal() Failure
+Expected: OK
+Actual:   Created</pre>
+	</p>
+	<p>
+		You could attempt to fix this issue by instead verifying <a href="https://docs.microsoft.com/dotnet/api/system.net.http.httpresponsemessage.issuccessstatuscode">IsSuccessStatusCode</a>:
+	</p>
+	<p>
+		<pre><span style="color:#2b91af;">Assert</span>.True(response.IsSuccessStatusCode);</pre>
+	</p>
+	<p>
+		That permits the API to evolve, but introduces another problem.
+	</p>
+	<h3 id="0389a3d633c64aec8068be619ddce54c">
+		Legibility <a href="#0389a3d633c64aec8068be619ddce54c" title="permalink">#</a>
+	</h3>
+	<p>
+		What happens when an assertion against <code>IsSuccessStatusCode</code> fails?
+	</p>
+	<p>
+		<pre>Assert.True() Failure
+Expected: True
+Actual:   False</pre>
+	</p>
+	<p>
+		That's not helpful. At least, you'd like to know which other status code was returned instead. You can address that concern by using an overload to <code>Assert.True</code> (most unit testing frameworks come with such an overload):
+	</p>
+	<p>
+		<pre><span style="color:#2b91af;">Assert</span>.True(
+&nbsp;&nbsp;&nbsp;&nbsp;response.IsSuccessStatusCode,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#a31515;">$&quot;Actual&nbsp;status&nbsp;code:&nbsp;</span>{response.StatusCode}<span style="color:#a31515;">.&quot;</span>);</pre>
+	</p>
+	<p>
+		This produces more helpful error messages:
+	</p>
+	<p>
+		<pre>Actual status code: BadRequest.
+Expected: True
+Actual:   False</pre>
+	</p>
+	<p>
+		Granted, the <em>Expected: True, Actual: False</em> lines are redundant, but at least the information you care about is there; in this example, the status code was <code>400 Bad Request</code>.
+	</p>
+	<h3 id="9697ab68967948f89792b82d00028ccf">
+		Conciseness <a href="#9697ab68967948f89792b82d00028ccf" title="permalink">#</a>
+	</h3>
+	<p>
+		That's not bad. You can use that <code>Assert.True</code> overload everywhere you want to assert success. You can even copy and paste the code, <a href="/2014/08/07/why-dry">because it's an idiom that doesn't change</a>. Still, since <a href="/2019/11/04/the-80-24-rule">I like to stay within 80 characters line width</a>, this little phrase takes up three lines of code.
+	</p>
+	<p>
+		Surely, a helper method can address that problem:
+	</p>
+	<p>
+		<pre><span style="color:blue;">internal</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">void</span>&nbsp;AssertSuccess(<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">HttpResponseMessage</span>&nbsp;response)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Assert</span>.True(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;response.IsSuccessStatusCode,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#a31515;">$&quot;Actual&nbsp;status&nbsp;code:&nbsp;</span>{response.StatusCode}<span style="color:#a31515;">.&quot;</span>);
+}</pre>
+	</p>
+	<p>
+		I can now write a one-liner as an assertion:
+	</p>
+	<p>
+		<pre>response.AssertSuccess();</pre>
+	</p>
+	<p>
+		What's not to like?
+	</p>
+	<h3 id="6990f2fbc33f4beca15c122b5b4ccc22">
+		Carrying coals to Newcastle <a href="#6990f2fbc33f4beca15c122b5b4ccc22" title="permalink">#</a>
+	</h3>
+	<p>
+		If you're already familiar with the <a href="https://docs.microsoft.com/dotnet/api/system.net.http.httpresponsemessage">HttpResponseMessage</a> class, you may have been reading this far with some frustration. It already comes with a method called <a href="https://docs.microsoft.com/dotnet/api/system.net.http.httpresponsemessage.ensuresuccessstatuscode">EnsureSuccessStatusCode</a>. Why not just use that instead?
+	</p>
+	<p>
+		<pre>response.EnsureSuccessStatusCode();</pre>
+	</p>
+	<p>
+		As long as the <code>response</code> status code is in the 200 range, this method call succeeds, but if not, it throws an exception:
+	</p>
+	<p>
+		<pre>Response status code does not indicate success: 400 (Bad Request).</pre>
+	</p>
+	<p>
+		That's exactly the information you need.
+	</p>
+	<p>
+		I admit that I can sometimes be too rigid in my thinking. I've known about this method for years, but I never thought of it as a <em>unit testing assertion</em>. It's as if there's a category in my programming brain that's labelled <em>unit testing assertions</em>, and it only contains methods that originate from unit testing.
+	</p>
+	<p>
+		I even knew about <a href="https://docs.microsoft.com/dotnet/api/system.diagnostics.debug.assert">Debug.Assert</a>, so I knew that assertions also exist outside of unit testing. That assertion isn't suitable for unit testing, however, so I never included it in my category of unit testing assertions.
+	</p>
+	<p>
+		The <code>EnsureSuccessStatusCode</code> method doesn't have <em>assert</em> in its name, but it behaves just like a unit testing assertion: it throws an exception with a useful error message if a criterion is not fulfilled. I just never thought of it as useful for unit testing purposes because it's part of 'production code'.
+	</p>
+	<h3 id="5ff49213dd304440887719d6879ff7fb">
+		Conclusion <a href="#5ff49213dd304440887719d6879ff7fb" title="permalink">#</a>
+	</h3>
+	<p>
+		The built-in <code>EnsureSuccessStatusCode</code> method is fine for unit testing purposes. Who knows, perhaps other class libraries contain similar assertion methods, although they may be hiding behind names that don't include <em>assert</em>. Perhaps your own production code contains such methods. If so, they can double as unit testing assertions.
+	</p>
+	<p>
+		I've been doing test-driven development for close to two decades now, and one of many consistent experiences is this:
+		<ul>
+			<li>In the beginning of a project, the unit tests I write are verbose. This is natural, because I'm still getting to know the domain.</li>
+			<li>After some time, I begin to notice patterns in my tests, so I refactor them. I introduce helper APIs in the test code.</li>
+			<li>Finally, I realise that some of those unit testing APIs might actually be useful in the production code too, so I move them over there.</li>
+		</ul>
+		Test-driven development is process that gives you feedback about your production code's APIs. Listen to your tests.
+	</p>
+	<p>
+		<ins datetime="2021-07-21T19:09Z">The code shown here is part of the sample code base that accompanies my book <a href="/code-that-fits-in-your-head">Code That Fits in Your Head</a>.</ins>
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	<div class="comment" id="20484094920349b7a91eebcb9b15c628">
+		<div class="comment-author"><a href="https://github.com/YevgeniyShunevych">Yevgeniy Shunevych</a></div>
+		<div class="comment-content">
+			<p>
+				Unfortunately, I can't agree that it's fine to use <code>EnsureSuccessStatusCode</code> or other similar methods for assertions. An exception of a kind different from assertion (<code>XunitException</code> for XUnit, <code>AssertionException</code> for NUnit) is handled in a bit different way by the testing framework. <code>EnsureSuccessStatusCode</code> method throws <code>HttpRequestException</code>. Basically, a test that fails with such exception is considered as "Failed by error".
+			</p>
+			<p>
+				For example, the test result message in case of 404 status produced by the <code>EnsureSuccessStatusCode</code> method is:
+			</p>
+			<p>
+				<pre>System.Net.Http.HttpRequestException : Response status code does not indicate success: 404 (Not Found).</pre>
+			</p>
+			<p>
+				Where "System.Net.Http.HttpRequestException :" text looks redundant, as we do assertion. This also may make other people think that the reason for this failure is not an assertion, but an unexpected exception. In case of regular assertion exception type, that text is missing.
+			</p>
+			<p>
+				Other points are related to NUnit:
+				<ul>
+					<li>
+						There are 2 different failure test outcome kinds in NUnit:
+						<ul>
+							<li>Failure: a test assertion failed. (Status=Failed, Label=empty)</li>
+							<li>Error: an unexpected exception occurred. (Status=Failed, Label=Error)</li>
+						</ul>
+						See NUnit <a href="https://docs.nunit.org/articles/nunit/writing-tests/TestContext.html#common-outcomes">Common Outcomes</a>. Thus `EnsureSuccessStatusCode` produces "Error" status instead of desirable "Failure".
+					</li>
+					<li>You can't use methods like <code>EnsureSuccessStatusCode</code> as assertion inside multiple asserts.</li>
+					<li>NUnit tracks the count of assertions for each test. <code>"assertions"</code> property gets into the test results XML file and might be useful. This property increments on assertion methods, <code>EnsureSuccessStatusCode</code> - obviously doesn't increment it.</li>
+				</ul>
+			</p>
+		</div>
+		<div class="comment-date">2020-09-30 15:25 UTC</div>
+	</div>
+
+	<div class="comment" id="16adadb969f1406c9c18605c8c85ef83">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Yevgeniy, thank you for writing. This shows, I think, that all advice is contextual. It's been more than a decade since I regularly used NUnit, but I vaguely recall that it gives special treatment to its own assertion exceptions.
+			</p>
+			<p>
+				I also grant that the "System.Net.Http.HttpRequestException" part of the message is redundant. To make matters worse, even without that 'prologue' the information that we care about (the actual status code) is all the way to the right. It'll often require horizontal scrolling to see it.
+			</p>
+			<p>
+				That doesn't much bother me, though. I think that one should optimise for the most frequent scenario. For example, I favour taking a bit of extra time to write readable code, because <a href="/2018/09/17/typing-is-not-a-programming-bottleneck">the bottleneck in programming isn't typing</a>. In the same vein, I find it a good trade-off being able to avoid adding more code against an occasional need to scroll horizontally. The cost of code isn't the time it takes to write it, but the maintenance burden it imposes, as well as the cognitive load it adds.
+			</p>
+			<p>
+				The point here is that while horizontal scrolling is inconvenient, the <em>most frequent scenario</em> is that tests don't fail. The inconvenience only manifests in the rare circumstance that a test fails.
+			</p>
+			<p>
+				I want to thank you, however, for pointing out the issues with NUnit. It reinforces the impression I already had of it, as a framework to stay away from. That design seems to me to impose a lock-in that prevents you from mixing NUnit with improved APIs.
+			</p>
+			<p>
+				In contrast, the <a href="https://www.nuget.org/packages/xunit.core">xunit.core</a> library doesn't include <a href="https://www.nuget.org/packages/xunit.assert">xunit.assert</a>. I often take advantage of that when I write unit tests in F#. While the xUnit.net assertion library is adequate, <a href="https://github.com/SwensenSoftware/unquote">Unquote</a> is much better for F#. I appreciate that xUnit.net enables me to combine the tools that work best in a given situation.
+			</p>
+		</div>
+		<div class="comment-date">2020-10-02 07:35 UTC</div>
+	</div>
+
+	<div class="comment" id="3dbfa056360b4df6a052be2776a6f930">
+		<div class="comment-author"><a href="https://github.com/YevgeniyShunevych">Yevgeniy Shunevych</a></div>
+		<div class="comment-content">
+			<p>
+				I see your point, Mark. Thanks for your reply.
+			</p>
+			<p>
+				I would like to add a few words in defense of the NUnit.
+			</p>
+			<p>
+				First of all, there is no problem to use an extra library for NUnit assertions too. For example, I like <a href="https://fluentassertions.com/">FluentAssertions</a> that works great for both XUnit and NUnit.
+			</p>
+			<p>
+				NUnit 3 also has a set of useful features that are missing in XUnit like:
+				<ul>
+					<li>
+						<a href="https://docs.nunit.org/articles/nunit/writing-tests/assertions/multiple-asserts.html">Multiple asserts</a> - quite useful for UI testing, for example.
+					</li>
+					<li>
+						<a href="https://docs.nunit.org/articles/nunit/writing-tests/Warnings.html">Warnings</a>.
+					</li>
+					<li>
+						<a href="https://docs.nunit.org/articles/nunit/writing-tests/TestContext.html">TestContext</a>.
+					</li>
+					<li>
+						<a href="https://docs.nunit.org/articles/nunit/writing-tests/TestContext.html#addtestattachment-37">File attachments</a> - useful for UI tests or tests that verify files. For example, when the UI test fails, you can take a screenshot, save it and add to NUnit as an attachment. Or when you test PDF file, you can attach the file that doesn't pass the test.
+					</li>
+				</ul>
+			</p>
+			<p>
+				I can recommend to reconsider the view of NUnit, as the library progressed well during its 3rd version. XUnit and NUnit seem interchangeable for unit testing. But NUnit, from my point of view, provides the features that are helpful in integration and UI testing.
+			</p>
+		</div>
+		<div class="comment-date">2020-10-05 13:24 UTC</div>
+	</div>
+
+	<div class="comment" id="fded96f5f68a4d8ba1e782678dd854be">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Yevgeniy, I haven't done UI testing since sometime in 2005, I think, so I wasn't aware of that. It's good to know that NUnit may excel at that, and the other scenarios you point out.
+			</p>
+			<p>
+				To be clear, while I still think I may prefer xUnit.net, I don't consider it perfect.
+			</p>
+		</div>
+		<div class="comment-date">2020-10-05 14:10 UTC</div>
+	</div>
+
+	<div class="comment" id="d7902737ca534eb89a223dbaee65df2a">
+		<div class="comment-author"><a href="https://github.com/adrianiftode">Adrian Iftode</a></div>
+		<div class="comment-content">
+			<p>
+				I would like to mention <a href="https://github.com/adrianiftode/FluentAssertions.Web">FluentAssertions.Web</a>, 
+				a library I wrote with the purpose to solve exact this problem I had while maintaining API tests. 
+				It's frustrating not to tell in two seconds why a test failed. Yeah, it is a Bad Request, but why. Maybe the response is in the respons content?
+			<p>
+			</p>
+				Wouldn't be an idea to see the response content? This FluentAssertions extension outputs everything starting from the request to the response,
+				when the test fails.
+			</p>
+			
+		</div>
+		<div class="comment-date">2022-09-26 12:32 UTC</div>
+	</div>
+
+	<div class="comment" id="5d4af38fe7dc4428a6767792176cc61d">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Adrian, thank you for writing. Your comment inspired me to write an article on when tests fail. This article is now in the publication queue. I'll try to remember to come back here and add a link once it's published.
+			</p>
+		</div>
+		<div class="comment-date">2022-10-04 5:51 UTC</div>
+	</div>
+
+	<div class="comment" id="a518569044964aadb7da8b084fd35634">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				(Placeholder)
+			</p>
+		</div>
+		<div class="comment-date"> UTC</div>
+	</div>
+</div>

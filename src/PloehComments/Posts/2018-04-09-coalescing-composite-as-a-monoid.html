@@ -1,0 +1,326 @@
+---
+layout: post
+title: "Coalescing Composite as a monoid"
+description: "A variation of the Composite design pattern uses coalescing behaviour to return non-composable values. That's still a monoid."
+date: 2018-04-09 8:15 UTC
+tags: [Software Design, Design Patterns]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is part of <a href="/2018/03/05/some-design-patterns-as-universal-abstractions">a series of articles about design patterns and their category theory counterparts</a>. In <a href="/2018/03/12/composite-as-a-monoid">a previous article</a>, you learned that the <a href="https://en.wikipedia.org/wiki/Composite_pattern">Composite</a> design pattern is simply a <a href="/2017/10/06/monoids">monoid</a>.
+	</p>
+	<h3 id="ee5e76abfc9c4fe58a5e232579e397c5">
+		Monoidal return types <a href="#ee5e76abfc9c4fe58a5e232579e397c5" title="permalink">#</a>
+	</h3>
+	<p>
+		When all methods of an interface return monoids, you can create a Composite. This is fairly intuitive once you understand what a monoid is. Consider this example interface:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">ICustomerRepository</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Create(<span style="color:#2b91af;">Customer</span>&nbsp;customer);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Customer</span>&nbsp;Read(<span style="color:#2b91af;">Guid</span>&nbsp;id);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Update(<span style="color:#2b91af;">Customer</span>&nbsp;customer);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Delete(<span style="color:#2b91af;">Guid</span>&nbsp;id);
+}</pre>
+	</p>
+	<p>
+		While this interface is, in fact, not readily composable, most of the methods are. It's easy to compose the three <code>void</code> methods. Here's a composition of the <code>Create</code> method:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;Create(<span style="color:#2b91af;">Customer</span>&nbsp;customer)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">foreach</span>&nbsp;(<span style="color:blue;">var</span>&nbsp;repository&nbsp;<span style="color:blue;">in</span>&nbsp;<span style="color:blue;">this</span>.repositories)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;repository.Create(customer);
+}</pre>
+	</p>
+	<p>
+		In this case it's easy to compose multiple repositories, because <code>void</code> (<a href="/2018/01/15/unit-isomorphisms">or, rather, <em>unit</em></a>) forms a monoid. If you have methods that return numbers, you can add the numbers together (a monoid). If you have methods that return strings, you can concatenate the strings (a monoid). If you have methods that return Boolean values, you can <em>or</em> or <em>and</em> them together (more monoids).
+	</p>
+	<p>
+		What about the above <code>Read</code> method, though?
+	</p>
+	<h3 id="05eec84ac1514c10bdbb0dbc6b36a957">
+		Picking the first Repository <a href="#05eec84ac1514c10bdbb0dbc6b36a957" title="permalink">#</a>
+	</h3>
+	<p>
+		Why would you even want to compose two repositories? One scenario is where you have an old data store, and you want to move to a new data store. For a while, you wish to write to both data stores, but one of them stays the 'primary' data store, so this is the one from which you read.
+	</p>
+	<p>
+		Imagine that the old repository saves customer information as JSON files on disk. The new data store, on the other hand, saves customer data as JSON documents in <a href="https://azure.microsoft.com/en-us/services/storage/blobs">Azure Blob Storage</a>. You've already written two implementations of <code>ICustomerRepository</code>: <code>FileCustomerRepository</code> and <code>AzureCustomerRepository</code>. How do you compose them?
+	</p>
+	<p>
+		The three methods that return <code>void</code> are easy, as the above <code>Create</code> implementation demonstrates. The <code>Read</code> method, however, is more tricky.
+	</p>
+	<p>
+		One option is to only query the first repository, and return its return value:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Customer</span>&nbsp;Read(<span style="color:#2b91af;">Guid</span>&nbsp;id)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>.repositories.First().Read(id);
+}</pre>
+	</p>
+	<p>
+		This works, but doesn't generalise. It works if you know that you have a non-empty collection of repositories, but if you want to adhere to the <a href="https://en.wikipedia.org/wiki/Liskov_substitution_principle">Liskov Substitution Principle</a>, you should be able to handle the case where there's no repositories.
+	</p>
+	<p>
+		A Composite should be able to compose an arbitrary number of other objects. This includes a collection of no objects. The <code>CompositeCustomerRepository</code> class has this constructor:
+	</p>
+	<p>
+		<pre><span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IReadOnlyCollection</span>&lt;<span style="color:#2b91af;">ICustomerRepository</span>&gt;&nbsp;repositories;
+ 
+<span style="color:blue;">public</span>&nbsp;CompositeCustomerRepository(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IReadOnlyCollection</span>&lt;<span style="color:#2b91af;">ICustomerRepository</span>&gt;&nbsp;repositories)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(repositories&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:blue;">nameof</span>(repositories));
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.repositories&nbsp;=&nbsp;repositories;
+}</pre>
+	</p>
+	<p>
+		It uses standard Constructor Injection to inject an <code>IReadOnlyCollection&lt;ICustomerRepository&gt;</code>. Such a collection is finite, but can be empty.
+	</p>
+	<p>
+		Another problem with blindly returning the value from the first repository is that the return value may be empty.
+	</p>
+	<p>
+		In C#, people often use <code>null</code> to indicate a missing value, and while I find such practice unwise, I'll pursue this option for a bit.
+	</p>
+	<p>
+		A more robust Composite would return the first non-null value it gets:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Customer</span>&nbsp;Read(<span style="color:#2b91af;">Guid</span>&nbsp;id)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">foreach</span>&nbsp;(<span style="color:blue;">var</span>&nbsp;repository&nbsp;<span style="color:blue;">in</span>&nbsp;<span style="color:blue;">this</span>.repositories)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;customer&nbsp;=&nbsp;repository.Read(id);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(customer&nbsp;!=&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;customer;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">null</span>;
+}</pre>
+	</p>
+	<p>
+		This implementation loops through all the injected <code>repositories</code> and calls <code>Read</code> on each until it gets a result that is not <code>null</code>. This will often be the first value, but doesn't have to be. If all repositories return <code>null</code>, then the Composite also returns <code>null</code>. To emphasise my position, I would never design C# code like this, but at least it's consistent.
+	</p>
+	<p>
+		If you've ever worked with relational databases, you may have had an opportunity to use the <code>COALESCE</code> function, which works in exactly the same way. This is the reason I call such an implementation a <em>coalescing Composite</em>.
+	</p>
+	<h3 id="ae3e089ecda84bd299e44c22554f5b85">
+		The First monoid <a href="#ae3e089ecda84bd299e44c22554f5b85" title="permalink">#</a>
+	</h3>
+	<p>
+		The <a href="https://docs.microsoft.com/en-us/sql/t-sql/language-elements/coalesce-transact-sql">T-SQL documentation for COALESCE</a> describes the operation like this:
+		<blockquote>
+			"Evaluates the arguments in order and returns the current value of the first expression that initially does not evaluate to <code>NULL</code>."
+		</blockquote>
+		The <a href="https://docs.oracle.com/cd/B28359_01/server.111/b28286/functions023.htm#SQLRF00617">Oracle documentation</a> expresses it as:
+		<blockquote>
+			"<code>COALESCE</code> returns the first non-null <code>expr</code> in the expression list."
+		</blockquote>
+		This may not be apparent, but that's a monoid.
+	</p>
+	<p>
+		<a href="https://www.haskell.org">Haskell</a>'s base library comes with a monoidal type called <code>First</code>, which is a
+		<blockquote>
+			"Maybe monoid returning the leftmost non-Nothing value."
+		</blockquote>
+		Sounds familiar?
+	</p>
+	<p>
+		Here's how you can use it in GHCi:
+	</p>
+	<p>
+		<pre>λ&gt; First (Just (Customer id1 "Joan")) &lt;&gt; First (Just (Customer id2 "Nigel"))
+First {getFirst = Just (Customer {customerId = 1243, customerName = "Joan"})}
+
+λ&gt; First (Just (Customer id1 "Joan")) &lt;&gt; First Nothing
+First {getFirst = Just (Customer {customerId = 1243, customerName = "Joan"})}
+
+λ&gt; First Nothing &lt;&gt; First (Just (Customer id2 "Nigel"))
+First {getFirst = Just (Customer {customerId = 5cd5, customerName = "Nigel"})}
+
+λ&gt; First Nothing &lt;&gt; First Nothing
+First {getFirst = Nothing}</pre>
+	</p>
+	<p>
+		(To be clear, the above examples uses <code>First</code> from <code>Data.Monoid</code>, not <code>First</code> from <code>Data.Semigroup</code>.)
+	</p>
+	<p>
+		The operator <code>&lt;&gt;</code> is an infix alias for <code>mappend</code> - Haskell's polymorphic binary operation.
+	</p>
+	<p>
+		As long as the left-most value is present, that's the return value, regardless of whether the right value is <code>Just</code> or <code>Nothing</code>. Only when the left value is <code>Nothing</code> is the right value returned. Notice that this value may also be <code>Nothing</code>, causing the entire expression to be <code>Nothing</code>.
+	</p>
+	<p>
+		That's exactly the same behaviour as the above implementation of the <code>Read</code> method.
+	</p>
+	<h3 id="c83d6ec43ba94073b151841289050fba">
+		First in C# <a href="#c83d6ec43ba94073b151841289050fba" title="permalink">#</a>
+	</h3>
+	<p>
+		It's easy to port Haskell's <code>First</code> type to C#:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">T</span>&nbsp;item;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:blue;">bool</span>&nbsp;hasItem;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;First()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.hasItem&nbsp;=&nbsp;<span style="color:blue;">false</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;First(<span style="color:#2b91af;">T</span>&nbsp;item)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(item&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:blue;">nameof</span>(item));
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.item&nbsp;=&nbsp;item;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.hasItem&nbsp;=&nbsp;<span style="color:blue;">true</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;FindFirst(<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;other)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(<span style="color:blue;">this</span>.hasItem)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;other;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		Instead of nesting <code>Maybe</code> inside of <code>First</code>, as Haskell does, I simplified a bit and gave <code>First&lt;T&gt;</code> two constructor overloads: one that takes a value, and one that doesn't. The <code>FindFirst</code> method is the binary operation that corresponds to Haskell's <code>&lt;&gt;</code> or <code>mappend</code>.
+	</p>
+	<p>
+		This is only one of several alternative implementations of <a href="/2018/04/03/maybe-monoids">the <em>first</em> monoid</a>.
+	</p>
+	<p>
+		In order to make <code>First&lt;T&gt;</code> a monoid, it must also have an identity, which is just an empty value:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;Identity&lt;<span style="color:#2b91af;">T</span>&gt;()
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">T</span>&gt;();
+}</pre>
+	</p>
+	<p>
+		This enables you to <a href="/2017/11/20/monoids-accumulate">accumulate</a> an arbitrary number of <code>First&lt;T&gt;</code> values to a single value:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;Accumulate&lt;<span style="color:#2b91af;">T</span>&gt;(<span style="color:#2b91af;">IReadOnlyList</span>&lt;<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">T</span>&gt;&gt;&nbsp;firsts)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;acc&nbsp;=&nbsp;Identity&lt;<span style="color:#2b91af;">T</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">foreach</span>&nbsp;(<span style="color:blue;">var</span>&nbsp;first&nbsp;<span style="color:blue;">in</span>&nbsp;firsts)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;acc&nbsp;=&nbsp;acc.FindFirst(first);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;acc;
+}</pre>
+	</p>
+	<p>
+		You start with the identity, which is also the return value if <code>firsts</code> is empty. If that's not the case, you loop through all <code>firsts</code> and update <code>acc</code> by calling <code>FindFirst</code>.
+	</p>
+	<h3 id="d90234ded89e483bbc6eb8db9ffb0a19">
+		A composable Repository <a href="#d90234ded89e483bbc6eb8db9ffb0a19" title="permalink">#</a>
+	</h3>
+	<p>
+		You can formalise such a design by changing the <code>ICustomerRepository</code> interface:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">ICustomerRepository</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Create(<span style="color:#2b91af;">Customer</span>&nbsp;customer);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">Customer</span>&gt;&nbsp;Read(<span style="color:#2b91af;">Guid</span>&nbsp;id);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Update(<span style="color:#2b91af;">Customer</span>&nbsp;customer);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Delete(<span style="color:#2b91af;">Guid</span>&nbsp;id);
+}</pre>
+	</p>
+	<p>
+		In this modified version, <code>Read</code> explicitly returns <code>First&lt;Customer&gt;</code>. The rest of the methods remain as before.
+	</p>
+	<p>
+		The reusable API of <code>First</code> makes it easy to implement a Composite version of <code>Read</code>:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">Customer</span>&gt;&nbsp;Read(<span style="color:#2b91af;">Guid</span>&nbsp;id)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;candidates&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">List</span>&lt;<span style="color:#2b91af;">First</span>&lt;<span style="color:#2b91af;">Customer</span>&gt;&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">foreach</span>&nbsp;(<span style="color:blue;">var</span>&nbsp;repository&nbsp;<span style="color:blue;">in</span>&nbsp;<span style="color:blue;">this</span>.repositories)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;candidates.Add(repository.Read(id));
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:#2b91af;">First</span>.Accumulate(candidates);
+}</pre>
+	</p>
+	<p>
+		You could argue that this seems to be wasteful, because it calls <code>Read</code> on all repositories. If the first Repository returns a value, all remaining queries are wasted. You can address that issue with lazy evaluation.
+	</p>
+	<p>
+		You can see (a recording of) a live demo of the example in this article in my <a href="https://cleancoders.com">Clean Coders</a> video <a href="https://cleancoders.com/episode/humane-code-real-episode-2/show">Composite as Universal Abstraction</a>.
+	</p>
+	<h3 id="8c301e16ccf34fd099e4f97503c005c5">
+		Summary <a href="#8c301e16ccf34fd099e4f97503c005c5" title="permalink">#</a>
+	</h3>
+	<p>
+		While the typical Composite is implemented by directly aggregating the return values from the composed objects, variations exist. One variation picks the first non-empty value from a collection of candidates, reminiscent of the SQL <code>COALESCE</code> function. This is, however, still a monoid, so the overall conjecture that Composites are monoids still holds.
+	</p>
+	<p>
+		Another Composite variation exists, but that one turns out to be a monoid as well. Read on!
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2018/04/16/endomorphic-composite-as-a-monoid">Endomorphic Composite as a monoid</a>.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">Comments</h2>
+	<div class="comment" id="d5cb5c03f4af4f70928674c774f09058">
+		<div class="comment-author"><a href="http://www.nikolamilekic.com">Nikola Milekic</a></div>
+		<div class="comment-content">
+			<blockquote>When all methods of an interface return monoids, you can create a Composite. This is fairly intuitive once you understand what a monoid is.</blockquote>
+
+			<p>
+				I've been struggling a bit with the terminology and I could use a bit of help.
+			</p>
+			<p>
+				I understand a <code>Monoid&lt;a&gt;</code> to be of type <code>a -> a -> a</code>. I further understand that it can be said that <code>a</code> "forms a monoid over" the specific <code>a -> a -> a</code> implementation. We can then say that an int forms two different monoids over addition and multiplication.
+			</p>
+			<p>
+				Is my understanding above accurate and if so wouldn't it be more accurate to say that you can create a composite from an interface only when all of its methods <em>return values that form monoids</em>? Saying that they have to return monoids (instead of values that form them) goes against my understanding that a monoid is a binary operation.
+			</p>
+			<p>
+				Thanks a lot for an amazing article series, and for this blog overall. Keep up the good work!
+			</p>
+		</div>
+		<div class="comment-date">2018-08-07 21:04 UTC</div>
+	</div>
+
+	<div class="comment" id="de5c75b6e2374a03bb3301cd670b9720">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Nikola, thank you for writing. You're correct: it <em>would</em> be more correct to say that you can create a Composite from an interface when all of its methods return types that form monoids. Throughout this article series, I've been struggling to keep my language as correct and specific as possible, but I sometimes slip up.
+			</p>
+			<p>
+				This has come up before, so perhaps you'll find <a href="/2017/10/30/tuple-monoids#68cbe481b0e74c3284e45d4e8dd51da4">this answer</a> helpful.
+			</p>
+			<p>
+				By the way, there's one exception to the rule that in order to be able to create a Composite, all methods must return types that form monoids. This is <a href="/2018/04/16/endomorphic-composite-as-a-monoid">when the return type is the same as the input type</a>. The resulting Composite is still a monoid, so the overall conclusion holds.
+			</p>
+		</div>
+		<div class="comment-date">2018-08-08 6:32 UTC</div>
+	</div>
+</div>

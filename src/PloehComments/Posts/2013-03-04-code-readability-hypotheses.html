@@ -1,0 +1,170 @@
+---
+layout: post
+title: "Code readability hypotheses"
+description: "This post proposes a scientific experiment about code readability"
+date: 2013-03-04 13:21:00 UTC
+tags: [Productivity, Software Design, Code]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		Once in a while someone tries to drag me into one of many so-called 'religious' debates over code readability:
+		<ul>
+			<li>Tabs versus spaces?</li>
+			<li>Where should the curly braces go?</li>
+			<li>Should class members be prefixed (e.g. with an underscore)?</li>
+			<li>Is the <code>this</code> C# keyword redundant?</li>
+			<li>etc.</li>
+		</ul>
+	</p>
+	<p>
+		In most cases, the argument revolves around what is most readable.
+	</p>
+	<p>
+		Let's look at the C# keyword <code>this</code> as an example. Many programmers feel that it's redundant because they can omit it without changing the program. The compiler doesn't care. However, as <a href="http://martinfowler.com/">Martin Fowler</a> wrote in <a href="http://amzn.to/YPdQDf">Refactoring</a>: "Any fool can write code that a computer can understand.  Good programmers write code that humans can understand." Code is read much more than written, so I don't buy the argument about redundancy.
+	</p>
+	<p>
+		There are lots of circumstances when code is read. Often, programmers read code from inside their <a href="http://en.wikipedia.org/wiki/Integrated_development_environment">IDE</a>. This has been used as an argument against <a href="http://en.wikipedia.org/wiki/Hungarian_notation">Hungarian notation</a>. However, at other times, you may be reading code as part of a review process - e.g. on <a href="https://github.com/">GitHub</a> or <a href="http://www.codeplex.com/">CodePlex</a>. Or you may be reading code on a blog post, or in a book.
+	</p>
+	<p>
+		Often I feel that the <code>this</code> keyword helps me because it provides information about the scope of a variable. However, I also preach that <a href="/2011/06/07/SOLIDCodeisnt/">code should consist of small classes with small methods</a>, and if you follow that principle, variable scoping should be easily visible on a single screen.
+	</p>
+	<p>
+		Another argument against using the <code>this</code> keyword is that it's simply noise and that it makes it harder to read the program, simply because there's more text to read. Such a statement is <em>impossible to refute with logic</em>, because it depends on the person reading the code.
+	</p>
+	<p>
+		Ultimately, the readability of code depends on circumstances and is highly subjective. For that reason, we can't arrive at a conclusion to any of those 'religious' debates by force of logic. However, what we <em>could</em> do, on the other hand, is to perform a set of scientific experiments to figure out what is most readable.
+	</p>
+	<h3 id="76938d9c6ed04de5bb80a92500f21be9">
+		A science experiment idea for future computer scientists <a href="#76938d9c6ed04de5bb80a92500f21be9" title="permalink">#</a>
+	</h3>
+	<p>
+		Here's an idea for a computer science experiment:
+		<ol>
+			<li>Pick a 'religious' programming debate (e.g. whether or not the <code>this</code> keyword enhances or reduces readability).</li>
+			<li>Form a hypothesis (e.g. predict that the <code>this</code> keyword enhances readability).</li>
+			<li>Prepare a set of simple code listings, each with two alternatives (with and without <code>this</code>).</li>
+			<li>Randomly select two groubs of test subjects.</li>
+			<li>Ask each group to explain to you what the code does (what is the result of calling a method, etc.). One group gets one alternative set, and the other group gets the other set.</li>
+			<li>Measure how quickly members of each group arrives at a correct conclusion.</li>
+			<li>Compare results against original hypothesis.</li>
+		</ol>
+		<a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.en_US"><img alt="Creative Commons License" style="border-width:0" src="http://i.creativecommons.org/l/by/3.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">Code readability hypotheses</span> by <a xmlns:cc="http://creativecommons.org/ns#" href="/2013/03/04/code-readability-hypotheses" property="cc:attributionName" rel="cc:attributionURL">Mark Seemann</a> is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/3.0/deed.en_US">Creative Commons Attribution 3.0 Unported License</a>.
+	</p>
+</div>
+
+<div id="comments">
+<hr>
+<h2 id="comments-header">Comments</h2>
+	<div class="comment" id="937bcbca71084c67b0cabcb3fbfc416f">
+		<div class="comment-author">
+			<a href="http://nikosbaxevanis.com">Nikos Baxevanis</a>
+		</div>
+		<div class="comment-content">
+			<p>
+				Totally agreed.
+			</p> 
+			<p>
+				I believe that these 'religious' debates is the result of overreliance to some popular Productivity Tools. If these tools never existed those debates would appear less often.
+			</p>
+			<p>
+				Where possible, I use <code>this</code> and <code>base</code>.
+			</p>
+			<p>
+				From a code reader's perspective, I also prefer <code>this</code> since I can immediately understand whether a member of a class is either a static member or an instance member. After all, it is possible to prefix a static member with <code>_</code> but not with <code>this</code>.
+			</p>
+		</div>
+		<div class="comment-date">2013-03-04 14:04 UTC</div>
+	</div>
+	<div class="comment" id="8bc273327d644b7db35f25f425898855">
+		<div class="comment-author">
+			<a href="http://http://gsscoder.blogspot.it">Giacomo Stelluti Scala</a>
+		</div>
+		<div class="comment-content">
+			<p>The import thing that emerges from this interesting post is that readabiliy is a <strong>key feature</strong> of code.</p>
+
+			<p>I'm a fun of this concept: <strong>code is meant to be read</strong>. A person able to program is not a programmer, like a person able to write is not a writer.</p>
+
+			<p>The good compromise is common sense.</p>
+
+			<p>The scenitifical experiment proposed could give use misleading informations, since the <i>human factor</i> is a problematic variable to put into the equation (not to mention <i>Heisenberg</i>); but I would be curious to see results.</p>
+
+			<p>Coming back to the <code>this</code> keyword, my personal opinion is that it can be omitted, if your naming convention supplies a readable alternative (like the <code>_</code> underscore prefix before private instance members).</p>
+		<div class="comment-date">2013-03-04 18:57 UTC</div>
+		</div>
+	</div>
+	<div class="comment" id="6dc0864b9e9348c8bcce8dda49467f61">
+		<div class="comment-author">
+			<a href="http://blog.strobaek.org">Karsten Strøbæk</a>
+		</div>
+		<div class="comment/content">
+			<p>
+				I also agree that code should be readable.
+			</p>
+			<p>
+				However, this being said, the proposed method for testing the hypothesis does not hold from a statistical point of view.
+			</p>
+			<p>
+				Just to mentionen a few of the issues:
+				<ol>
+					<li>The two groups could have different leves of experience which would influence their 'ability' to read and understand the code</li>
+					<li>Demografics such as age, gender, native language, education, ..., would also influence the result</li>
+					<li>The individual members of the group could be biased towards one or the other, in the used example for or against the use of the <strong>this</strong> keyword</li>
+					<li>Simply to compile large enough groups to ensure a low statistics error would be an issue</li>
+				</ol>
+			</p>
+			<p>
+				The word 'religious' is mentioned and this is the main problem. Different from science that is based on deduction, religion is based on beliefe (or faith) and precisely because of this cannot be tested or verified.
+			</p>
+		</div>
+		<div class="comment-date">2013-03-12 12:00 UTC</div>
+	</div>
+
+	<div class="comment" id="97428363b8884cd884047293b00c760f">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Karsten, I think you're reading practical issues into my proposal. Would you agree that all but the last of your reservations could be addressed if one were to pick large enough groups of test subjects, without selection bias?
+			</p>
+			<p>
+				That's what I meant when I wrote "Randomly select two groups of test subjects".
+			</p>
+			<p>
+				If one were able to pick large enough groups of people, one should be able to control for variables such as demographics, experience, initial biases, and so on.
+			</p>
+			<p>
+				Your last reservation, obviously, is fundamentally different. How many people would one need in order to be able to control for such variables in a statistically sound fashion? Probably thousands, if not tens of thousands, of programmers, including professional developers. This precludes the use of normal test subject populations of first-year students.
+			</p>
+			<p>
+				Clearly, compiling such a group of test subjects would be a formidable undertaking. It'd be expensive.
+			</p>
+			<p>
+				My original argument, however, was that I consider it possible to scientifically examine contentious topics of programming. I didn't claim that it was realistic that anyone would fund such research.
+			</p>
+			<p>
+				To be clear, however, the main point of the entire article is that we can't reach any conclusions about these controversial issues by arguing about them. If we wish to settle them, we'll have to invest in scientific experiments. I have no illusions that there's any desire to invest the necessary funds and work into answering these questions, but I would love to be proven wrong.
+			</p>
+		</div>
+		<div class="comment-date">2019-02-14 9:14 UTC</div>
+	</div>
+
+	<div class="comment" id="fef627676986467bbbee0f60cb38707d">
+		<div class="comment-author"><a href="https://www.clearlaunch.com/meet-the-team/">Arturo Hernandez</a></div>
+		<div class="comment-content">
+			<p>
+				There is a huge problem in the way that we evaluate software quality. Karsten, is naming many of the reasons that make it difficult. But given that it is difficult, The only rational way to solve it without relying as heavily credentials, personality and repetition. Is to establish guidelines and have multiple opionins/measurements of code samples. 
+			</p>
+			<p>
+				I think we overvalue experience in evaluating code. And in the contrary, there are real issues with expert bias, particularly of older programmers who have good credentials but are more financially and emotionally invested in a particular technology. In general, it is much more difficult to write good code, than to read it. Therefore, most programmers can read, understand and appreciate good code. While they may not have been able to write from scratch themselves. The only exception would be for true neophytes (which there may be ways to exclude). We also need to be leary about software qualities that are hard to grasp and evaluate. Unexplainable or unclear instinct can lead to bad outcomes.
+			</p>
+			<p>
+				There is real oportunity here to more scientifically quantify aspects of code quality. I wish more people devoted time to it.
+			</p>
+		</div>
+		<div class="comment-date">2019-02-14 17:36 UTC</div>
+	</div>
+</div>

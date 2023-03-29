@@ -1,0 +1,242 @@
+---
+layout: post
+title: "NuGet Package Restore considered harmful"
+description: "The NuGet Package Restore feature is a really bad idea; this post explains why."
+date: 2014-01-29 20:06 UTC
+tags: [Productivity]
+image: "/content/binary/nuget-package-restore-problem.png"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		One of the first things I do with a new installation of Visual Studio is to disable the NuGet Package Restore feature. There are many reasons for that, but it all boils down to this:
+	</p>
+	<p>
+		<blockquote>NuGet Package Restore introduces more problems than it solves.</blockquote>
+	</p>
+	<p>
+		Before I tell you about all those problems, I'll share the solution with you: <em>check your NuGet packages into source control.</em> Yes, it's that simple.
+	</p>
+	<h3 id="ce35015955414f0b90cda98e1c09a47c">
+		Storage implications <a href="#ce35015955414f0b90cda98e1c09a47c" title="permalink">#</a>
+	</h3>
+	<p>
+		If you're like most other people, you don't like that solution, because it <em>feels</em> inefficient. And so what? Let's look at some numbers.
+		<ul>
+			<li>The <a href="https://github.com/AutoFixture/AutoFixture">AutoFixture</a> repository is 28.6 MB, and that's a pretty big code base (<a href="https://www.ohloh.net/p/autofixture/analyses/latest/languages_summary">181,479 lines of code</a>).</li>
+			<li>The <a href="https://github.com/ploeh/Hyprlinkr">Hyprlinkr</a> repository is 32.2 MB.</li>
+			<li>The <a href="https://github.com/ploeh/Albedo">Albedo</a> repository is 8.85 MB.</li>
+			<li>The <a href="https://github.com/ploeh/ZeroToNine">ZeroToNine</a> repository is 4.91 MB.</li>
+			<li>The <a href="{{ site.production_url }}/functional-architecture-with-fsharp">sample code repository for my new Pluralsight course</a> is 69.9 MB.</li>
+			<li>The repository for <a href="http://grean.com">Grean's</a> largest production application is 32.5 MB.</li>
+			<li>Last year I helped one of my clients build a big, scalable REST API. We had several repositories, of which the largest one takes up 95.3 MB on my disk.</li>
+		</ul>
+		All of these repositories contain NuGet packages, but keep in mind that even if we'd used Package Restore instead, these repositories wouldn't have been <em>empty</em> - they would still have taken up <em>some</em> space on disk.
+	</p>
+	<p>
+		On my laptops I'm using Lenovo-supported SSDs, so they're fairly expensive drives. Looking up current prices, it seems that a rough estimates of prices puts those disks at approximately 1 USD per GB.
+	</p>
+	<p>
+		On average, each of my repositories containing NuGet packages cost me <strong>four cents</strong> of disk drive space.
+	</p>
+	<p>
+		Perhaps I could have saved <em>some</em> of this money with Package Restore...
+	</p>
+	<h3 id="b8c510ad098b40d089442b15d50467de">
+		Clone time <a href="#b8c510ad098b40d089442b15d50467de" title="permalink">#</a>
+	</h3>
+	<p>
+		Another problem that the Package Restore feature seems to address, is the long time it takes to clone a repository - <a href="https://twitter.com/tims/status/383118946909818880">if you're on a shaky internet connection in a train</a>. While it can be annoying to wait for a repository to clone, how often do you do that, compared to normal synchronization operations such as <em>pull</em>, <em>push</em> or <em>fetch</em>?
+	</p>
+	<p>
+		What should you be optimizing for? Cloning, which you do once in a while? Or fetch, pull, and push, which you do several times a day?
+	</p>
+	<p>
+		In most cases, the amount of time it takes to clone a repository is irrelevant.
+	</p>
+	<p>
+		To summarize so far: the problems that Package Restore solves are a couple of cents of disk cost, as well as making a rarely performed operation faster. From where I stand, it doesn't take a lot of problems before they outweigh the benefits - and there are plenty of problems with this feature.
+	</p>
+	<h3 id="eb3965b2b3764a14b38867bb75552994">
+		Fragility <a href="#eb3965b2b3764a14b38867bb75552994" title="permalink">#</a>
+	</h3>
+	<p>
+		The more moving parts you add to a system, the greater the risk of failure. If you use a <a href="http://en.wikipedia.org/wiki/Distributed_version_control_system">Distributed Version Control System</a> (DVCS) and keep all NuGet packages in the repository, you can work when you're off-line. With Package Restore, you've added a dependency on <em>at least</em> one package source.
+		<ul>
+			<li>What happens if you have no network connection?</li>
+			<li>What happens if your package source (e.g. <a href="http://www.nuget.org">NuGet.org</a>) is down?</li>
+			<li>What happens if you use multiple package sources (e.g. both NuGet.org and <a href="http://www.myget.org">MyGet.org</a>)?</li>
+		</ul>
+		You may think that this is unlikely to happen, but apparently, NuGet.org was down today:
+	</p>
+	<p>
+		<img src="/content/binary/nuget-down-tweets.png">
+	</p>
+	<p>
+		This is a well-known trait of any distributed system: The system is only as strong as its weakest link. The more services you add, the higher is the risk that something breaks.
+	</p>
+	<h3 id="9583d6e784bc47548fafb666117b1d04">
+		Custom package sources <a href="#9583d6e784bc47548fafb666117b1d04" title="permalink">#</a>
+	</h3>
+	<p>
+		NuGet itself is a nice system, and I often encourage organizations to adopt it for internal use. You may have reusable components that you want to share <em>within</em> your organization, but not with the whole world. In <a href="http://grean.com">Grean</a>, we have such components, and we use <a href="http://www.myget.org">MyGet</a> to host the packages. This is great, but if you use Package Restore, now you depend on <em>multiple</em> services (NuGet.org and MyGet.org) to be available at the same time.
+	</p>
+	<p>
+		While Myget is a nice and well-behaved NuGet host, I've also worked with internal NuGet package sources, set up as an internal service in an organization. Some of these are not as well-behaved. In one case, 'old' packages were deleted from the package source, which had the consequence that when I later wanted to use an older version of the source code, I couldn't complete a Package Restore because the package with the desired version number was no longer available. There was simply no way to build that version of the code base!
+	</p>
+	<h3 id="762d25e0e47744779a70bfafdd72a0fa">
+		Portability <a href="#762d25e0e47744779a70bfafdd72a0fa" title="permalink">#</a>
+	</h3>
+	<p>
+		One of the many nice things about a DVCS is that you can xcopy your repository and move it to another machine. You can also copy it and give it to someone else. You could, for example, zip it and hand it over to an external consultant. If you use Package Restore and internal package sources, the consultant will not be able to compile the code you gave him or her.
+	</p>
+	<h3 id="b13f530f00984c12b596c47981bcd738">
+		Setup <a href="#b13f530f00984c12b596c47981bcd738" title="permalink">#</a>
+	</h3>
+	<p>
+		Perhaps you don't use external consultants, but maybe you set up a new developer machine once in a while. Perhaps you occasionally get a new colleague, who needs help with setting up the development environment. Particularly if you use custom package feeds, making it all work is yet another custom configuration step you need to remember.
+	</p>
+	<h3 id="9b52bedb29e04b3ca8bc62b73c16d6ed">
+		Bandwidth cost <a href="#9b52bedb29e04b3ca8bc62b73c16d6ed" title="permalink">#</a>
+	</h3>
+	<p>
+		As far as I've been able to tell, the purpose of Package Restore is efficiency. However, every time you compile with Package Restore enabled, you're using the network.
+	</p>
+	<p>
+		Consider a Build Server. Every time it makes a build, it should start with a clean slate. It can get the latest deltas from the shared source control repository, but it should start with a clean working folder. This means that <em>every time it builds</em>, it'll need to download all the NuGet packages via Package Restore. This not only wastes bandwidth, but takes time. In contrast, if you keep NuGet packages in the repository itself, the Build Server has everything it needs as soon as it has the latest version of the repository.
+	</p>
+	<p>
+		The same goes for your own development machine. Package Restore <em>will</em> make your compile process slower.
+	</p>
+	<h3 id="0bc52012986443aebff7bd155740b3fb">
+		Glitches <a href="#0bc52012986443aebff7bd155740b3fb" title="permalink">#</a>
+	</h3>
+	<p>
+		Finally, Package Restore simply doesn't <em>work</em> very well. Personally, I've wasted many hours troubleshooting problems that turned out to be related to Package Restore. Allow me to share one of these stories.
+	</p>
+	<p>
+		Recently, I encountered this sight when I opened a solution in Visual Studio:
+	</p>
+	<p>
+		<img src="/content/binary/nuget-package-restore-problem.png">
+	</p>
+	<p>
+		My problem was that at first, I didn't understand what was wrong. Even though I store NuGet packages in my repositories, all of a sudden I got this error message. It turned out that this happened at the time when NuGet switched to enabling Package Restore by default, and I hadn't gotten around to disable it again.
+	</p>
+	<p>
+		The strange thing was the everything compiled and worked just great, so why was I getting that error message?
+	</p>
+	<p>
+		After much digging around, it turned out that the <a href="http://www.nuget.org/packages/ImpromptuInterface.FSharp">ImpromptuInterface.FSharp</a> package was missing a .nuspec file. You may notice that ImpromptuInterface.FSharp is also missing in the package list above. All binaries, as well as the .nupkg file, was in the repository, but the ImpromptuInterface.FSharp.1.2.13.nuspec was missing. I hadn't noticed for weeks, because I didn't need it, but NuGet complained.
+	</p>
+	<p>
+		After I added the appropriate .nuspec file, the error message went away.
+	</p>
+	<p>
+		The resolution to this problem turned out to be easy, and benign, but I wasted an hour or two troubleshooting. It didn't make me feel productive at all.
+	</p>
+	<p>
+		This story is just one among many run-ins I've had with NuGet Package Restore, before I decided to ditch it.
+	</p>
+	<h3 id="66024aa831204d6fbfb55d6c08d0c012">
+		Just say no <a href="#66024aa831204d6fbfb55d6c08d0c012" title="permalink">#</a>
+	</h3>
+	<p>
+		The Package Restore feature solves these problems:
+		<ul>
+			<li>It saves <a href="http://en.wikipedia.org/wiki/Nickel_(United_States_coin)">a nickel</a> per repository in storage costs.</li>
+			<li>It saves time when you clone a new repository, which you shouldn't be doing that often.</li>
+		</ul>
+		On the other hand, it
+		<ul>
+			<li>adds complexity</li>
+			<li>makes it harder to use custom package sources</li>
+			<li>couples your ability to compile to having a network connection</li>
+			<li>makes it more difficult to copy a code base</li>
+			<li>makes it more difficult to set up your development environment</li>
+			<li>uses <em>more</em> bandwidth</li>
+			<li>leads to slower build times</li>
+			<li>just overall wastes your time</li>
+		</ul>
+	</p>
+	<p>
+		For me, the verdict is clear. The benefits of Package Restore don't warrant the disadvantages. Personally, I always disable the feature and instead check in all packages in my repositories. This <em>never</em> gives me any problems.
+	</p>
+</div>
+<div id="comments">
+        <hr>
+        <h2 id="comments-header">
+            Comments
+        </h2>
+        <div class="comment" id="f3eaabfbfe0143f9be29716fcae9fc90">
+            <div class="comment-author"><a href="mailto:bstephens@ztyo.com">Blake Stephens</a></div>
+            <div class="comment-content">
+                "Hah, not sure I'm doing this commenting thing right, but here it goes anyways."
+                <br>
+                "So going on two years from when you wrote this post, is this still how you feel about nuget packages being included in the repository? I have to say, all the points do seem to still apply, and I found myself agreeing with many of them, but I havne't been able to find many oppinions that mirror it. Most advice on the subject seems to be firmly in the other camp (not including nuget packages in the repo), though, as you note, the tradeoff doesn't seem to be a favorable one. <br>
+            </div>
+            <div class="comment-date">2015-12-03 15:36 UTC</div>
+        </div>
+  <div class="comment" id="ffbd0caef28243bcbcd806aa6d2d4c59">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+    	<p>
+    		Blake, thank you for writing. Yes, this is still how I feel; nothing has changed.
+    	</p>
+    </div>
+    <div class="comment-date">2015-12-03 21:17 UTC</div>
+</div>
+	<div class="comment" id="80a01cbf338349d9a5419639a8ed7dc0">
+		<div class="comment-author">Peter</div>
+		<div class="comment-content">
+			<p>
+				Mark, completely agree with all your points, however in the future, not using package restore will no longer be an option. See <a href="https://oren.codes/2016/02/08/project-json-all-the-things/">Project.json all the things</a>, most notably "Packages are now stored in a per-user cache instead of alongside the solution".
+			</p>
+		</div>
+		<div class="comment-date">2015-02-10 00:38 UTC</div>
+	</div>
+    <div class="comment" id="ac6649d2769e454781f1d0af85d66792">
+    <div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+    <div class="comment-content">
+      <p>
+        Like Peter, I am also interested in what you do now.
+      </p>
+      <p>
+        When you wrote that post, NuGet package dependencies were specificed (in part) by <a href="https://docs.microsoft.com/en-us/nuget/reference/packages-config"><code>packages.config</code></a> files.  Then came <a href="https://docs.microsoft.com/en-us/nuget/archive/project-json"><code>project.json</code></a>.  The Microsoft-recommened approach these days is <a href="https://docs.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files"><code>PackageReference</code></a>.  The first approach caches the "restored" NuGet packages in the respository, but the latter two (as Peter said) only cache in a global location (namely <code>%userprofile%\.nuget\packages</code>).  I expect that you are using the <code>PackageReference</code> approach now, is that correct?
+      </p>
+      <p>
+        I see where Peter is coming from.  It does seem at first like NuGet restore is now "necessary".  Of course it is still possible to commit the NuGet packages in the respository.  Then I could add this directory as a local NuGet package source and restore the NuGet packages, which will copy them from the respository to the global cache (so that the build can copy the corresponding DLLs from the global cache to the output directory).
+      </p>
+      <p>
+        However, maybe it is possible to specify the location of the cached NuGet packages when building the solution.  I just thought of this possibility while writing this, so I haven't been able to fully investiagate it.  This seems reasonable to me, and my initial searches also seem to point toward this being possible.
+      </p>
+      <p>
+        So how do you handle NuGet dependencies now?  Does your build obtain them from the global cache or have you found a way to point the build to a directory of your choice?
+      </p>
+    </div>
+    <div class="comment-date">2019-08-04 03:38 UTC</div>
+  </div>
+
+	<div class="comment" id="2de063c09884401f9ef22fd1662c74c0">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Tyson, thank you for writing. Currently, I use the standard tooling. I've lost that battle.
+			</p>
+			<p>
+				My opinion hasn't changed, but while it's possible to avoid package restore on .NET, I'm not aware of how to do that on .NET Core. I admit, however, that I haven't investigated this much.
+			</p>
+			<p>
+				I haven't done that much .NET Core development, and when I do, I typically do it to help other people. The things I help with typically relate to architecture, modelling, or testing. It can be hard for people to learn new things, so I aim at keeping the level of new things people have to absorb as low as possible.
+			</p>
+			<p>
+				Since people rarely come to me to learn package management, I don't want to rock that boat while I attempt to help people with something completely different. Therefore, I let them use their preferred approach, which is almost always the standard way.
+			</p>
+		</div>
+		<div class="comment-date">2019-08-04 9:26 UTC</div>
+	</div>
+</div>

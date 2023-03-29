@@ -1,0 +1,123 @@
+---
+layout: post
+tags: [Castle Windsor, Dependency Injection, Services]
+date: 2010-05-18 05:27:56 UTC
+title: "Sneak view at Castle's WCF Facility"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>One of Castle Windsor's facilities addresses wiring up of WCF services. So far, the sparse documentation for the WCF Facility seems to indicate <a href="http://www.castleproject.org/container/facilities/trunk/wcf/index.html">that you have to configure your container in a global.asax</a>. That's not much to my liking. First of all, it reeks of ASP.NET, and secondly, it's not going to work if you expose WCF over protocols other than HTTP.</p> <p>However, now that we know that <a href="/2010/05/17/ServiceHostFactorylifetime">a custom ServiceHostFactory is effectively a Singleton</a>, a much better alternative is to derive from the WCF Facility's DefaultServiceHost class:</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">FooServiceHostFactory</span> : 
+&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">DefaultServiceHostFactory</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> FooServiceHostFactory()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : <span style="color: blue">base</span>(<span style="color: #2b91af">FooServiceHostFactory</span>.CreateKernel())
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">static</span> <span style="color: #2b91af">IKernel</span> CreateKernel()
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> container = <span style="color: blue">new</span> <span style="color: #2b91af">WindsorContainer</span>();
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; container.AddFacility&lt;<span style="color: #2b91af">WcfFacility</span>&gt;();
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; container.Register(<span style="color: #2b91af">Component</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .For&lt;<span style="color: #2b91af">FooService</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .LifeStyle.Transient);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; container.Register(<span style="color: #2b91af">Component</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .For&lt;<span style="color: #2b91af">IBar</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .ImplementedBy&lt;<span style="color: #2b91af">Bar</span>&gt;());
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> container.Kernel;
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+</p>
+<p>Although it feels a little odd to create a container and then not really use it, but only its Kernel property, this works like a charm. It correctly wires up this FooService:</p>
+<p>
+	<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">FooService</span> : <span style="color: #2b91af">IFooService</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">readonly</span> <span style="color: #2b91af">IBar</span> bar;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> FooService(<span style="color: #2b91af">IBar</span> bar)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">if</span> (bar == <span style="color: blue">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">throw</span> <span style="color: blue">new</span> <span style="color: #2b91af">ArgumentNullException</span>(<span style="color: #a31515">"bar"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.bar = bar;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #region</span> IFooService Members
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">string</span> Foo()
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> <span style="color: blue">this</span>.bar.Baz;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #endregion</span>
+}</pre>
+</p>
+<p>However, instead of the static CreateKernel method that creates the IKernel instance, <a href="http://groups.google.com/group/castle-project-users/browse_thread/thread/5401a7189f8295af/2dabe6cbb3c63488?q=">I suggest that the WCF Facility utilizes the Factory Method pattern</a>. As the WCF Facility has not yet been released, perhaps there's still time for that change.</p>
+<p>In any case, the WCF Facility saves you from writing a lot of infrastructure code if you would like to wire your WCF services with Castle Windsor.</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="a241cb444dbb41c1a13301c88ce480a8">
+	<div class="comment-author"><a href="http://kozmic.pl">Krzysztof Koźmic</a></div>
+	<div class="comment-content">There's a plan to provide Facility's base ServiceHostFactory that you could use out of the box with very minimal anmount if XML config in your web.config/app.config file:<br>
+<br>
+&lt;installers&gt;<br>
+   &lt;install assembly=&quot;Ploeh.AssemblyContainingWindsorInstallers&quot;/&gt;<br>
+&lt;/ installers&gt;<br>
+<br>
+See http://stw.castleproject.org/Windsor.Registering-Installers.ashx<br>
+<br>
+Alternatively you could override protected IWindsorInstaller GetInstallers(); method and configure the container entirely in code.<br>
+<br>
+Thoughts?</div>
+	<div class="comment-date">2010-05-18 08:24 UTC</div>
+</div>
+<div class="comment" id="b2643b6c2b1f4c7e86a48669637240da">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">That would definitely address most cases, including the one I'm currently looking at, although I'm not sure I understand your last sentence. Did you mean that I can implement a custom IWindsorInstaller? If so, that makes a lot of sense.<br>
+<br>
+For the edge cases where adding an Installer isn't enough, I'd still prefer a Factory Method hook in DefaultServiceHostFactory, but being able to specify an Installer in web.config will likely address 90 percent (or more) of scenarios.<br>
+<br>
+Looks good!</div>
+	<div class="comment-date">2010-05-18 08:38 UTC</div>
+</div>
+<div class="comment" id="03bae55e8d1c447590c831bf9822b4ae">
+	<div class="comment-author"><a href="http://kozmic.pl">Krzysztof Koźmic</a></div>
+	<div class="comment-content">In both cases you will need to provide your own implementation of IWindsorInstaller that will provide services and configuration to the container. The difference between the two approaches is as follows:<br>
+<br>
+If you use Facility's default SH Factory it will look into your web.config for informations about how to configure itself.<br>
+ALternativelty you can provide your own subclass of the SH Factory, override its protected IWindsorInstaller[] GetInstallers(); method and then you'll be able to configure the container without using config file.</div>
+	<div class="comment-date">2010-05-18 08:45 UTC</div>
+</div>
+<div class="comment" id="d0dc0d5aa720445da5413b9b7cdd30e2">
+	<div class="comment-author"><a href="http://kozmic.pl">Krzysztof Koźmic</a></div>
+	<div class="comment-content">Why would you prefer factory method instead of just pointing to installers? What do you need to do that the other approach can't address?</div>
+	<div class="comment-date">2010-05-18 08:47 UTC</div>
+</div>
+<div class="comment" id="8a58a9bcc2164ed9bb0285cb805ba16e">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Thanks for your explanation. I think that sounds very promising. As far as I can tell, this is still in the future, right? I don't see any GetInstallers() on DefaultServiceHostFactory right now (based on the code I downloaded and compiled last week).<br>
+<br>
+Don't get me wrong on the Factory Method thing. I don't expect to need it often (if at all), but I just think it would be a good OCP thing to do... Off the top of my head, I can't remember whether there are things you can do to a container that you can't do from an Installer. Maybe there aren't...</div>
+	<div class="comment-date">2010-05-18 09:05 UTC</div>
+</div>
+<div class="comment" id="7c581ccf11a14b06ade6b9ebd588531b">
+	<div class="comment-author"><a href="http://kozmic.pl">Krzysztof Koźmic</a></div>
+	<div class="comment-content">you're right, GetInstallers() is not there yet, (same as specifying installers in xml is part of trunk, not v2.1).<br>
+<br>
+I do intend to leave the door open with factory method for people who can't use xml even if it's so minimal (or feel sick when even thinking about xml), but as you said - there really isn't anything you couldn't do from installer so I imagine it would be for emergency cases only.</div>
+	<div class="comment-date">2010-05-18 09:15 UTC</div>
+</div>
+</div>

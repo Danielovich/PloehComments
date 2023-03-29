@@ -1,0 +1,779 @@
+---
+layout: post
+title: "F# free monad recipe"
+description: "How to create free monads in F#."
+date: 2017-08-07 08:11 UTC
+tags: [Software Design, Dependency Injection, F#, Functional Programming]
+image: "/content/binary/decision-flowchart-for-free-monads.png"
+image_alt: "Decision flowchart for whether or not to choose free monads as a design principle."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This is not a design pattern, but it's something related. Let's call it a <em>recipe</em>. A design pattern should, in my opinion, be fairly language-agnostic (although <a href="/2012/05/25/Designpatternsacrossparadigms">hardly universally applicable</a>). This article, on the contrary, specifically addresses a problem in F#:
+	</p>
+	<p class="text-center">
+		<em>How do you create a free monad in F#?</em>
+	</p>
+	<p class="text-center">
+		<strong>By following the present recipe.</strong>
+	</p>
+	<p>
+		The recipe here is a step-by-step process, but be sure to first read the sections on motivation and when to use it. A free monads isn't a goal in itself.
+	</p>
+	<p>
+		This article doesn't attempt to <em>explain</em> the details of free monads, but instead serve as a reference. For an introduction to free monads, I think my article <a href="/2017/06/27/pure-times">Pure times</a> is a good place to start. See also the <em>Motivating examples</em> section, below.
+	</p>
+	<h3 id="4bb1752adeff4eca8d69d52643c9c048">
+		Motivation <a href="#4bb1752adeff4eca8d69d52643c9c048" title="permalink">#</a>
+	</h3>
+	<p>
+		A frequently asked question about F# is: <a href="https://stackoverflow.com/q/34011895/126014">what's the F# equivalent to an interface?</a> There's no single answer to this question, because, as always, It Depends&trade;. Why do you need an interface in the first place? What is its intended use?
+	</p>
+	<p>
+		Sometimes, in OOP, an interface can be used for a <a href="https://en.wikipedia.org/wiki/Strategy_pattern">Strategy</a>. This enables you to dynamically replace or select between different (sub)algorithms at run-time. If the algorithm is <a href="https://en.wikipedia.org/wiki/Pure_function">pure</a>, then an <a href="/2015/08/03/idiomatic-or-idiosyncratic">idiomatic</a> F# equivalent would be <em>a function</em>.
+	</p>
+	<p>
+		At other times, though, the person asking the question has Dependency Injection in mind. In OOP, dependencies are often modelled as interfaces with several members. Such <a href="/2017/01/30/partial-application-is-dependency-injection">dependencies are systematically impure</a>, and thereby not part of functional design. If at all possible, <a href="/2017/07/10/pure-interactions">prefer impure/pure/impure sandwiches over interactions</a>. Sometimes, however, you'll need something that works like an interface or abstract base class. Free monads can address such situations.
+	</p>
+	<p>
+		In general, a <a href="https://twitter.com/hmemcpy/status/771359835514368000">free monad allows you to build a monad from any functor</a>, but why would you want to do that? The most common reason I've encountered is exactly in order to model impure interactions in a pure manner; in other words: Dependency Injection.
+	</p>
+	<h3 id="cbacb5e8cc7846f1b0a07a61c89dbc33">
+		Refactor interface to functor <a href="#cbacb5e8cc7846f1b0a07a61c89dbc33" title="permalink">#</a>
+	</h3>
+	<p>
+		This recipe comes in three parts:
+		<ol>
+			<li>A recipe for refactoring interfaces to a functor.</li>
+			<li>The core recipe for creating a monad from any functor.</li>
+			<li>A recipe for adding an interpreter.</li>
+		</ol>
+		The universal recipe for creating a monad from any functor follows in a later section. In this section, you'll see how to refactor an interface to a functor.
+	</p>
+	<p>
+		Imagine that you have an interface that you'd like to refactor. In C# it might look like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IFace</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Out1</span>&nbsp;Member1(<span style="color:#2b91af;">In1</span>&nbsp;input);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Out2</span>&nbsp;Member2(<span style="color:#2b91af;">In2</span>&nbsp;input);
+}</pre>
+	</p>
+	<p>
+		In F#, it'd look like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">type</span>&nbsp;<span style="color:teal;">IFace</span>&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:blue;">member</span>&nbsp;<span style="color:navy;">Member1</span>&nbsp;:&nbsp;input:<span style="color:teal;">In1</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:teal;">Out1</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:blue;">member</span>&nbsp;<span style="color:navy;">Member2</span>&nbsp;:&nbsp;input:<span style="color:teal;">In2</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:teal;">Out2</span></pre>
+	</p>
+	<p>
+		I've deliberately kept the interface vague and abstract in order to showcase the <em>recipe</em> instead of a particular example. For realistic examples, refer to the <em>examples</em> section, further down.
+	</p>
+	<p>
+		To refactor such an interface to a functor, do the following:
+		<ol>
+			<li>Create a discriminated union. Name it after the interface name, but append the word <em>instruction</em> as a suffix.</li>
+			<li>Make the union type generic.</li>
+			<li>
+				For each member in the interface, add a case.
+				<ol>
+					<li>Name the case after the name of the member.</li>
+					<li>Declare the type of data contained in the case as a <em>pair</em> (a two-element tuple).</li>
+					<li>Declare the type of the first element in that tuple as the type of the input argument(s) to the interface member. If the member has more than one input argument, declare it as a (nested) tuple.</li>
+					<li>Declare the type of the second element in the tuple as a function. The <em>input</em> type of that function should be the output type of the original interface member, and the output type of the function should be the generic type argument for the union type.</li>
+				</ol>
+			</li>
+			<li>Add a <em>map</em> function for the union type. I'd recommend making this function private and avoid naming it <code>map</code> in order to prevent naming conflicts. I usually name this function <code>mapI</code>, where the <em>I</em> stands for <em>instruction</em>.</li>
+			<li>The <em>map</em> function should take a function of the type <code>'a -&gt; 'b</code> as its first (curried) argument, and a value of the union type as its second argument. It should return a value of the union type, but with the generic type argument changed from <code>'a</code> to <code>'b</code>.</li>
+			<li>For each case in the union type, map it to a value of the same case. Copy the (non-generic) first element of the pair over without modification, but compose the function in the second element with the input function to the <em>map</em> function.</li>
+		</ol>
+		Following that recipe, the above interface becomes this union type:
+	</p>
+	<p>
+		<pre><span style="color:blue;">type</span>&nbsp;<span style="color:teal;">FaceInstruction</span>&lt;&#39;a&gt;&nbsp;=
+|&nbsp;<span style="color:navy;">Member1</span>&nbsp;<span style="color:blue;">of</span>&nbsp;(<span style="color:teal;">In1</span>&nbsp;*&nbsp;(<span style="color:teal;">Out1</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;&#39;a))
+|&nbsp;<span style="color:navy;">Member2</span>&nbsp;<span style="color:blue;">of</span>&nbsp;(<span style="color:teal;">In2</span>&nbsp;*&nbsp;(<span style="color:teal;">Out2</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;&#39;a))</pre>
+	</p>
+	<p>
+		The <em>map</em> function becomes:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;(&#39;a&nbsp;-&gt;&nbsp;&#39;b)&nbsp;-&gt;&nbsp;FaceInstruction&lt;&#39;a&gt;&nbsp;-&gt;&nbsp;FaceInstruction&lt;&#39;b&gt;</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:#9b9b9b;">mapI</span>&nbsp;<span style="color:navy;">f</span>&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;<span style="color:navy;">Member1</span>&nbsp;(x,&nbsp;<span style="color:navy;">next</span>)&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">Member1</span>&nbsp;(x,&nbsp;<span style="color:navy;">next</span>&nbsp;&gt;&gt;&nbsp;<span style="color:navy;">f</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;<span style="color:navy;">Member2</span>&nbsp;(x,&nbsp;<span style="color:navy;">next</span>)&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">Member2</span>&nbsp;(x,&nbsp;<span style="color:navy;">next</span>&nbsp;&gt;&gt;&nbsp;<span style="color:navy;">f</span>)</pre>
+	</p>
+	<p>
+		Such a combination of union type and <em>map</em> function satisfies the functor laws, so that's how you refactor an interface to a functor.
+	</p>
+	<h3 id="451c4dc5cf794e5a92177913c039d71a">
+		Free monad recipe <a href="#451c4dc5cf794e5a92177913c039d71a" title="permalink">#</a>
+	</h3>
+	<p>
+		Given any functor, you can create a monad. The monad will be a new type that contains the functor; you will not be turning the functor itself into a monad. (Some functors can be turned into monads themselves, but if that's the case, you don't need to create a free monad.)
+	</p>
+	<p>
+		The recipe for turning any functor into a monad is as follows:
+		<ol>
+			<li>Create a generic discriminated union. You can name it after the underlying functor, but append a suffix such as <em>Program</em>. In the following, this is called the 'program' union type.</li>
+			<li>Add two cases to the union: <code>Free</code> and <code>Pure</code>.</li>
+			<li>The <code>Free</code> case should contain a single value of the contained functor, generically typed to the 'program' union type itself. This is a recursive type definition.</li>
+			<li>The <code>Pure</code> case should contain a single value of the union's generic type.</li>			
+			<li>Add a <code>bind</code> function for the new union type. The function should take two arguments:</li>
+			<li>The first argument to the <code>bind</code> function should be a function that takes the generic type argument as input, and returns a value of the 'program' union type as output. In the rest of this recipe, this function is called <code>f</code>.</li>
+			<li>The second argument to the <code>bind</code> function should be a 'program' union type value.</li>
+			<li>The return type of the <code>bind</code> function should be a 'program' union type value, with the same generic type as the return type of the first argument (<code>f</code>).</li>
+			<li>Declare the <code>bind</code> function as recursive by adding the <code>rec</code> keyword.</li>
+			<li>Implement the <code>bind</code> function by pattern-matching on the <code>Free</code> and <code>Pure</code> cases:</li>
+			<li>In the <code>Free</code> case, pipe the contained functor value to the functor's <em>map</em> function, using <code>bind f</code> as the mapper function; then pipe the result of that to <code>Free</code>.</li>
+			<li>In the <code>Pure</code> case, return <code>f x</code>, where <code>x</code> is the value contained in the <code>Pure</code> case.</li>
+			<li>Add a computation expression builder, using <code>bind</code> for <code>Bind</code> and <code>Pure</code> for <code>Return</code>.</li>
+		</ol>
+		Continuing the above example, the 'program' union type becomes:
+	</p>
+	<p>
+		<pre><span style="color:blue;">type</span>&nbsp;<span style="color:teal;">FaceProgram</span>&lt;&#39;a&gt;&nbsp;=
+|&nbsp;<span style="color:navy;">Free</span>&nbsp;<span style="color:blue;">of</span>&nbsp;<span style="color:teal;">FaceInstruction</span>&lt;<span style="color:teal;">FaceProgram</span>&lt;&#39;a&gt;&gt;
+|&nbsp;<span style="color:navy;">Pure</span>&nbsp;<span style="color:blue;">of</span>&nbsp;&#39;a</pre>
+	</p>
+	<p>
+		It's worth noting that the <code>Pure</code> case always looks like that. While it doesn't take much effort to write it, you could copy and paste it from another free monad, and no changes would be required.
+	</p>
+	<p>
+		According to the recipe, the <code>bind</code> function should be implemented like this:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;(&#39;a&nbsp;-&gt;&nbsp;FaceProgram&lt;&#39;b&gt;)&nbsp;-&gt;&nbsp;FaceProgram&lt;&#39;a&gt;&nbsp;-&gt;&nbsp;FaceProgram&lt;&#39;b&gt;</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;<span style="color:navy;">bind</span>&nbsp;<span style="color:navy;">f</span>&nbsp;=&nbsp;<span style="color:blue;">function</span>
+|&nbsp;<span style="color:navy;">Free</span>&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x&nbsp;|&gt;&nbsp;<span style="color:navy;">mapI</span>&nbsp;(<span style="color:navy;">bind</span>&nbsp;<span style="color:navy;">f</span>)&nbsp;|&gt;&nbsp;<span style="color:navy;">Free</span>
+|&nbsp;<span style="color:navy;">Pure</span>&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">f</span>&nbsp;x</pre>
+	</p>
+	<p>
+		Apart from one small detail, the <code>bind</code> function always looks like that, so you can often copy and paste it from here and use it in your code, if you will. The only variation is that the underlying functor's <em>map</em> function isn't guaranteed to be called <code>mapI</code> - but if it is, you can use the above <code>bind</code> function as is. No modifications will be necessary.
+	</p>
+	<p>
+		In F#, a monad is rarely a goal in itself, but once you have a monad, you can add a <a href="https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/computation-expressions">computation expression builder</a>:
+	</p>
+	<p>
+		<pre><span style="color:blue;">type</span>&nbsp;FaceBuilder&nbsp;()&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">member</span>&nbsp;this.Bind&nbsp;(x,&nbsp;f)&nbsp;=&nbsp;bind&nbsp;f&nbsp;x
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">member</span>&nbsp;this.Return&nbsp;x&nbsp;=&nbsp;Pure&nbsp;x
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">member</span>&nbsp;this.ReturnFrom&nbsp;x&nbsp;=&nbsp;x
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">member</span>&nbsp;this.Zero&nbsp;()&nbsp;=&nbsp;Pure&nbsp;()</pre>
+	</p>
+	<p>
+		While you could add more members (such as <code>Combine</code>, <code>For</code>, <code>TryFinally</code>, and so on), I find that usually, those four methods are all I need.
+	</p>
+	<p>
+		Create an instance of the builder object, and you can start writing computation expressions:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;face&nbsp;=&nbsp;FaceBuilder&nbsp;()
+</pre>
+	</p>
+	<p>
+		Finally, as an optional step, if you've refactored an interface to an instruction set, you can add convenience functions that lift each instruction case to the free monad type:
+		<ol>
+			<li>For each case, add a function of the same name, but camelCased instead of PascalCased.</li>
+			<li>Each function should have input arguments that correspond to the first element of the case's contained tuple (i.e. the input argument for the original interface). I usually prefer the arguments in curried form, but that's not a requirement.</li>
+			<li>Each function should return the corresponding instruction union case inside of the <code>Free</code> case. The case constructor must be invoked with the pair of data it requires. Populate the first element with values from the input arguments to the convenience function. The second element should be the <code>Pure</code> case constructor, passed as a function.</li>
+		</ol>
+		In the current example, that would be two functions, one for each case of <code>FaceInstruction&lt;'a&gt;</code>:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;In1&nbsp;-&gt;&nbsp;FaceProgram&lt;Out1&gt;</span>
+<span style="color:blue;">let</span>&nbsp;member1&nbsp;in1&nbsp;=&nbsp;Free&nbsp;(Member1&nbsp;(in1,&nbsp;Pure))
+ 
+<span style="color:green;">//&nbsp;In2&nbsp;-&gt;&nbsp;FaceProgram&lt;Out2&gt;</span>
+<span style="color:blue;">let</span>&nbsp;member2&nbsp;in2&nbsp;=&nbsp;Free&nbsp;(Member2&nbsp;(in2,&nbsp;Pure))</pre>
+	</p>
+	<p>
+		Such functions are conveniences that make it easier to express what the underlying functor expresses, but in the context of the free monad.
+	</p>
+	<h3 id="2bd224b81c644c85b2809a35085f1d9d">
+		Interpreters <a href="#2bd224b81c644c85b2809a35085f1d9d" title="permalink">#</a>
+	</h3>
+	<p>
+		A free monad is a recursive type, and values are trees. The leafs are the <code>Pure</code> values. Often (if not always), the point of a free monad is to evaluate the tree in order to pull the leaf values out of it. In order to do that, you must add an interpreter. This is a function that recursively pattern-matches over the free monad value until it encounters a <code>Pure</code> case.
+	</p>
+	<p>
+		At least in the case where you've refactored an interface to a functor, writing an interpreter also follows a recipe. This is equivalent to writing a concrete class that implements an interface.
+		<ol>
+			<li>For each case in the instruction-set functor, write an implementation function that takes the case's 'input' tuple element type as input, and returns a value of the type used in the case's second tuple element. Recall that the second element in the pair is a function; the output type of the implementation function should be the input type for that function.</li>
+			<li>Add a function to implement the interpreter; I often call it <code>interpret</code>. Make it recursive by adding the <code>rec</code> keyword.</li>
+			<li>Pattern-match on <code>Pure</code> and each case contained in <code>Free</code>.</li>
+			<li>In the <code>Pure</code> case, simply return the value contained in the case.</li>
+			<li>In the <code>Free</code> case, pattern-match the underlying pair out if each of the instruction-set functor's cases. The first element of that tuple is the 'input value'. Pipe that value to the corresponding implementation function, pipe the return value of that to the function contained in the second element of the tuple, and pipe the result of that recursively to the interpreter function.</li>
+		</ol>
+		Assume that two implementation functions <code>imp1</code> and <code>imp2</code> exist. According to the recipe, <code>imp1</code> has the type <code>In1 -&gt; Out1</code>, and <code>imp2</code> has the type <code>In2 -&gt; Out2</code>. Given these functions, the running example becomes:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;FaceProgram&lt;&#39;a&gt;&nbsp;-&gt;&nbsp;&#39;a</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;interpret&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Pure&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Free&nbsp;(Member1&nbsp;(x,&nbsp;next))&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x&nbsp;|&gt;&nbsp;imp1&nbsp;|&gt;&nbsp;next&nbsp;|&gt;&nbsp;interpret
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Free&nbsp;(Member2&nbsp;(x,&nbsp;next))&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x&nbsp;|&gt;&nbsp;imp2&nbsp;|&gt;&nbsp;next&nbsp;|&gt;&nbsp;interpret</pre>
+	</p>
+	<p>
+		The <code>Pure</code> case always looks like that. Each of the <code>Free</code> cases use a different implementation function, but apart from that, they are, as you can tell, the spitting image of each other.
+	</p>
+	<p>
+		Interpreters like this are often impure because the implementation functions are impure. Nothing prevents you from defining pure interpreters, although they often have limited use. They do have their place in unit testing, though.
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;Out1&nbsp;-&gt;&nbsp;Out2&nbsp;-&gt;&nbsp;FaceProgram&lt;&#39;a&gt;&nbsp;-&gt;&nbsp;&#39;a</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;interpretStub&nbsp;out1&nbsp;out2&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Pure&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Free&nbsp;(Member1&nbsp;(_,&nbsp;next))&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;out1&nbsp;|&gt;&nbsp;next&nbsp;|&gt;&nbsp;interpretStub&nbsp;out1&nbsp;out2
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Free&nbsp;(Member2&nbsp;(_,&nbsp;next))&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;out2&nbsp;|&gt;&nbsp;next&nbsp;|&gt;&nbsp;interpretStub&nbsp;out1&nbsp;out2</pre>
+	</p>
+	<p>
+		This interpreter effectively ignores the input value contained within each <code>Free</code> case, and instead uses the pure values <code>out1</code> and <code>out2</code>. This is essentially a <a href="http://xunitpatterns.com/Test%20Stub.html">Stub</a> - an 'implementation' that always returns pre-defined values.
+	</p>
+	<p>
+		The point is that you can have more than a single interpreter, pure or impure, just like you can have more than one implementation of an interface.
+	</p>
+	<h3 id="8948bae068174df2ac21bbea8d296281">
+		When to use it <a href="#8948bae068174df2ac21bbea8d296281" title="permalink">#</a>
+	</h3>
+	<p>
+		Free monads are often used instead of Dependency Injection. Note, however, that while the free monad values themselves are pure, they <em>imply</em> impure behaviour. In my opinion, the main benefit of pure code is that, as a code reader and maintainer, I don't have to worry about side-effects if I know that the code is pure. With a free monad, I <em>do</em> have to worry about side-effects, because, although the ASTs are pure, an impure interpreter will cause side-effects to happen. At least, however, the side-effects are <em>known</em>; they're restricted to a small subset of operations. Haskell enforces this distinction, but F# doesn't. The question, then, is how valuable you find this sort of design.
+	</p>
+	<p>
+		I think it still has <em>some</em> value, because a free monad explicitly communicates an intent of doing something impure. This intent becomes encoded in the types in your code base, there for all to see. Just as I prefer that functions return <code>'a option</code> values if they may fail to produce a value, I like that I can tell from a function's return type that a delimited set of impure operations may result.
+	</p>
+	<p>
+		Clearly, creating free monads in F# requires some boilerplate code. I hope that this article has demonstrated that writing that boilerplate code isn't <em>difficult</em> - just follow the recipe. You almost don't have to think. Since a monad is a universal abstraction, once you've written the code, it's unlikely that you'll need to deal with it much in the future. After all, mathematical abstractions don't change.
+	</p>
+	<p>
+		Perhaps a more significant concern is how familiar free monads are to developers of a particular code base. Depending on your position, you could argue that free monads come with high cognitive overhead, or that they specifically <em>lower</em> the cognitive overhead.
+	</p>
+	<p>
+		Insights are obscure until you grasp them; after that, they become clear.
+	</p>
+	<p>
+		This applies to free monads as well. You have to put effort into understanding them, but once you do, you realise that they are more than a pattern. They are universal abstractions, governed by laws. Once you <a href="/ref/stranger-in-a-strange-land">grok</a> free monads, their cognitive load wane.
+	</p>
+	<p>
+		Consider, then, the developers who will be interacting with the free monad. If they already know free monads, or have enough of a grasp of monads that this might be their next step, then using free monads could be beneficial. On the other hand, if most developers are new to F# or functional programming, free monads should probably be avoided for the time being.
+	</p>
+	<p>
+		This flowchart summarises the above reflections:
+	</p>
+	<p>
+		<img src="/content/binary/decision-flowchart-for-free-monads.png" alt="Decision flowchart for whether or not to choose free monads as a design principle.">
+	</p>
+	<p>
+		Your first consideration should be whether your <a href="/2017/07/10/pure-interactions">context enables an impure/pure/impure sandwich</a>. If so, there's no reason to make things more complicated than they have to be. To use <a href="http://bit.ly/mythical-man-month">Fred Brooks' terminology</a>, this should go a long way to avoid accidental complexity.
+	</p>
+	<p>
+		If you can't avoid long-running, impure interactions, then consider whether purity, or strictly functional design, is important to you. F# is a multi-paradigmatic language, and it's perfectly possible to write code that's impure, yet still well-structured. You can use <a href="/2017/01/30/partial-application-is-dependency-injection">partial application as an idiomatic alternative to Dependency Injection.</a>
+	</p>
+	<p>
+		If you prefer to keep your code functional and explicit, you may consider using free monads. In this case, I still think you should consider the maintainers of the code base in question. If everyone involved are comfortable with free monads, or willing to learn, then I believe it's a viable option. Otherwise, I'd recommend falling back to partial application, even though Dependency Injection makes everything impure.
+	</p>
+	<h3 id="68a926dc27374f4faa9d4dc2f7f5e02b">
+		Motivating examples <a href="#68a926dc27374f4faa9d4dc2f7f5e02b" title="permalink">#</a>
+	</h3>
+	<p>
+		The strongest motivation, I believe, for introducing free monads into a code base is to model long-running, impure interactions in a functional style.
+	</p>
+	<p>
+		Like most other software design considerations, the overall purpose of application architecture is to deal with (essential) complexity. Thus, any example must be complex enough to warrant the design. There's little point in a Dependency Injection <em>hello world</em> example in C#. Likewise, a <em>hello world</em> example using free monads hardly seems justified. For that reason, examples are provided in separate articles.
+	</p>
+	<p>
+		A good place to start, I believe, is with the small <a href="/2017/06/27/pure-times">Pure times</a> article series. These articles show how to address a particular, authentic problem using strictly functional programming. The focus of these articles is on problem-solving, so they sometimes omit detailed explanations in order to keep the narrative moving.
+	</p>
+	<p>
+		If you need detailed explanations about all elements of free monads in F#, the <a href="/2017/07/10/pure-interactions">present article series offers just that</a>, particularly the <a href="/2017/07/11/hello-pure-command-line-interaction">Hello, pure command-line interaction</a> article.
+	</p>
+	<h3 id="f018b55231d5486185e64ea6fbdab544">
+		Variations <a href="#f018b55231d5486185e64ea6fbdab544" title="permalink">#</a>
+	</h3>
+	<p>
+		The above recipes describe the regular scenario. Variations are possible. Obviously, you can choose different naming strategies and so on, but I'm not going to cover this in greater detail.
+	</p>
+	<p>
+		There are, however, various degenerate cases that deserve a few words. An interaction may return no data, or take no input. In F#, you can always model the lack of data as <code>unit</code> (<code>()</code>), so it's definitely possible to define an instruction case like <code>Foo of (unit * Out1 -&gt; 'a)</code>, or <code>Bar of (In2 * unit -&gt; 'a)</code>, but since <code>unit</code> doesn't contain any data, you can remove it without changing the abstraction.
+	</p>
+	<p>
+		The <a href="/2017/07/11/hello-pure-command-line-interaction">Hello, pure command-line interaction</a> article contains a single type that exemplifies both degenerate cases. It defines this instruction set:
+	</p>
+	<p>
+		<pre><span style="color:blue;">type</span>&nbsp;<span style="color:teal;">CommandLineInstruction</span>&lt;&#39;a&gt;&nbsp;=
+|&nbsp;<span style="color:navy;">ReadLine</span>&nbsp;<span style="color:blue;">of</span>&nbsp;(<span style="color:teal;">string</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;&#39;a)
+|&nbsp;<span style="color:navy;">WriteLine</span>&nbsp;<span style="color:blue;">of</span>&nbsp;<span style="color:teal;">string</span>&nbsp;*&nbsp;&#39;a</pre>
+	</p>
+	<p>
+		The <code>ReadLine</code> case takes no input, so instead of containing a pair of input and continuation, this case contains only the continuation function. Likewise, the <code>WriteLine</code> case is also degenerate, but here, there's no output. This case <em>does</em> contain a pair, but the second element isn't a function, but a value.
+	</p>
+	<p>
+		This has some superficial consequences for the implementation of functor and monad functions. For example, the <code>mapI</code> function becomes:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;(&#39;a&nbsp;-&gt;&nbsp;&#39;b)&nbsp;-&gt;&nbsp;CommandLineInstruction&lt;&#39;a&gt;&nbsp;-&gt;&nbsp;CommandLineInstruction&lt;&#39;b&gt;</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:navy;">mapI</span>&nbsp;<span style="color:navy;">f</span>&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;<span style="color:navy;">ReadLine</span>&nbsp;<span style="color:navy;">next</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">ReadLine</span>&nbsp;(<span style="color:navy;">next</span>&nbsp;&gt;&gt;&nbsp;<span style="color:navy;">f</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;<span style="color:navy;">WriteLine</span>&nbsp;(x,&nbsp;next)&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">WriteLine</span>&nbsp;(x,&nbsp;next&nbsp;|&gt;&nbsp;<span style="color:navy;">f</span>)</pre>
+	</p>
+	<p>
+		Notice that in the <code>ReadLine</code> case, there's no tuple on which to pattern-match. Instead, you can directly access <code>next</code>.
+	</p>
+	<p>
+		In the <code>WriteLine</code> case, the return value changes from function composition (<code>next &gt;&gt; f</code>) to a regular function call (<code>next |&gt; f</code>, which is equivalent to <code>f next</code>).
+	</p>
+	<p>
+		The <em>lift</em> functions also change:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;CommandLineProgram&lt;string&gt;</span>
+<span style="color:blue;">let</span>&nbsp;readLine&nbsp;=&nbsp;Free&nbsp;(ReadLine&nbsp;Pure)
+ 
+<span style="color:green;">//&nbsp;string&nbsp;-&gt;&nbsp;CommandLineProgram&lt;unit&gt;</span>
+<span style="color:blue;">let</span>&nbsp;writeLine&nbsp;s&nbsp;=&nbsp;Free&nbsp;(WriteLine&nbsp;(s,&nbsp;Pure&nbsp;()))</pre>		
+	</p>
+	<p>
+		Since there's no input, <code>readLine</code> degenerates to a value, instead of a function. On the other hand, while <code>writeLine</code> remains a function, you'll have to pass a <em>value</em> (<code>Pure ()</code>) as the second element of the pair, instead of the regular function (<code>Pure</code>).
+	</p>
+	<p>
+		Apart from such minor changes, the omission of <code>unit</code> values for input or output has little significance.
+	</p>
+	<p>
+		Another variation from the above recipe that you may see relates to interpreters. In the above recipe, I described how, for each instruction, you should create an implementation function. Sometimes, however, that function is only a few lines of code. When that happens, I occasionally inline the function directly in the interpreter. Once more, the <code>CommandLineProgram</code> API provides an example:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;CommandLineProgram&lt;&#39;a&gt;&nbsp;-&gt;&nbsp;&#39;a</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;<span style="color:navy;">interpret</span>&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;<span style="color:navy;">Pure</span>&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;<span style="color:navy;">Free</span>&nbsp;(<span style="color:navy;">ReadLine</span>&nbsp;&nbsp;<span style="color:navy;">next</span>)&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:teal;">Console</span>.<span style="color:navy;">ReadLine</span>&nbsp;()&nbsp;|&gt;&nbsp;<span style="color:navy;">next</span>&nbsp;|&gt;&nbsp;<span style="color:navy;">interpret</span>
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;<span style="color:navy;">Free</span>&nbsp;(<span style="color:navy;">WriteLine</span>&nbsp;(s,&nbsp;next))&nbsp;<span style="color:blue;">-&gt;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:teal;">Console</span>.<span style="color:navy;">WriteLine</span>&nbsp;s
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;next&nbsp;|&gt;&nbsp;<span style="color:navy;">interpret</span></pre>
+	</p>
+	<p>
+		Here, no custom implementation functions are required, because <code>Console.ReadLine</code> and <code>Console.WriteLine</code> already exist and serve the desired purpose.
+	</p>
+	<h3 id="3155d057fe424d5eb0eaccfd3f25566a">
+		Summary <a href="#3155d057fe424d5eb0eaccfd3f25566a" title="permalink">#</a>
+	</h3>
+	<p>
+		This article describes a repeatable, and automatable, process for refactoring an interface to a free monad. I've done this enough times now that I believe that this process is always possible, but I have no formal proof for this.
+	</p>
+	<p>
+		I also strongly suspect that the reverse process is possible. For any instruction set elevated to a free monad, I think you should be able to define an object-oriented interface. If this is true, then object-oriented interfaces and AST-based free monads are isomorphic.
+	</p>
+</div>
+
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="b88620b15b1a491d8e5e0c81364a8966">
+		<div class="comment-author"><a href="http://criticalsoftwareblog.com">Yacoub Massad</a></div>
+		<div class="comment-content">
+			<p>
+				Hello Mark. I am trying to understand what is going on.
+				<br/>
+				So basically the Free Moand allows us to separate pure code from impure code even when the impure/pure/impure sandwish idea is not possible to implement. Right?
+				<br/>
+				We want to separate pure and impure code for these reasons: (1) Easier testing (2) Reasoning about pure code is easier than impure code (3) making impure code explicit makes it easier to understand programs. Is this correct?
+				<br/>
+				What I am still trying to figure out is why we can't simply do this with Dependency Injection?
+				<br/>
+				We can separate all units of behavior into pure ones and impure ones (e.g. functions), and then compose them all in the Composition Root. Pure units take no dependencies, they take in "direct input" and give back "direct output" as you describe in one of your blog posts.
+				<br/>
+				To make the impure code explicit and clear, we can make the root method in the Composition Root construct all impure units of behavior first (e.g. adapters to the external world) and then inject them into a method that bakes these dependencies with the rest of pure code. E.g.:
+				<code>public static IApplication CreateApplication(IImpureDependency1 dependency1, IImpureDependency2 dependency2) => { //compose graph here}  </code>
+				<br/>
+				If you have sub methods that the CreateApplication method uses for modularizing the Composition Root, they will also take any impurities they need as parameters.
+				
+				<br/> So in summary, only the Composition Root knows about the impure parts of the application and they are explicitly stated as parameters in the Composition Root methods.
+				<br/> Doesn't this solve the impure/pure separation issue?
+				<br/> For example, to test, you can easilly call the CreateApplication method and pass the fake (pure) dependencies. This will make the whole graph pure in the test.
+				<br/> Also, the Composition Root would make it clear which impure dependencies each component in the system depends on.
+				<br/> Am I missing something?
+			</p>
+		</div>
+		<div class="comment-date">2018-05-03 21:42 UTC</div>
+	</div>
+
+	<div class="comment" id="9b5fb4c0c2cb42169b121bd48808d7f7">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Hello Yacoub, thank you for writing. Your summary of the motivations covers most of them. The reason that purity interests me is that it forces me (and everyone else) to consider decoupling. One day, I should write a more explicit article about this, but I believe that the general problem with programming today has little to do with writing code, but with <em>reading</em> it. Until I get such an article written, I can only refer to my <a href="https://cleancoders.com/episode/humane-code-real-episode-1/show">Humane Code</a> video, and perhaps my <a href="https://www.dotnetrocks.com/?show=1542"> recent appearance on .NET Rocks!</a>. What fundamentally interests me is how to break down code into small enough chunks that they fit in our brains at all levels of abstraction. Purity, and functional programming in general, attracts me because it offers a principled way of doing that.
+			</p>
+			<p>
+				If we forget about functional programming and free monads for a while, we could ask a question similar to yours about Dependency Injection (DI). Why should we use Dependency Injection? Can't we just, say, call a database when we need some data? Technically, we can, but we deliberately invert the control of our code so that it becomes easier to break apart into smaller chunks. You may find this observation trivial, but it wasn't ten years ago, and I made much effort in <a href="http://amzn.to/12p90MG">my book</a> to explain the benefits of DI.
+			</p>
+			<p>
+				The problem with DI is that at detailed levels of abstractions, DI-based code may fit in our brains, but at higher levels of abstraction the complexity still increases. Put another way, understanding a single class that receives a few dependencies is easy. Getting a high-level, big-picture understanding of a DI-based code base can still be quite the challenge. At a high level of abstraction, the moving parts in underlying components are still too visible, you could say.
+			</p>
+			<p>
+				Strictly functional programming interests me because, by pushing impure behaviours to the boundaries of the application, the pure core of an application becomes easier to treat as a hierarchy of abstractions. (I really need to write an article with diagrams about this some day.)
+			</p>
+			<p>
+				What's strictly functional programming? It's code that obeys the rule that pure code can't call impure code. The reason I find Haskell so interesting is that the compiler enforces that rule. Code isn't pure if it calls impure functions, and in Haskell, the code simply will not compile if you attempt to do that.
+			</p>
+			<p>
+				F#, on the other hand, doesn't work like that. There's no compile-time check of whether the code is pure or impure. Thus, when you pass functions to other functions, your higher-order function could look pure, but since you don't know what an 'injected' function does, you really don't know if it's pure or not. In F#, all it takes is a single call to, say, <code>DateTime.Now</code>, <code>Guid.NewGuid()</code>, or similar, deep in your system, and that makes the entire code base impure!
+			</p>
+			<p>
+				The only way to prevent that in F# is by diligence.
+			</p>
+			<p>
+				That's a roundabout answer to your question. The gist of it, though, is that in F#, you rarely need free monads. If you find yourself in the situation where a free monad would be required in Haskell, you could just as well use DI, or rather, partial application. <a href="/2017/01/30/partial-application-is-dependency-injection">My article on that approach</a> explains how this works in F#, but also why it doesn't work in Haskell. When you inject impure behaviour into an 'otherwise' pure function, then everything becomes impure.
+			</p>
+			<p>
+				This is where F# differs from Haskell. In Haskell, such an attempt simply doesn't compile. In F#, an otherwise pure function suddenly becomes impure. If you mostly care about that distinction because of, say, testability, then that's not a problem, because when you 'inject' pure behaviour, then the composed function is still pure, and thus trivial to unit test.
+			</p>
+			<p>
+				The entire system is still impure with that design, though, and that can make it difficult to fit the entire application behaviour in our brains.
+			</p>
+			<p>
+				I'm afraid this answer doesn't help. I'll have to write a more coherent article on this some day, but I wanted to leave this here because, realistically, a more coherent article isn't part of my immediate plans.
+			</p>
+		</div>
+		<div class="comment-date">2018-05-06 12:41 UTC</div>
+	</div>
+	<div class="comment" id="7941557e4597479e95748e0f91c54b1c">
+		<div class="comment-author"><a href="http://criticalsoftwareblog.com">Yacoub Massad</a></div>
+		<div class="comment-content">
+			<p>
+				Hello Mark. Thanks for the reply and for providing the links. I have already watched your Humane Code videos at clean coders before. Will listen to the podcast too.
+			</p>
+			<p>
+				I understand that with the free monad, you can maintain the rule that pure code will never call impure code.
+			</p>
+			<p>
+				This is one goal.
+			</p>
+			<p>
+				However, as you describe, this by itself is not the final goal. We want to achieve this goal as a mean to achieve other goals. For example, we want our code to be easier to reason about.
+			</p>
+			<p>
+				As you describe, we cannot achieve the first goal using DI (or partial application). And in Haskell, the compiler will prevent us from even trying.
+			</p>
+			<p>
+				However, I think you agree with me that there is still some great value in separating "pure" and impure code in different functions or classes, and then combining them in the Composition Root. This is basically Command Query Separation + DI. Although the graph as a whole is impure, some benefit (e.g. easier to reason about code) is still there as a result of the separation.
+			</p>
+			<p>
+				What I am trying to argue (or let me say think about and discuss) is that if one does the following:
+				
+				<ol>
+				  <li>Separate impure and pure behavior at the level of individual units of behavior (e.g. functions or classes).</li>
+				  <li>Compose these units at the Composition Root (only the Composition Root knows about the impure units).</li>
+				  <li>In the Composition Root, first all impure units are created/prepared, and then injected into "pure" (now not pure) units.</li>
+				  <li>Make impure dependencies explicit as parameters in the "Create" methods of the Composition Root. (Basically "Create" methods are a way to modularize the Composition Root. I describe what I mean in more details <a href="http://www.dotnetcurry.com/patterns-practices/1285/clean-composition-roots-dependency-injection">here</a></li>
+				</ol>
+				then there is not much value in moving from what I just described to using Free monads just to make the Haskell compiler happy :).
+			</p>
+			<p>
+				Or is there something that I am missing?
+			</p>
+			<p>
+				Basically, if we forget for a moment about the first goal (since it is only a mean to other goals), what goals will we be not achieving?
+			</p>
+			<p>
+				In your reply, I can find the following that might answer these questions:
+				<br/>
+				"Getting a high-level, big-picture understanding of a DI-based code base can still be quite the challenge. At a high level of abstraction, the moving parts in underlying components are still too visible"				
+			</p>
+			<p>
+				But I can't understand what you mean here. What is the problem here? and how does the Free monad fix it?
+			</p>
+			<p>
+				I hope I was able to explain my ideas correctly.
+			</p>	
+		</div>
+		<div class="comment-date">2018-05-06 21:19 UTC</div>
+	</div>		
+	<div class="comment" id="">
+		<div class="comment-author"><a href="http://criticalsoftwareblog.com">Yacoub Massad</a></div>
+		<div class="comment-content">
+			<p>
+				Reading my comment again, I would like to add/update a few things.
+			</p>
+			<p>
+				Regarding CQS, this is not exactly the same as separating impure and pure code. Still, a query can be impure (like one that reads from the database). Such query can be separated into a set of pure and impure queries. Also, a command can have some pure logic in it that can be extracted into a separate pure query (or queries). But, CQS is a step in the right direction towards this and it is a good example of how separation at some level has benefits of its own.
+			</p>
+			<p>
+				I would like to explain also that the steps I describe in my comment aim basically to delay the composition of pure and impure code to the last possible moment. So basically, all pure logic is composed first (parameterized with functions/delegates/interfaces representing possibly impure code). After that, impure code will be injected into such pure graph rendering it impure of course.
+			</p>
+			<p>
+				So basically, imagine an imaginary version of Haskell that would allow the root method of an application to allow “pure” code to call impure code.
+			</p>
+		</div>
+		<div class="comment-date">2018-05-10 19:59 UTC</div>
+	</div>
+
+	<div class="comment" id="582bd312aa0049c3aaf003e5de5b3eaa">
+		<div class="comment-author"><a href="http://criticalsoftwareblog.com">Yacoub Massad</a></div>
+		<div class="comment-content">
+			<p>
+				Here is a concrete example. Imagine these three pure functions:
+			</p>
+			<p>
+				(A, Func&lt;C,D&gt; dep1, Func&lt;E,F&gt; dep2) =&gt; B (1)
+			</p>
+			<p>				
+				(C, Func&lt;G,H&gt; dep3) =&gt; D (2)
+			</p>
+			<p>				
+				(G, Func&lt;I,J&gt; dep4) =&gt; H (3)
+			</p>
+			<p>
+				Now, in the Composition Root, we "compose" these together to get the following:
+			</p>
+			<p>				
+				(A, Func&lt;I,J&gt; dep4, Func&lt;E,F&gt; dep2) =&gt;B
+			</p>
+			<p>
+				So far, this is a pure function, we havn't injected any impurities in it. Thinking about this, this might be a special case of dependency injection. We might call it dependency replacing or something like that.
+				<br/>
+				What I have done is "inject" function #2 as dep1 in function #1. But this is not fully injected. I replaced "dep1" with "dep3".
+				<br/>
+				Then, I "inject" function #3 as dep3. Again, this is not full injection as I replace it with "dep4".
+			</p>
+			<p>
+				Now, after all "pure" functions have been baked together, I inject the impure "dep4" and "dep2" to get this:
+			</p>
+			<p>
+				A =&gt; B
+			</p>
+			<p>
+				I hope the code gets displayed correctly in the comment.	
+			</p>
+		</div>
+		<div class="comment-date">2018-05-14 07:30 UTC</div>
+	</div>
+
+	<div class="comment" id="57af39a3aff045feaeac211222d6e365">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Yacoub, thank you for the pseudo-code. That makes it easier to discuss things.				
+			</p>
+			<p>
+				Your premise is that functions <em>1</em>, <em>2</em>, and <em>3</em> are pure. The rest of the argument rests on whether or not they are. Just to be sure that we share the same terminology, I take <em>pure</em> to mean <a href="https://en.wikipedia.org/wiki/Referential_transparency">referentially transparent</a>. Nothing you've written gives me any indication that this isn't your interpretation as well, so I mostly include this as an explicit definition for the benefit of other readers who may happen upon this discussion in the future.
+			</p>
+			<p>
+				It's clear that a function (or method) that adds two numbers together is pure. This also applies to any other first-order function with <em>isolation</em>. I use the word <em>isolation</em> as described by <a href="http://jessitron.com">Jessica Kerr</a>: A function has the property of isolation when the only information it has about the external word is passed into it via arguments.
+			</p>
+			<p>
+				You can write arbitrarily complex isolated functions in, say, C#:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">DateTime</span>&nbsp;Foo(<span style="color:blue;">int</span>&nbsp;year,&nbsp;<span style="color:blue;">string</span>&nbsp;month)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(year&nbsp;&lt;&nbsp;1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:#2b91af;">DateTime</span>.MinValue;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(9999&nbsp;&lt;&nbsp;year)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:#2b91af;">DateTime</span>.MaxValue;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(!<span style="color:blue;">int</span>.TryParse(month,&nbsp;<span style="color:blue;">out</span>&nbsp;<span style="color:blue;">int</span>&nbsp;imonth))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;imonth&nbsp;=&nbsp;7;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(imonth&nbsp;&lt;&nbsp;1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;imonth&nbsp;=&nbsp;1;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(12&nbsp;&lt;&nbsp;imonth)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;imonth&nbsp;=&nbsp;12;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;day&nbsp;=&nbsp;month.Length;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(day&nbsp;&lt;&nbsp;1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;day&nbsp;=&nbsp;10;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(28&nbsp;&lt;&nbsp;day)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;day&nbsp;=&nbsp;20;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DateTime</span>(year,&nbsp;imonth,&nbsp;day);
+}</pre>
+			</p>
+			<p>
+				To be clear, this <code>Foo</code> method makes no sense, but it is, as far as I can tell, pure; it operates entirely on its input.
+			</p>
+			<p>
+				Consider, however, this variation:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">DateTime</span>&nbsp;Foo(<span style="color:blue;">int</span>&nbsp;year,&nbsp;<span style="color:blue;">string</span>&nbsp;month)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(year&nbsp;&lt;&nbsp;1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:#2b91af;">DateTime</span>.MinValue;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(9999&nbsp;&lt;&nbsp;year)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:#2b91af;">DateTime</span>.MaxValue;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(!<span style="color:blue;">int</span>.TryParse(month,&nbsp;<span style="color:blue;">out</span>&nbsp;<span style="color:blue;">int</span>&nbsp;imonth))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;imonth&nbsp;=&nbsp;7;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(imonth&nbsp;&lt;&nbsp;1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;imonth&nbsp;=&nbsp;1;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(12&nbsp;&lt;&nbsp;imonth)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;imonth&nbsp;=&nbsp;12;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;day&nbsp;=&nbsp;month.Length;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(day&nbsp;&lt;&nbsp;1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;day&nbsp;=&nbsp;10;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(<span style="color:#2b91af;">DateTime</span>.DaysInMonth(year,&nbsp;imonth)&nbsp;&lt;&nbsp;day)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;day&nbsp;=&nbsp;20;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DateTime</span>(year,&nbsp;imonth,&nbsp;day);
+}</pre>				
+			</p>
+			<p>
+				Notice that <code>DateTime.DaysInMonth(year, imonth)</code> replaces the hard-coded value <code>28</code>. Is this variation pure?
+			</p>
+			<p>
+				I don't know. In order to figure that out, we'd need to understand if <code>DateTime.DaysInMonth</code> is pure. Does it use a hard-coded table or algorithm of leap years, or does it use a call to the operating system (OS)? If the latter, does the OS base its functionality on a pure implementation, or does it look up the information in some resource (like the Windows Registry)?
+			</p>
+			<p>
+				With leap years, and for the Gregorian calendar, a pure algorithm exists, but imagine that we create a similar nonsense function that creates <code>DateTimeOffset</code> values, including time and time-zone offsets. In this case, figuring out if a value is valid relies on external data, since rules about daylight saving time are political and subject to change.
+			</p>
+			<p>
+				My point is that without a machine tool (such as a type system) to guide us, it's practically impossible to reason about the purity of code.
+			</p>
+			<p>
+				To make matters worse, as soon as you pass a function as an argument to another function, all bets are off. Even if you've diligently reviewed functions like <em>1</em>, <em>2</em>, and <em>3</em> above for purity, they're only pure if <code>dep2</code> and <code>dep4</code> are pure as well.
+			</p>
+			<p>
+				Haskell takes away all that angst related to purity by enforcing it via its type system. This liberates us to worry about other things, because the compiler has our backs regarding purity.
+			</p>
+			<p>
+				In C#, F#, Java, and most other languages, we get no such guarantees. As I've tried to demonstrate above, I'd regard all non-trivial code to be impure. All it takes is one system call, <code>Guid.NewGuid()</code>, <code>random.Next()</code>, <code>DateTime.Now</code>, <code>log.Warning("foo")</code>, etc. to make all code transitively calling such a statement impure. This is, realistically, impossible to prevent.
+			</p>
+			<p>
+				Do we care, then? What if the functions <em>1</em>, <em>2</em>, and <em>3</em> are 'pure enough'?
+			</p>
+			<p>
+				In an analogy to this discussion, in RESTful design, <code>GET</code> requests should be side-effect free. Almost all web servers, however, log HTTP requests, so <code>GET</code> requests are never side-effect free. The interpretation used in that context, therefore, is that <code>GET</code> requests should be free of side effects <em>for which the client is responsible</em>.
+			</p>
+			<p>
+				You can have a similar discussion about functional programming. What if a function logs debug information? Does that change the observable state of the system?
+			</p>
+			<p>
+				In any case, before even beginning to discuss whether dependency injection or partial application is functional, we need to make it clear why we care about purity.
+			</p>
+			<p>
+				I care about purity because it eliminates entire classes of bugs. It also means that I don't have to log what happens inside my pure code; as long as I log what happens at the impure boundary, I can always reproduce the result of a pure computation. All this makes the overall code simpler. Logging, caching, instrumentation. Many cross-cutting concerns either disappear or greatly simplify.
+			</p>
+			<p>
+				Returning to the overall discussion related to this article, free monads are one way to separate pure code from impure code. What you suggest, though, isn't pure, because all it takes to make the entire composition impure is that <code>dep2</code> or <code>dep4</code> are impure (or one of the 'pure' functions turning out to be impure after all). <a href="/2017/01/27/dependency-injection-is-passing-an-argument">It's Dependency Injection</a>, only you <a href="/2009/05/28/DelegatesAreAnonymousInterfaces">replace interfaces with delegates</a>.
+			</p>
+			<p>
+				Does it matter? Probably not. Trying to keep things 'as pure as possible' in C# and similar languages could still provide benefits. That's how I approach F#. Ultimately, the goal is to make the code sustainable. If you can do that with <a href="/2017/01/30/partial-application-is-dependency-injection">Dependency Injection or partial application</a>, then the mission is accomplished.
+			</p>
+			<p>
+				In Haskell, free monads are sometimes required, but in F#, it's a specialised design I'd only reach for in niche situations.
+			</p>
+		</div>
+		<div class="comment-date">2018-05-15 8:36 UTC</div>
+	</div>
+
+	<div class="comment" id="582bd312aa0049c3aaf003e5de5b3e55">
+		<div class="comment-author">Nikolay Terletskyi</div>
+		<div class="comment-content">
+			<p>
+				Hello! I just want to add my humble optinion to Mark and Yacoub disscussion. There is something that you could not achieve with partial application.
+			</p>
+			<p>
+				Imagine that you have pipeline that process some entity. And if some conditions are met you need another one. Id of second entity is the field of first.
+			</p>
+			<p>
+				So you can not just pass second entity as parameter. Because you do not sure if it is needed. You can pass function that give you an entity.
+			</p>
+			<p>
+				But what is return type of this function? SecondEntetyType or Async<SecondEntetyType> or Task<SecondEntetyType>? What if you use library with callback interface to load this entity?
+			</p>
+			<p>
+				Should you care about it to declare relations between first and second entities?
+			</p>
+			<p>
+				Without free monad answer is yes !!!
+			</p>
+			<p>
+				It is main achievement from free monads for me.
+			</p>
+		</div>
+		<div class="comment-date">2019-06-06 5:30 UTC</div>
+	</div>
+	<div class="comment" id="2ddb4eea8ad94b60a3b184b373327b10">
+		<div class="comment-author">Nick Dunets</div>
+		<div class="comment-content">
+			<p>
+				Hi, I had the same questions as Yacoub i.e. how is Free any better than raw Dependency Injection?
+			</p>
+			<p>
+				After some research I can see at least couple of advantages. Even if code is messy and pure/impure parts interleaved chaotically, 
+				and function doesn't reduce to a simple tree and therefore can't serve as a convincing test case 
+				without being further interpreted etc. - there are still at least two advantages over DI:
+			</p>
+			<p>
+				1. No need to pass extra parameters representing the abstraction of impure code all over the place
+			</p>
+			<p>
+				2. Async aspect doesn't leak: e.g. WriteLine case from the article's example 
+				could have been interpreted as Console.Out.WriteLineAsync() - why not? but the "pure" core would still be decopuled
+				from async aspect.
+			</p>
+		</div>
+		<div class="comment-date">2019-07-09 20:15 UTC</div>
+	</div>
+	<div class="comment" id="0282a2e492c3423b9932e50a50a73b66">
+		<div class="comment-author">Romain Deneau <a href="https://twitter.com/DeneauRomain">@DeneauRomain</a></div>
+		<div class="comment-content">
+			<p>
+				Thank you Mark for these high quality articles.
+				I was wondering if it wouldn't be more relevant to talk about <em>Operations</em> rather than <em>Members</em> in the interface:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IFace</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Out1</span>&nbsp;Operation1(<span style="color:#2b91af;">In1</span>&nbsp;input);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Out2</span>&nbsp;Operation2(<span style="color:#2b91af;">In2</span>&nbsp;input);
+}
+				</pre>
+			</p>
+			<p>
+				Indeed, a dependency is needed in order to perform some <em>(impure?)</em> operations
+				to be delegated to another object, in another layer or to follow the <em>Single Responsibility Principle</em>.
+				Also it makes more sense to have operations rather than "members" in an instruction:
+			</p>
+			<p>
+				<pre><span style="color:blue;">type</span>&nbsp;<span style="color:teal;">FaceInstruction</span>&lt;&#39;a&gt;&nbsp;=
+		|&nbsp;<span style="color:navy;">Operation1</span>&nbsp;<span style="color:blue;">of</span>&nbsp;(<span style="color:teal;">In1</span>&nbsp;*&nbsp;(<span style="color:teal;">Out1</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;&#39;a))
+		|&nbsp;<span style="color:navy;">Operation2</span>&nbsp;<span style="color:blue;">of</span>&nbsp;(<span style="color:teal;">In2</span>&nbsp;*&nbsp;(<span style="color:teal;">Out2</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;&#39;a))</pre>
+			</p>
+			<p>
+				On the other hand, being extreme in the application of another <em>SOLID</em> principle,
+				the <em>Segragation Principle Interface</em>, each operation may be splitted in as many different interfaces
+				to be injected into the object. I think it doesn't change your recipe: putting all operations in the same instruction set / union type.
+				What do you think of about it?
+			</p>
+		</div>
+		<div class="comment-date">2019-10-11 20:48 UTC</div>
+	</div>
+
+	<div class="comment" id="37360879d2ff437fa4fbd481e0c5eb30">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Romain, thank you for writing. In addition to <em>members</em>, we could call them <em>operations</em>, or <em>actions</em>. I chose <em>member</em> because it's established C# terminology when you're talking about the united set of methods, properties, and events defined by a type such as an interface.
+			</p>
+			<p>
+				If you approach free monads from functional programming, we wouldn't call them <em>members</em>, but rather <em>functions</em>.
+			</p>
+			<p>
+				I chose to start with the term <em>member</em> because I surmised that this would be the term with which most readers would be familiar. Since the article starts with those names, I chose to keep the same terms all the way through so that the reader would be able to follow the various steps in the recipe.
+			</p>
+			<p>
+				With regards to the SOLID principles, the logical conclusion is to have lots of one-method interfaces. You can have one-function free monads as well, but combining them involves much plumbing work in F#. This is much easier in Haskell.
+			</p>
+		</div>
+		<div class="comment-date">2019-10-12 23:20 UTC</div>
+	</div>
+</div>

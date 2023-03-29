@@ -1,0 +1,82 @@
+---
+layout: post
+tags: [Castle Windsor, Dependency Injection, Design Patterns]
+date: 2010-09-29 11:50:02 UTC
+title: "The Register Resolve Release pattern"
+description: "If you must use a DI container, use it according to the RRR design pattern."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>The subject of Dependency Injection (DI) in general, and DI Containers specifically, suffers from horrible terminology that seems to confuse a lot of people. Newcomers to DI often think about DI Containers as a sort of <a href="http://en.wikipedia.org/wiki/Abstract_factory_pattern">Abstract Factory</a> on steroids. It's not. Nicholas Blumhardt already realized and <a href="http://blogs.msdn.com/b/nblumhardt/archive/2008/12/27/container-managed-application-design-prelude-where-does-the-container-belong.aspx">described this phenomenon</a> a couple of years ago.</p> <p>The core of the matter is that as developers, we are extremely accustomed to thinking about components and services in terms of <a href="http://en.wikipedia.org/wiki/Command-query_separation">queries instead of commands</a>. However, the <a href="http://en.wikipedia.org/wiki/Hollywood_Principle">Hollywood Principle</a> insists that we should embrace a <em>tell, don't ask</em> philosophy. We can apply this principles to DI Containers as well: <a href="/2010/08/30/Dontcallthecontainer;itllcallyou">Don't call the container; it'l call you</a>.</p> <p>This leads us to what <a href="http://kozmic.pl/">Krzysztof Koźmic</a> calls the <a href="http://kozmic.net/2010/06/20/how-i-use-inversion-of-control-containers">three calls pattern</a>. Basically it states that we should only do three things with a DI Container:</p> <ol> <li>Bootstrap the container  <li>Resolve root components  <li>Dispose this container</li></ol> <p>This is very sound advice and independently of Krzysztof I've been doing something similar for years  -  so perhaps the <em>pattern</em> label is actually in order here.</p> <p>However, I think that the pattern deserves a more catchy name, so in the spirit of the <a href="http://c2.com/cgi/wiki?ArrangeActAssert">Arrange Act Assert</a> (AAA) pattern for unit testing I propose that we name it the <strong>Register Resolve Release</strong> (RRR) pattern. The names originate with Castle Windsor terminology, where we:</p> <ol> <li>Register components with the container  <li>Resolve root components  <li>Release components from the container</li></ol> <p>Other containers also support the RRR pattern, but if we were to pick their terminology, it would rather be the Configure GetInstance Dispose (CGD) pattern (or something similar), and that's just not as catchy.</p> <p>We can rewrite a <a href="/2010/08/30/Dontcallthecontainer;itllcallyou">previous example</a> with Castle Windsor and annotate it with comments to call out where the three container phases occur:</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: blue">private</span> <span style="color: blue">static</span> <span style="color: blue">void</span> Main(<span style="color: blue">string</span>[] args)
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> container = <span style="color: blue">new</span> <span style="color: #2b91af">WindsorContainer</span>();
+&nbsp;&nbsp;&nbsp; container.Kernel.Resolver.AddSubResolver(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">new</span> <span style="color: #2b91af">CollectionResolver</span>(container.Kernel));
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Register</span>
+&nbsp;&nbsp;&nbsp; container.Register(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">IParser</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .ImplementedBy&lt;<span style="color: #2b91af">WineInformationParser</span>&gt;(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">IParser</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .ImplementedBy&lt;<span style="color: #2b91af">HelpParser</span>&gt;(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">IParseService</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .ImplementedBy&lt;<span style="color: #2b91af">CoalescingParserSelector</span>&gt;(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">IWineRepository</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .ImplementedBy&lt;<span style="color: #2b91af">SqlWineRepository</span>&gt;(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Component</span>.For&lt;<span style="color: #2b91af">IMessageWriter</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .ImplementedBy&lt;<span style="color: #2b91af">ConsoleMessageWriter</span>&gt;());
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Resolve</span>
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> ps = container.Resolve&lt;<span style="color: #2b91af">IParseService</span>&gt;();
+&nbsp;&nbsp;&nbsp; ps.Parse(args).CreateCommand().Execute();
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Release</span>
+&nbsp;&nbsp;&nbsp; container.Release(ps);
+&nbsp;&nbsp;&nbsp; container.Dispose();
+}</pre>
+</p>
+<p>Notice that <a href="http://kozmic.net/2010/08/27/must-i-release-everything-when-using-windsor/">in most cases, explicitly invoking the Release method isn't necessary</a>, but I included it here to make the pattern stand out.</p>
+<p>So there it is: the <em>Register Resolve Release</em> pattern.</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="9a94cbb8e8c14193ba6224d2673647b9">
+	<div class="comment-author">Harry Dev</div>
+	<div class="comment-content">I agree completely and think the Register Resolve Release (RRR) moniker is very good. You should think about creating a wikipedia or c2 entry for it to promote it ;)</div>
+	<div class="comment-date">2010-09-29 12:21 UTC</div>
+</div>
+<div class="comment" id="5361a80168654a25b8d9ddba250c7c2e">
+	<div class="comment-author"><a href="http://nblumhardt.com">Nicholas Blumhardt</a></div>
+	<div class="comment-content">Nice coinage, gets a vote from me.</div>
+	<div class="comment-date">2010-10-03 21:28 UTC</div>
+</div>
+<div class="comment" id="40120e635a1a4c20a17de91bd21a1620">
+	<div class="comment-author">Arnis L.</div>
+	<div class="comment-content">This realization took me few months. It truly is quite hard for newcomers.</div>
+	<div class="comment-date">2010-10-03 22:42 UTC</div>
+</div>
+<div class="comment" id="438dfb8b78b64e648317c57be995943e">
+	<div class="comment-author"><a href="http://www.truewill.net/myblog/index.php">Bill Sorensen</a></div>
+	<div class="comment-content">You could use a using block, too.</div>
+	<div class="comment-date">2010-10-07 17:03 UTC</div>
+</div>
+<div class="comment" id="a36026f627e7450d8333658ee899bd32">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Yes, although the general pattern is a bit more subtle than this. In the example given, the call to the Release method is largely redundant. If we assume that this is the case, a using block disposes the container as well.<br>
+<br>
+However, a using block invokes Dispose, but not Release. Releasing an object graph is conceptually very different from disposing the container. However, in the degenerate case shown here, there's not a lot of difference, but in a server scenario where we use the container to resolve an object graph per request, we resolve and release many object graphs all the time. In such scenarios we only dispose the container when the application itself recycles, and even then, we may never be given notice that this happens.</div>
+	<div class="comment-date">2010-10-07 21:09 UTC</div>
+</div>
+<div class="comment" id="589f178f37a345b4bcd05e998562a8e1">
+	<div class="comment-author"><a href="http://httt://thoughtresults.com">Saeed Neamati</a></div>
+	<div class="comment-content">Great name, I like it. RRR is easy to remember and makes sense to me perfectly. Thanks.</div>
+	<div class="comment-date">2012-06-09 06:45 UTC</div>
+</div>
+</div>

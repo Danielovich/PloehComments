@@ -1,0 +1,402 @@
+---
+layout: post
+title: "Visitor as a sum type"
+description: "The Visitor design pattern is isomorphic to sum types."
+date: 2018-06-25 14:31 UTC
+tags: [Software Design, Design Patterns]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is part of <a href="/2018/03/05/some-design-patterns-as-universal-abstractions">a series of articles about specific design patterns and their category theory counterparts</a>. In it, you'll see how the <a href="https://en.wikipedia.org/wiki/Visitor_pattern">Visitor design pattern</a> is equivalent to a <a href="https://en.wikipedia.org/wiki/Tagged_union">sum type</a>.
+	</p>
+	<h3 id="ddc4643ff60949c382a9b631fe427cdd">
+		Sum types <a href="#ddc4643ff60949c382a9b631fe427cdd" title="permalink">#</a>
+	</h3>
+	<p>
+		I think that the most important advantage of a statically typed programming language is that it gives you <a href="/2011/04/29/Feedbackmechanismsandtradeoffs">immediate feedback</a> on your design and implementation work. Granted, that your code compiles may not be enough to instil confidence that you've done the right thing, but it's obvious that when your code doesn't compile, you still have work to do.
+	</p>
+	<p>
+		A static type system enables you to catch some programming errors at compile time. It prevents you from making obvious mistakes like trying to divide a <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">GUID</a> by a date. Some type systems don't offer much more help than that, while others are more articulate; I think that <a href="/2016/02/10/types-properties-software">type systems inhabit a continuous spectrum of capabilities</a>, although that, too, is a simplification.
+	</p>
+	<p>
+		An often-touted advantage of programming languages like <a href="http://fsharp.org">F#</a>, <a href="https://ocaml.org">OCaml</a>, and <a href="https://www.haskell.org">Haskell</a> is that they, in the words of <a href="https://twitter.com/yminsky">Yaron Minsky</a>, enable you to <em>make illegal states unrepresentable</em>. The way these languages differ from languages like C# and Java is that they have <a href="https://en.wikipedia.org/wiki/Algebraic_data_type">algebraic data types</a>.
+	</p>
+	<p>
+		In short, algebraic data types distinguish between <a href="https://en.wikipedia.org/wiki/Product_type">product types</a> and sum types. All statically typed language I've seen have product types, which you can think of as combinations of data. Objects with more than a single class fields would be product types.
+	</p>
+	<p>
+		Sum types (also known as <em>discriminated unions</em>), on the other hand, are types that express mutually exclusive alternatives. Object-oriented programmers might mistake such a statement for sub-classing, but the difference is that object-oriented sub-classing creates a potentially infinite hierarchy of subtypes, while a sum type is statically constrained to a finite number of mutually exclusive cases. This is often useful.
+	</p>
+	<p>
+		In this article, you'll see that a sum type is isomorphic to a corresponding Visitor.
+	</p>
+	<h3 id="dac9a78ee087418193fd776ceeade06b">
+		Church-encoded payment types <a href="#dac9a78ee087418193fd776ceeade06b" title="permalink">#</a>
+	</h3>
+	<p>
+		In a previous article, you saw how to <a href="/2018/06/18/church-encoded-payment-types">Church-encode a domain-specific sum type</a>. That article, again, demonstrated how to rewrite <a href="/2016/11/28/easy-domain-modelling-with-types">a domain-specific F# discriminated union</a> as a C# API. The F# type was this <code>PaymentType</code> sum type:
+	</p>
+	<p>
+		<pre><span style="color:blue;">type</span>&nbsp;<span style="color:teal;">PaymentType</span>&nbsp;=
+|&nbsp;<span style="color:navy;">Individual</span>&nbsp;<span style="color:blue;">of</span>&nbsp;<span style="color:teal;">PaymentService</span>
+|&nbsp;<span style="color:navy;">Parent</span>&nbsp;<span style="color:blue;">of</span>&nbsp;<span style="color:teal;">PaymentService</span>
+|&nbsp;<span style="color:navy;">Child</span>&nbsp;<span style="color:blue;">of</span>&nbsp;originalTransactionKey&nbsp;:&nbsp;<span style="color:teal;">string</span>&nbsp;*&nbsp;paymentService&nbsp;:&nbsp;<span style="color:teal;">PaymentService</span></pre>
+	</p>
+	<p>
+		Using Church-encoding in C#, you can arrive at this interface that models the same business problem:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IPaymentType</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;Match&lt;<span style="color:#2b91af;">T</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;individual,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;parent,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">ChildPaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;child);
+}</pre>
+	</p>
+	<p>
+		In order to use the API, the compiler obligates you to handle all three mutually exclusive cases defined by the three arguments to the <code>Match</code> method. Refer to the previous article for more details and code examples. All <a href="https://github.com/ploeh/ChurchEncoding">the C# code is also available on GitHub</a>.
+	</p>
+	<p>
+		While the C# code works, I think it'd be a fair criticism to say that it doesn't feel object-oriented. Particularly the use of function delegates (<code>Func&lt;PaymentService, T&gt;</code>, etcetera) seems off. These days, C# is a multi-paradigmatic language, and function delegates have been around since 2007, so it's a perfectly fine C# design. Still, if we're trying to understand how object-oriented programming relates to fundamental programming abstractions, it behoves us to consider a more classic form of object-orientation.
+	</p>
+	<h3 id="19be9752ec8a44e18995db6c96c99bfe">
+		Introduce Parameter Object <a href="#19be9752ec8a44e18995db6c96c99bfe" title="permalink">#</a>
+	</h3>
+	<p>
+		Through a series of refactorings you can transform the Church-encoded <code>IPaymentType</code> interface to a Visitor. The first step is to use <a href="http://amzn.to/YPdQDf">Refactoring</a>'s <em>Introduce Parameter Object</em> to turn the three method arguments of <code>Match</code> into a single object:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">PaymentTypeParameters</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;PaymentTypeParameters(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;individual,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;parent,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">ChildPaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;child)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Individual&nbsp;=&nbsp;individual;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Parent&nbsp;=&nbsp;parent;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Child&nbsp;=&nbsp;child;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;Individual&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;Parent&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">ChildPaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;Child&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		The modified <code>IPaymentType</code> interface then looks like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IPaymentType</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;Match&lt;<span style="color:#2b91af;">T</span>&gt;(<span style="color:#2b91af;">PaymentTypeParameters</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;parameters);
+}</pre>
+	</p>
+	<p>
+		Clearly, this change means that you must also adjust each implementation of <code>IPaymentType</code> accordingly. Here's the <code>Match</code> method of <code>Individual</code>:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">T</span>&nbsp;Match&lt;<span style="color:#2b91af;">T</span>&gt;(<span style="color:#2b91af;">PaymentTypeParameters</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;parameters)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;parameters.Individual(paymentService);
+}</pre>
+	</p>
+	<p>
+		The two other implementations (<code>Parent</code> and <code>Child</code>) change in the same way; the modifications are trivial, so I'm not going to show them here, but all the code is <a href="https://github.com/ploeh/ChurchEncoding/commit/64fa2638ffbdb81a077ac1dc3fbce697b3cba35b">available as a single commit</a>.
+	</p>
+	<p>
+		Likewise, client code that uses the API needs adjustment, like the <code>ToJson</code> method:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>&nbsp;ToJson(<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">IPaymentType</span>&nbsp;payment)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;payment.Match(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentTypeParameters</span>&lt;<span style="color:#2b91af;">PaymentJsonModel</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;individual&nbsp;:&nbsp;ps&nbsp;=&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;ps.Name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action&nbsp;=&nbsp;ps.Action,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;StartRecurrent&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchFalse</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TransactionKey&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Nothing</span>&lt;<span style="color:blue;">string</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;parent&nbsp;:&nbsp;ps&nbsp;=&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;ps.Name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action&nbsp;=&nbsp;ps.Action,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;StartRecurrent&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchTrue</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TransactionKey&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Nothing</span>&lt;<span style="color:blue;">string</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;child&nbsp;:&nbsp;cps&nbsp;=&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;cps.PaymentService.Name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action&nbsp;=&nbsp;cps.PaymentService.Action,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;StartRecurrent&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchFalse</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TransactionKey&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Just</span>&lt;<span style="color:blue;">string</span>&gt;(cps.OriginalTransactionKey)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}));
+}</pre>
+	</p>
+	<p>
+		From <a href="/2018/01/29/argument-list-isomorphisms">argument list isomorphisms</a> we know that an argument list is isomorphic to a Parameter Object, so this step should come as no surprise. We also know that the reverse translation (from Parameter Object to argument list) is possible.
+	</p>
+	<h3 id="496f81b27ad64feaaf0705eab578d9e8">
+		Add Run prefix <a href="#496f81b27ad64feaaf0705eab578d9e8" title="permalink">#</a>
+	</h3>
+	<p>
+		I think it looks a little strange that the functions comprising <code>PaymentTypeParameters&lt;T&gt;</code> are named <code>Individual</code>, <code>Parent</code>, and <code>Child</code>. Functions <em>do</em> something, so they ought to be named with verbs. This turns out only to be an intermediary step, but I'll add the prefix <code>Run</code> to all three:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">PaymentTypeParameters</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;PaymentTypeParameters(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;individual,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;parent,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">ChildPaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;child)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RunIndividual&nbsp;=&nbsp;individual;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RunParent&nbsp;=&nbsp;parent;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RunChild&nbsp;=&nbsp;child;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;RunIndividual&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">PaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;RunParent&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">ChildPaymentService</span>,&nbsp;<span style="color:#2b91af;">T</span>&gt;&nbsp;RunChild&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		This doesn't change the structure of the code in any way, but sets it up for the next step.
+	</p>
+	<h3 id="690e226135a8414fbb122ffe834a5e87">
+		Refactor to interface <a href="#690e226135a8414fbb122ffe834a5e87" title="permalink">#</a>
+	</h3>
+	<p>
+		The definition of <code>PaymentTypeParameters&lt;T&gt;</code> still doesn't look object-oriented. While it's formally an object, it's an object that composes three function delegates. We've managed to move the function delegates around, but we haven't managed to get rid of them. From <a href="/2018/02/12/object-isomorphisms">object isomorphisms</a>, however, we know that tuples of functions are isomorphic to objects, and that's essentially what we have here. In this particular case, there's no implementation code in <code>PaymentTypeParameters&lt;T&gt;</code> itself - it's nothing but a group of three functions. You can refactor that class to an interface:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IPaymentTypeParameters</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;RunIndividual(<span style="color:#2b91af;">PaymentService</span>&nbsp;individual);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;RunParent(<span style="color:#2b91af;">PaymentService</span>&nbsp;parent);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;RunChild(<span style="color:#2b91af;">ChildPaymentService</span>&nbsp;child);
+}</pre>		
+	</p>
+	<p>
+		The implementations of <code>Individual</code>, <code>Parent</code>, and <code>Child</code> don't change; only the signature of <code>Match</code> changes slightly:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IPaymentType</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;Match&lt;<span style="color:#2b91af;">T</span>&gt;(<span style="color:#2b91af;">IPaymentTypeParameters</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;parameters);
+}</pre>
+	</p>
+	<p>
+		Since this change removes the function delegates, it requires client code to change:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>&nbsp;ToJson(<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">IPaymentType</span>&nbsp;payment)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;payment.Match(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentTypeToJsonParameters</span>());
+}
+ 
+<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">PaymentTypeToJsonParameters</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IPaymentTypeParameters</span>&lt;<span style="color:#2b91af;">PaymentJsonModel</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>&nbsp;RunIndividual(<span style="color:#2b91af;">PaymentService</span>&nbsp;individual)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;individual.Name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action&nbsp;=&nbsp;individual.Action,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;StartRecurrent&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchFalse</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TransactionKey&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Nothing</span>&lt;<span style="color:blue;">string</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>&nbsp;RunParent(<span style="color:#2b91af;">PaymentService</span>&nbsp;parent)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;parent.Name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action&nbsp;=&nbsp;parent.Action,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;StartRecurrent&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchTrue</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TransactionKey&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Nothing</span>&lt;<span style="color:blue;">string</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>&nbsp;RunChild(<span style="color:#2b91af;">ChildPaymentService</span>&nbsp;child)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;child.PaymentService.Name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action&nbsp;=&nbsp;child.PaymentService.Action,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;StartRecurrent&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchFalse</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TransactionKey&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Just</span>&lt;<span style="color:blue;">string</span>&gt;(child.OriginalTransactionKey)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		The <code>ToJson</code> method now has to delegate to a <code>private</code> class that implements <code>IPaymentTypeParameters&lt;PaymentJsonModel&gt;</code>. In Java and F# you'd be able to pass an object expression, but in C# you have to create an explicit class for the purpose. The implementations of the three methods of the interface still correspond to the three functions the previous incarnations of the code used.
+	</p>
+	<h3 id="ca0c6f3576c74786b738f04904d79fb8">
+		Rename to Visitor <a href="#ca0c6f3576c74786b738f04904d79fb8" title="permalink">#</a>
+	</h3>
+	<p>
+		At this point, the Visitor pattern's structure is already in place. The only remaining step is to rename the various parts of the API so that this becomes clear. You can start by renaming the <code>IPaymentTypeParameters&lt;T&gt;</code> interface to <code>IPaymentTypeVisitor&lt;T&gt;</code>:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IPaymentTypeVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;VisitIndividual(<span style="color:#2b91af;">PaymentService</span>&nbsp;individual);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;VisitParent(<span style="color:#2b91af;">PaymentService</span>&nbsp;parent);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;VisitChild(<span style="color:#2b91af;">ChildPaymentService</span>&nbsp;child);
+}</pre>
+	</p>
+	<p>
+		Notice that I've also renamed the methods from <code>RunIndividual</code>, <code>RunParent</code>, and <code>RunChild</code> to <code>VisitIndividual</code>, <code>VisitParent</code>, and <code>VisitChild</code>.
+	</p>
+	<p>
+		Likewise, you can rename the <code>Match</code> method to <code>Accept</code>:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IPaymentType</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">T</span>&nbsp;Accept&lt;<span style="color:#2b91af;">T</span>&gt;(<span style="color:#2b91af;">IPaymentTypeVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;visitor);
+}</pre>
+	</p>
+	<p>
+		In <a href="http://amzn.to/XBYukB">Design Patterns</a>, the Visitor design pattern is only described in such a way that both <code>Accept</code> and <code>Visit</code> methods have <code>void</code> return types, but from <a href="/2018/01/15/unit-isomorphisms">unit isomorphisms</a> we know that this is equivalent to returning <em>unit</em>. Thus, setting <code>T</code> in the above API to a suitable <em>unit</em> type (like the one defined in F#), you arrive at the canonical Visitor pattern. The generic version here is simply a generalisation.
+	</p>
+	<p>
+		For the sake of completeness, client code now looks like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>&nbsp;ToJson(<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">IPaymentType</span>&nbsp;payment)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;payment.Accept(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentTypeToJsonVisitor</span>());
+}
+ 
+<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">PaymentTypeToJsonVisitor</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IPaymentTypeVisitor</span>&lt;<span style="color:#2b91af;">PaymentJsonModel</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>&nbsp;VisitIndividual(<span style="color:#2b91af;">PaymentService</span>&nbsp;individual)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;individual.Name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action&nbsp;=&nbsp;individual.Action,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;StartRecurrent&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchFalse</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TransactionKey&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Nothing</span>&lt;<span style="color:blue;">string</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>&nbsp;VisitParent(<span style="color:#2b91af;">PaymentService</span>&nbsp;parent)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;parent.Name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action&nbsp;=&nbsp;parent.Action,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;StartRecurrent&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchTrue</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TransactionKey&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Nothing</span>&lt;<span style="color:blue;">string</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>&nbsp;VisitChild(<span style="color:#2b91af;">ChildPaymentService</span>&nbsp;child)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PaymentJsonModel</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Name&nbsp;=&nbsp;child.PaymentService.Name,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action&nbsp;=&nbsp;child.PaymentService.Action,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;StartRecurrent&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchFalse</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TransactionKey&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Just</span>&lt;<span style="color:blue;">string</span>&gt;(child.OriginalTransactionKey)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		You can refactor all the <a href="/2018/05/22/church-encoding">other Church encoding examples I've shown you</a> to Visitor implementations. It doesn't always make the code more readable, but it's possible.
+	</p>
+	<h3 id="38f9e2c752e64c748d1799c2e32f37c1">
+		From Visitor to sum types <a href="#38f9e2c752e64c748d1799c2e32f37c1" title="permalink">#</a>
+	</h3>
+	<p>
+		In this article, I've shown how to refactor from a Church-encoded sum type to a Visitor, using the following refactoring steps:
+		<ol>
+			<li>Introduce Parameter Object</li>
+			<li>(Rename Method (by adding a <code>Run</code> prefix))</li>
+			<li>Refactor to interface</li>
+			<li>Rename to Visitor terminology</li>
+		</ol>
+		All those steps are, I believe, isomorphic, in that they have reverse translations. Thus, since (according to <a href="http://amzn.to/13tGJ0f">Conceptual Mathematics</a>) isomorphisms are transitive, the translation from sum type to Visitor must have a reverse translation as well. This also seems to me to be intuitively correct, as it's clear to me how to go the other way. Starting with a Visitor:
+		<ol>
+			<li>Refactor the Visitor interface to a Parameter Object that composes functions</li>
+			<li>Refactor the Parameter Object to an argument list</li>
+			<li>Rename types and members as desired</li>
+		</ol>
+		You can, I think, read this article from the bottom towards the top to get an impression of what such a series of refactorings would look like, so I'm not going to explicitly provide an example.
+	</p>
+	<h3 id="b5ac92e65f5d498289a2f99e2754ec00">
+		Summary <a href="#b5ac92e65f5d498289a2f99e2754ec00" title="permalink">#</a>
+	</h3>
+	<p>
+		Algebraic data types enable you to <em>make illegal states unrepresentable</em>. Most programming languages have product types, so it's the lack of sum types that seems to make the difference between languages like C# and Java on the one side, and languages like F#, OCaml, or Haskell on the other side.
+	</p>
+	<p>
+		You can, however, achieve the same objective with object-oriented design. The Visitor design pattern is equivalent to sum types, so everything you can express with a sum type in, say, F#, you can express with a Visitor in C#.
+	</p>
+	<p>
+		That's not to say that these two representations are equal in readability or maintainability. F# and Haskell sum types are declarative types that usually only take up a few lines of code. Visitor, on the other hand, is a small object hierarchy; it's a more verbose way to express the idea that a type is defined by mutually exclusive and heterogeneous cases. I know which of these alternatives I prefer, but if I were caught in an object-oriented code base, it's nice to know that it's still possible to model a domain with algebraic data types.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2019/07/22/chain-of-responsibility-as-catamorphisms">Chain of Responsibility as catamorphisms</a>.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	<div class="comment" id="91f945936c774b33aa305eb037d9131e">
+		<div class="comment-author"><a href="https://github.com/wallymathieu">Oskar Gewalli</a></div>
+		<div class="comment-content">
+			<p>
+				I think that it's important to remember the type of abstractions you highlight by showing that the Vistor design pattern is the same as sum types. I appreciate this post.
+			</p>
+			<p>
+				When I read up on <a href="https://en.wikipedia.org/wiki/Entity_component_system">Entity component system</a>, I found it interesting how the pattern arrived from the need to be able to control memory. Perhaps the somewhat odd form of the Visitor pattern has arrived from the same limitations in some common languages? Perhaps there are other constructs that can be expressed more clearly using more modern patterns?
+			</p>
+		</div>
+		<div class="comment-date">2020-08-23 8:59 UTC</div>
+	</div>
+
+	<div class="comment" id="f72ce0f3c59e474b869acded3b542422">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Oskar, thank you for writing. I didn't know about entity component system.
+			</p>
+			<p>
+				<a href="/2018/03/05/some-design-patterns-as-universal-abstractions">This very article series</a> tries to identify various design patterns and how they relate to more fundamental constructs. Most likely you're already aware of that, so perhaps you meant something else by your questions. If you did, however, I can't glean what.
+			</p>
+		</div>
+		<div class="comment-date">2020-08-25 15:54 UTC</div>
+	</div>
+	
+	<div class="comment" id="c17476fcf1274a9e96ba249b79b87e3d">
+		<div class="comment-author"><a href="https://github.com/wallymathieu">Oskar Gewalli</a></div>
+		<div class="comment-content">
+			<p>
+				I was not aware of <a href="/2018/03/05/some-design-patterns-as-universal-abstractions">that article series</a>. The answer I'm looking for seems to be the identified subset.
+			</p>
+		</div>
+		<div class="comment-date">2020-08-25 17:08 UTC</div>
+	</div>
+</div>

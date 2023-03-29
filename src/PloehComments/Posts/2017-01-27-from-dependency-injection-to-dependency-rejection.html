@@ -1,0 +1,62 @@
+---
+layout: post
+title: "From dependency injection to dependency rejection"
+description: "The problem typically solved by dependency injection in object-oriented programming is solved in a completely different way in functional programming."
+date: 2017-01-27 7:55 UTC
+tags: [Software Design, Dependency Injection, Functional Programming, Article Series]
+image: "/content/binary/dependency-injection-in-scala-comic.jpg"
+image_alt: "Bob: How do I do dependency injection in Scala? Other man: You don't, because Scala is a functional language. Bob: Fine, it's functional. How do I inject dependencies? Other man: You use a free monad which allows you to build a monad from any Functor. Bob: Did you just tell me to go fuck myself? Other man: I believe I did, Bob."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		Several years ago, I wrote a book called <a href="http://amzn.to/12p90MG">Dependency Injection in .NET</a>, which was published in 2011. The book contains examples in C#, but since then I've increasingly become interested in functional programming to the extend that I now consider F# my primary language.
+	</p>
+	<p>
+		With that combination, it's no wonder that people often ask me how to do dependency injection in functional programming.
+	</p>
+	<p>
+		I've seen more than one answer, from other people, explaining how partial function application is equivalent to dependency injection. In a small series of articles, I'll explain both why this is true, but also why it's <em>not functional</em>. I'll conclude by showing a functional alternative to decoupling logic and (side) effects.
+	</p>
+	<p>
+		<img src="/content/binary/dependency-injection-in-scala-comic.jpg" alt="Bob: How do I do dependency injection in Scala? Other man: You don't, because Scala is a functional language. Bob: Fine, it's functional. How do I inject dependencies? Other man: You use a free monad which allows you to build a monad from any Functor. Bob: Did you just tell me to go fuck myself? Other man: I believe I did, Bob.">
+	</p>
+	<p>
+		(<a href="https://twitter.com/hmemcpy/status/771359835514368000">Comic</a> courtesy of <a href="http://thinkdifferent.ly">John Muellerleile</a> and <a href="http://hmemcpy.com">Igal Tabachnik</a>.)
+	</p>
+	<p>
+		There's another school of functional programmers who believe that dependency injection in functional programming involves a Free monad.
+	</p>
+	<p>
+		You can often make do with less, though.
+	</p>
+	<p>
+		In my experience, it's usually enough to refactor a unit to take only direct input and output, and then compose an <a href="/2020/03/02/impureim-sandwich">impure/pure/impure 'sandwich'</a>. You'll see an example later.
+	</p>
+	<p>
+		This article series contains the following parts:
+		<ol>
+			<li><a href="/2017/01/27/dependency-injection-is-passing-an-argument">Dependency injection is passing an argument</a></li>
+			<li><a href="/2017/01/30/partial-application-is-dependency-injection">Partial application is dependency injection</a></li>
+			<li><a href="/2017/02/02/dependency-rejection">Dependency rejection</a></li>
+			<li><a href="/2017/07/10/pure-interactions">Pure interactions</a></li>
+		</ol>
+		The first three articles revolve around a common example, which is one of my favourite scenarios: on-line restaurant reservation. You can see an actual example client in my <a href="{{ site.production_url }}/functional-architecture-with-fsharp">Functional Architecture with F#</a> Pluralsight course. The (somewhat dated) client source code is <a href="https://github.com/ploeh/booking-web-ui">available on GitHub</a>. The server-side F# and Haskell example code for this article series is <a href="https://github.com/ploeh/dependency-rejection-samples">available on GitHub</a>.
+	</p>
+	<p>
+		The scenario is to implement an HTTP-based API that can accept incoming JSON documents that represent restaurant reservations.
+	</p>
+	<p>
+		The fourth article on <em>pure interactions</em> is a gateway to another article series on free monads.
+	</p>
+	<p>
+		I should point out that nowhere in this article series do I reject dependency injection as a set of object-oriented patterns. In object-oriented programming, dependency injection is a well-known and comprehensively described way to achieve decoupling and testability. In the next article, you'll see a brief review of dependency injection in C#.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2017/01/27/dependency-injection-is-passing-an-argument">Dependency injection is passing an argument</a>.
+	</p>
+</div>

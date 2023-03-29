@@ -1,0 +1,273 @@
+---
+layout: post
+title: "Functors"
+description: "A functor is a common abstraction. While typically associated with functional programming, functors exist in C# as well."
+date: 2018-03-22 16:57 UTC
+tags: [Software Design]
+image: "/content/binary/functor-diagram.png"
+image_alt: "Functor diagram."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article series is part of <a href="/2018/03/19/functors-applicatives-and-friends">a larger series of articles about functors, applicatives, and other mappable containers</a>.
+	</p>
+	<p>
+		Programming is about abstraction, since you can't manipulate individual sub-atomic particles on your circuit boards. Some abstractions are well-known because they're rooted in mathematics. Particularly, <a href="https://en.wikipedia.org/wiki/Category_theory">category theory</a> has proven to be fertile ground for functional programming. Some of the concepts from category theory apply to object-oriented programming as well; all you need is generics, which is a feature of both C# and Java.
+	</p>
+	<p>
+		In previous articles, you got an introduction to the specific <a href="/2017/08/14/from-test-data-builders-to-the-identity-functor">Test Data Builder</a> and <a href="/2017/09/18/the-test-data-generator-functor">Test Data Generator</a> functors. Functors are more common than you may realise, although in programming, we usually work with a subset of functors called <em>endofunctors</em>. In daily speak, however, we just call them <em>functors</em>.
+	</p>
+	<p>
+		In the next series of articles, you'll see plenty of examples of functors, with code examples in both C#, F#, and Haskell. These articles are mostly aimed at object-oriented programmers curious about the concept.
+		<ul>
+			<li><a href="/2018/03/26/the-maybe-functor">The Maybe functor</a></li>
+			<li><a href="/2019/01/14/an-either-functor">An Either functor</a></li>
+			<li><a href="/2018/08/06/a-tree-functor">A Tree functor</a></li>
+			<li><a href="/2019/08/19/a-rose-tree-functor">A rose tree functor</a></li>
+			<li><a href="/2018/08/13/a-visitor-functor">A Visitor functor</a></li>
+			<li><a href="/2018/08/20/reactive-functor">Reactive functor</a></li>
+			<li><a href="/2018/09/03/the-identity-functor">The Identity functor</a></li>
+			<li><a href="/2018/09/10/the-lazy-functor">The Lazy functor</a></li>
+			<li><a href="/2018/09/24/asynchronous-functors">Asynchronous functors</a></li>
+			<li><a href="/2021/07/19/the-state-functor">The State functor</a></li>
+			<li><a href="/2021/08/30/the-reader-functor">The Reader functor</a></li>
+			<li><a href="/2020/06/22/the-io-functor">The IO functor</a></li>
+			<li><a href="/2020/10/19/monomorphic-functors">Monomorphic functors</a></li>
+			<li><a href="/2018/12/03/set-is-not-a-functor">Set is not a functor</a></li>
+		</ul>
+		This list is far from exhaustive; more functors exist. Perhaps the most well-known of all functors is List, a.k.a. Sequence. C# query syntax can handle any functor, but most people only think of it as a language feature related to <code>IEnumerable&lt;T&gt;</code>. Since the combination of <code>IEnumerable&lt;T&gt;</code> and query syntax is already well-described, I'm not going to cover it explicitly here.
+	</p>
+	<p>
+		If you understand how LINQ, <code>IEnumerable&lt;T&gt;</code>, and C# query syntax works, however, all other functors should feel intuitive. That's the power of abstractions.
+	</p>
+	<h3 id="3053c67ef9dd4d21bd68ccc1ddbd208a">
+		Overview <a href="#3053c67ef9dd4d21bd68ccc1ddbd208a" title="permalink">#</a>
+	</h3>
+	<p>
+		The purpose of this article isn't to give you a comprehensive introduction to the category theory of functors. Rather, the purpose is to give you an opportunity to learn how it translates to object-oriented code like C#. For a great introduction to functors, see <a href="https://bartoszmilewski.com">Bartosz Milewski</a>'s <a href="https://bartoszmilewski.com/2015/01/20/functors">explanation with illustrations</a>.
+	</p>
+	<p>
+		In short, a functor is a mapping between two categories. A functor maps not only objects, but also functions (called <em>morphisms</em>) between objects. For instance, a functor <em>F</em> may be a mapping between the categories <em>C</em> and <em>D</em>:
+	</p>
+	<p>
+		<img src="/content/binary/functor-diagram.png" alt="Functor diagram.">
+	</p>
+	<p>
+		Not only does <em>F</em> map <em>a</em> from <em>C</em> to <em>F a</em> in <em>D</em> (and likewise for <em>b</em>), it also maps the function <em>f</em> to <em>F f</em>. Functors preserve the structure between objects. You'll often hear the phrase that a functor is a <em>structure-preserving map</em>. One example of this regards lists. You can translate a <code>List&lt;int&gt;</code> to a <code>List&lt;string&gt;</code>, but the translation preserves the structure. This means that the resulting object is also a list, and the order of values within the lists doesn't change.
+	</p>
+	<p>
+		In category theory, categories are often named <em>C</em>, <em>D</em>, and so on, but an example of a category could be <code>IEnumerable&lt;T&gt;</code>. If you have a function that translates integers to strings, the source <em>object</em> (that's what it's called, but it's not the same as an OOP object) could be <code>IEnumerable&lt;int&gt;</code>, and the destination object could be <code>IEnumerable&lt;string&gt;</code>. A functor, then, represents the ability to go from <code>IEnumerable&lt;int&gt;</code> to <code>IEnumerable&lt;string&gt;</code>, and since the <a href="https://msdn.microsoft.com/en-us/library/bb548891">Select</a> method gives you that ability, <code>IEnumerable&lt;T&gt;.Select</code> is a functor. In this case, you sort of 'stay within' the category of <code>IEnumerable&lt;T&gt;</code>, only you change the generic type argument, so this functor is really an endofunctor (the <em>endo</em> prefix is from Greek, meaning <em>within</em>).
+	</p>
+	<p>
+		As a rule of thumb, if you have a type with a generic type argument, it's a candidate to be a functor. Such a type is not always a functor, because it also depends on where the generic type argument appears, and some other rules.
+	</p>
+	<p>
+		Fundamentally, you must be able to implement a method for your generic type that looks like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Functor</span>&lt;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;Select&lt;<span style="color:#2b91af;">TResult</span>&gt;(<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;selector)
+</pre>
+	</p>
+	<p>
+		Here, I've defined the <code>Select</code> method as an instance method on a class called <code>Functor&lt;T&gt;</code>, but often, as is the case with <code>IEnumerable&lt;T&gt;</code>, the method is instead implemented as an extension method. You don't have to name it <code>Select</code>, but doing so enables query syntax in C#:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;dest&nbsp;=&nbsp;<span style="color:blue;">from</span>&nbsp;x&nbsp;<span style="color:blue;">in</span>&nbsp;source
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">select</span>&nbsp;x.ToString();</pre>
+	</p>
+	<p>
+		Here, <code>source</code> is a <code>Functor&lt;int&gt;</code> object.
+	</p>
+	<p>
+		If you don't name the method <code>Select</code>, it could still be a functor, but then query syntax wouldn't work. Instead, normal method-call syntax would be your only option. This is, however, a specific C# language feature. F#, for example, has no particular built-in awareness of functors, although most libraries name the central function <code>map</code>. In Haskell, <code>Functor</code> is a typeclass that defines a function called <code>fmap</code>.
+	</p>
+	<p>
+		The common trait is that there's an input value (<code>Functor&lt;T&gt;</code> in the above C# code snippet), which, when combined with a mapping function (<code>Func&lt;T, TResult&gt;</code>), returns an output value of the same generic type, but with a different generic type argument (<code>Functor&lt;TResult&gt;</code>).
+	</p>
+	<h3 id="314a59e80ab4476381e0ed3205d35491">
+		Laws <a href="#314a59e80ab4476381e0ed3205d35491" title="permalink">#</a>
+	</h3>
+	<p>
+		Defining a <code>Select</code> method isn't enough. The method must also obey the so-called <em>functor laws</em>. These are quite intuitive laws that govern that a functor behaves correctly.
+	</p>
+	<p>
+		The first law is that mapping the identity function returns the functor unchanged. The <em>identity function</em> is a function that returns all input unchanged. (It's called the <em>identity function</em> because it's the <em>identity</em> for the <a href="/2017/11/13/endomorphism-monoid">endomorphism monoid</a>.) In F# and Haskell, this is simply a built-in function called <code>id</code>.
+	</p>
+	<p>
+		In C#, you can write a demonstration of the law as a unit test:
+	</p>
+	<p>
+		<pre>[<span style="color:#2b91af;">Theory</span>]
+[<span style="color:#2b91af;">InlineData</span>(-101)]
+[<span style="color:#2b91af;">InlineData</span>(-1)]
+[<span style="color:#2b91af;">InlineData</span>(0)]
+[<span style="color:#2b91af;">InlineData</span>(1)]
+[<span style="color:#2b91af;">InlineData</span>(42)]
+[<span style="color:#2b91af;">InlineData</span>(1337)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;FunctorObeysFirstFunctorLaw(<span style="color:blue;">int</span>&nbsp;value)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:blue;">int</span>,&nbsp;<span style="color:blue;">int</span>&gt;&nbsp;id&nbsp;=&nbsp;x&nbsp;=&gt;&nbsp;x;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;sut&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Functor</span>&lt;<span style="color:blue;">int</span>&gt;(value);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Assert</span>.Equal(sut,&nbsp;sut.Select(id));
+}</pre>
+	</p>
+	<p>
+		While this doesn't <em>prove</em> that the first law holds for all values and all generic type arguments, it illustrates what's going on.
+	</p>
+	<p>
+		Since C# doesn't have a built-in identity function, the test creates a specialised identity function for integers, and calls it <code>id</code>. It simply returns all input values unchanged. Since <code>id</code> doesn't change the value, then <code>Select(id)</code> shouldn't change the functor, either. There's nothing more to the first law than this.
+	</p>
+	<p>
+		The second law states that if you have two functions, <code>f</code> and <code>g</code>, then mapping over one after the other should be the same as mapping over the composition of <code>f</code> and <code>g</code>. In C#, you can illustrate it like this:
+	</p>
+	<p>
+		<pre>[<span style="color:#2b91af;">Theory</span>]
+[<span style="color:#2b91af;">InlineData</span>(-101)]
+[<span style="color:#2b91af;">InlineData</span>(-1)]
+[<span style="color:#2b91af;">InlineData</span>(0)]
+[<span style="color:#2b91af;">InlineData</span>(1)]
+[<span style="color:#2b91af;">InlineData</span>(42)]
+[<span style="color:#2b91af;">InlineData</span>(1337)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;FunctorObeysSecondFunctorLaw(<span style="color:blue;">int</span>&nbsp;value)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:blue;">int</span>,&nbsp;<span style="color:blue;">string</span>&gt;&nbsp;&nbsp;&nbsp;&nbsp;g&nbsp;=&nbsp;i&nbsp;=&gt;&nbsp;i.ToString();
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:blue;">string</span>,&nbsp;<span style="color:blue;">string</span>&gt;&nbsp;f&nbsp;=&nbsp;s&nbsp;=&gt;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:blue;">string</span>(s.Reverse().ToArray());
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;sut&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Functor</span>&lt;<span style="color:blue;">int</span>&gt;(value);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Assert</span>.Equal(sut.Select(g).Select(f),&nbsp;sut.Select(i&nbsp;=&gt;&nbsp;f(g(i))));
+}</pre>
+	</p>
+	<p>
+		Here, <code>g</code> is a function that translates an <code>int</code> to a <code>string</code>, and <code>f</code> reverses a string. Since <code>g</code> returns <code>string</code>, you can compose it with <code>f</code>, which takes <code>string</code> as input.
+	</p>
+	<p>
+		As the assertion points out, it shouldn't matter if you call <code>Select</code> piecemeal, first with <code>g</code> and then with <code>f</code>, or if you call <code>Select</code> with the composed function <code>f(g(i))</code>.
+	</p>
+	<h3 id="eb061f6fdd094731a1c52850eec7feac">
+		Summary <a href="#eb061f6fdd094731a1c52850eec7feac" title="permalink">#</a>
+	</h3>
+	<p>
+		This is not a monad tutorial; it's a functor tutorial. Functors are commonplace, so it's worth keeping an eye out for them. If you already understand how LINQ (or similar concepts in Java) work, then functors should be intuitive, because they are all based on the same underlying maths.
+	</p>
+	<p>
+		While this article is an overview article, it's also a part of <a href="/2017/10/04/from-design-patterns-to-category-theory">a larger series of articles</a> that explore what object-oriented programmers can learn from category theory.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2018/03/26/the-maybe-functor">The Maybe functor</a>.
+	</p>
+</div>
+<div id="comments">
+    <hr>
+    <h2 id="comments-header">
+        Comments
+    </h2>
+    <div class="comment" id="419959edeb1c45b785bb732a83c5134d">
+        <div class="comment-author"><a href="https://twitter.com/philip_schwarz">Philip Schwarz</a></div>
+        <div class="comment-content">For anyone interested in an aid to internalising functor laws, check out the first four diagrams of the following slide deck, which summarise the laws (in category-theoretic terms) and show an example of the laws in action for a functor from one monoid to another:
+            <a href="https://www.slideshare.net/pjschwarz/functor-laws">Functor Laws</a><br></div>
+        <div class="comment-date">2018-08-18 11:00 UTC</div>
+    </div>
+
+	<div class="comment" id="dee7ec216a464248b6103ea0979948ab">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<blockquote>
+				As a rule of thumb, if you have a type with a generic type argument, it's a candidate to be a functor.
+			</blockquote>
+			<p>
+				My guess is that you were thinking of Haskell's <code>Functor</code> typeclass when you wrote that.  As <a href="https://wiki.haskell.org/Functor#Description">Haskell documentation for <code>Functor</code></a> says,
+			</p>
+			<blockquote>
+				An abstract datatype <code>f a</code>, which has the ability for its value(s) to be mapped over, can become an instance of the <code>Functor</code> typeclass.
+			</blockquote>
+			<p>
+				To explain the Haskell syntax for anyone unfamiliar, <code>f</code> is a generic type with type parameter <code>a</code>.  So indeed, it is necessary to be a Haskell type to be generic to be an instance of the <code>Functor</code> typeclass.  However, the concept of a functor in programming is not limited to Haskell's <code>Functor</code> typeclass.
+			</p>
+			<blockquote>
+				In category theory, categories are often named <em>C</em>, <em>D</em>, and so on, but an example of a category could be <code>IEnumerable&lt;T&gt;</code>. If you have a function that translates integers to strings, the source <em>object</em> (that's what it's called, but it's not the same as an OOP object) could be <code>IEnumerable&lt;int&gt;</code>, and the destination object could be <code>IEnumerable&lt;string&gt;</code>. A functor, then, represents the ability to go from <code>IEnumerable&lt;int&gt;</code> to <code>IEnumerable&lt;string&gt;</code>, and since the <a href="https://msdn.microsoft.com/en-us/library/bb548891">Select</a> method gives you that ability, <code>IEnumerable&lt;T&gt;.Select</code> is a functor. In this case, you sort of 'stay within' the category of <code>IEnumerable&lt;T&gt;</code>, only you change the generic type argument, so this functor is really an endofunctor (the <em>endo</em> prefix is from Greek, meaning <em>within</em>).
+			</blockquote>
+			<p>
+				For any type <code>T</code> including non-generic types, the category containing only a single object representing <code>T</code> can have (nontrivial) endofunctors.  For example, consider a record of type <code>R</code> in F# with a field of both name and type <code>F</code>.  Then <code>let mapF f r = { r with F = f r.F }</code> is the <code>map</code> function the satisfies the functor laws for the field <code>F</code> for record <code>R</code>.  This holds even when <code>F</code> is not a type parameter of <code>R</code>.  I would say that <code>R</code> is a functor in <code>F</code>.
+			</p>
+			<p>
+				I have realized within just the past three weeks how valuable it is to have a <code>map</code> function for every field of every record that I define.  For example, I was able to greatly <a href="https://github.com/elmish/Elmish.WPF/pull/241">simplify the <code>SubModelSeq</code> sample in Elmish.WPF</a> in part because of such <code>map</code> functions.  I am especially pleased with the main <code>update</code> function, which heavily uses these <code>map</code> functions.  It went from <a href="https://github.com/elmish/Elmish.WPF/blob/99e66723f9990a29889c4a50ba25e0004906a8e8/src/Samples/SubModelSeq/Program.fs#L130-L166">this</a> to <a href="https://github.com/elmish/Elmish.WPF/blob/51ea9f210244c17e0d54773e46cc824cc7457d03/src/Samples/SubModelSeq/Program.fs#L175-L181">this</a>.
+			</p>
+			<p>
+				In particular, I was able to eta-reduce the <code>Model</code> argument.  To be clear, the goal is not point-free style for its own sake.  Instead, it is one of perspective.  In the previous implementation, the body explicitly depended on both the <code>Msg</code> and <code>Model</code> arguments and explicitly returned a <code>Model</code> instance.  In the new implementation, the body only explicitly depends on the <code>Msg</code> argument and explicitly returns a function with type <code>Model -&gt; Model</code>.  By only having to pattern match on the <code>Msg</code> argument (and not having to worry about how to exactly map from one <code>Model</code> instance to the next), the implementation is much simpler.  Such is the expressive power of high-order functions.
+			</p>
+			<p>
+				All this (and much more in my application at work) from realizing that a functor doesn't have to be generic.
+			</p>
+			<p>
+				I am looking into the possibility of generating these <code>map</code> functions using <a href="https://github.com/MoiraeSoftware/myriad">Myrid</a>.
+			</p>
+		</div>
+		<div class="comment-date">2020-08-03 15:19 UTC</div>
+	</div>
+
+	<div class="comment" id="2e15f5fc319840b98e2868dc3cb4953f">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Tyson, thank you for writing. I think that you're right.
+			</p>
+			<p>
+				To be honest, I still find the category theory underpinnings of functional programming concepts to be a little hazy. For instance, in category theory, a <em>functor</em> is a mapping <em>between</em> categories. When category theory is translated into Haskell, people usually discuss Haskell as constituting a single large category called <strong>Hask</strong>. In that light, everything that goes on in Haskell just maps from objects in Hask to objects in Hask. In that light, I still find it difficult to distinguish between morphisms and functors.
+			</p>
+			<p>
+				I'm going to need to think about this some more, but my intuition is that one can also find 'smaller' categories embedded in Hask, e.g. the category of Boolean values, or the category of strings, and so on.
+			</p>
+			<p>
+				What I'm trying to get across is that I haven't thought enough about the boundaries of a concept such as <em>functor</em>. It's clear that some containers with generic types form functors, but are generics <em>required?</em> You argue that they aren't required, and I think that you are right.
+			</p>
+			<p>
+				Generics are, however, required at the language level, as you've also pointed out. I think that this is also the case for F# and C#, but I admit that since the thought hadn't crossed my mind until now, I actually don't know. If you define a <code>Select</code> method that takes a <code>Func&lt;T, T&gt;</code> instead of a <code>Func&lt;T, TResult&gt;</code>, does query syntax still work?
+			</p>
+			<p>
+				For what it's worth, there's <a href="https://hackage.haskell.org/package/mono-traversable/docs/Data-MonoTraversable.html">a Haskell library</a> that defines some type classes for monomorphic containers, including <code>MonoFunctor</code>. As it claims:
+				<blockquote>
+					<p>
+						"All of the laws for the polymorphic typeclasses apply to their monomorphic cousins."
+					</p>
+				</blockquote>
+				This strongly suggests that <code>MonoFunctor</code> instances are functors, too.
+			</p>
+			<p>
+				I agree that despite the brevity of <a href="https://docs.microsoft.com/dotnet/fsharp/language-reference/copy-and-update-record-expressions">copy-and-update expressions</a>, the particular use case that you describe can still seem verbose to sensitive souls. It doesn't look too bad with the example you give (<code>r.F</code>), but usually, value and field names are longer, and then reading the field, applying a function, and setting the field again starts to feel inconvenient. I've been there.
+			</p>
+			<p>
+				Once you start down the path of wanting to make it easier to 'reach into' a record structure to update parts of it, you quickly encounter <em>lenses</em>. As far as I can tell, your <code>map</code> function looks equivalent to a function that the <a href="http://hackage.haskell.org/package/lens-4.19.2">lens library</a> calls <code>over</code>.
+			</p>
+			<p>
+				I agree that lenses can solve some real problems, and it seems that your use case was one of them.
+			</p>
+		</div>
+		<div class="comment-date">2020-08-11 8:26 UTC</div>
+	</div>
+
+	<div class="comment" id="8e9d6ebde47d44adbb49b2ac3c33498b">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				FWIW, I recently <a href="https://stackoverflow.com/a/63611532/126014">answered a Stack Overflow question</a> about the presence of general functors in programming. Perhaps you'll find it useful.
+			</p>
+		</div>
+		<div class="comment-date">2020-09-02 5:33 UTC</div>
+	</div>
+
+	<div class="comment" id="90364937188b44378608284b1933301d">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Also, I've now added <a href="/2020/10/19/monomorphic-functors">an article about monomorphic functors</a>.
+			</p>
+		</div>
+		<div class="comment-date">2020-10-22 16:28 UTC</div>
+	</div>
+</div>

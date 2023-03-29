@@ -1,0 +1,302 @@
+---
+layout: post
+title: "DI-Friendly Library"
+description: "How to create a Dependency Injection-friendly software library."
+date: 2014-05-19 8:20 UTC
+tags: [Software Design, Dependency Injection]
+image: "/content/binary/fluent-builder-intellisense-discoverability.png"
+image_alt: "Intellisense and Fluent Builder combined enhances discoverability"
+---
+{% include JB/setup %}
+
+<div id="post">
+  <p>
+    <em>{{ page.description }}</em>
+  </p>
+  <p>
+    In <a href="http://amzn.to/12p90MG">my book</a>, I go to great lengths to explain how to develop loosely coupled <em>applications</em> using various Dependency Injection (DI) patterns, including the <a href="/2011/07/28/CompositionRoot">Composition Root</a> pattern. With the great emphasis on applications, I didn't particularly go into details about making DI-friendly libraries. Partly this was because I didn't think it was necessary, but since <a href="http://stackoverflow.com/a/2047657/126014">one of my highest voted Stack Overflow answers deal with this question</a>, it may be worth expanding on.
+  </p>
+  <p>
+    In this article, I will cover libraries, and in <a href="/2014/05/19/di-friendly-framework">a later article I will deal with frameworks</a>. The <a href="http://stackoverflow.com/a/2190658/126014">distinction I usually make</a> is:
+    <ul>
+      <li>A <strong>Library</strong> is a reusable set of types or functions you can use from a wide variety of applications. The application code initiates communication with the library and invokes it.</li>
+      <li>A <strong>Framework</strong> consists of one or more libraries, but the difference is that <a href="http://stackoverflow.com/a/3227404/126014">Inversion of Control</a> applies. The application registers with the framework (often by implementing one or more interfaces), and the framework calls into the application, which may call back into the framework. A framework often exists to address a particular general-purpose Domain (such as web applications, mobile apps, workflows, etc.).</li>
+    </ul>    
+  </p>
+  <p>
+    Most well-designed libraries are already DI-friendly - particularly if they follow the <a href="http://en.wikipedia.org/wiki/SOLID_(object-oriented_design)">SOLID principles</a>, because the <a href="http://en.wikipedia.org/wiki/Dependency_inversion_principle">Dependency Inversion Principle</a> (the <em>D</em> in SOLID) is the guiding principle behind DI.
+  </p>
+  <p>
+    Still, it may be valuable to distil a few recommendations.
+  </p>
+  <h3 id="2a9335d4857f43f5bc3d25347a915711">
+    Program to an interface, not an implementation <a href="#2a9335d4857f43f5bc3d25347a915711" title="permalink">#</a>
+  </h3>
+  <p>
+    If your library consists of several collaborating classes, define proper interfaces between these collaborators. This enables clients to redefine part of your library's behaviour, or to slide cross-cutting concerns in between two collaborators, using a <a href="http://en.wikipedia.org/wiki/Decorator_pattern">Decorator</a>.
+  </p>
+  <p>
+    Be sure to define these interfaces as <a href="http://martinfowler.com/bliki/RoleInterface.html">Role Interfaces</a>.
+  </p>
+  <p>
+    An example of a small library that follows this principle is <a href="https://github.com/ploeh/Hyprlinkr">Hyprlinkr</a>, which defines two interfaces used by the main RouteLinker class:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IRouteValuesQuery</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IDictionary</span>&lt;<span style="color:blue;">string</span>,&nbsp;<span style="color:blue;">object</span>&gt;&nbsp;GetRouteValues(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">MethodCallExpression</span>&nbsp;methodCallExpression);
+}</pre>
+  </p>
+  <p>
+    and
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IRouteDispatcher</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Rouple</span>&nbsp;Dispatch(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">MethodCallExpression</span>&nbsp;method,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IDictionary</span>&lt;<span style="color:blue;">string</span>,&nbsp;<span style="color:blue;">object</span>&gt;&nbsp;routeValues);
+}</pre>
+  </p>
+  <p>
+    This not only makes it easier to develop and maintain the library itself, but also makes it more flexible for users.
+  </p>
+  <h3 id="08a62bdad9044fa2aba2f2069fee64ec">
+    Use Constructor Injection <a href="#08a62bdad9044fa2aba2f2069fee64ec" title="permalink">#</a>
+  </h3>
+  <p>
+    Favour the Constructor Injection pattern over other injection patterns, because of its simplicity and <a href="/2011/05/30/DesignSmellDefaultConstructor">degree of encapsulation</a>.
+  </p>
+  <p>
+    As an example, Hyprlinkr's main class, RouteLinker, has this primary constructor:
+  </p>
+  <p>
+    <pre><span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">HttpRequestMessage</span>&nbsp;request;
+<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IRouteValuesQuery</span>&nbsp;valuesQuery;
+<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IRouteDispatcher</span>&nbsp;dispatcher;
+ 
+<span style="color:blue;">public</span>&nbsp;RouteLinker(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">HttpRequestMessage</span>&nbsp;request,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IRouteValuesQuery</span>&nbsp;routeValuesQuery,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IRouteDispatcher</span>&nbsp;dispatcher)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(request&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;request&quot;</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(routeValuesQuery&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;routeValuesQuery&quot;</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(dispatcher&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;dispatcher&quot;</span>);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.request&nbsp;=&nbsp;request;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.valuesQuery&nbsp;=&nbsp;routeValuesQuery;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.dispatcher&nbsp;=&nbsp;dispatcher;
+}</pre>
+  </p>
+  <p>
+    Notice that it follows <a href="https://vuscode.wordpress.com">Nikola Malovic</a>'s <a href="https://vuscode.wordpress.com/2009/10/16/inversion-of-control-single-responsibility-principle-and-nikola-s-laws-of-dependency-injection">4th law of IoC</a> that <a href="/2011/03/03/InjectionConstructorsshouldbesimple">Injection Constructors should be simple</a>.
+  </p>
+  <p>
+    Although not strictly required in order to make a library DI-friendly, expose every injected dependency as an <a href="/2013/04/04/structural-inspection">Inspection Property</a> - it will make the library easier to use when composed in one place, but used in another place. Again, Hyprlinkr does that:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IRouteValuesQuery</span>&nbsp;RouteValuesQuery
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">get</span>&nbsp;{&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>.valuesQuery;&nbsp;}
+}</pre>
+  </p>
+  <p>
+    and so on for its other dependencies, too.
+  </p>
+  <h3 id="63c51703322f4e12bbc4cb95ebfc416f">
+    Consider an Abstract Factory for short-lived objects <a href="#63c51703322f4e12bbc4cb95ebfc416f" title="permalink">#</a>
+  </h3>
+  <p>
+    Sometimes, your library must create short-lived objects in order to do its work. Other times, the library can only create a required object at run-time, because only at run-time is all required information available. You can use an <a href="/2010/11/01/PatternRecognitionAbstractFactoryorServiceLocator">Abstract Factory</a> for that.
+  </p>
+  <p>
+    The Abstract Factory doesn't always <em>have</em> to be named XyzFactory; in fact, Hyprlinkr's IRouteDispatcher interface is an Abstract Factory, although it's in disguise because it has a different name.
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IRouteDispatcher</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Rouple</span>&nbsp;Dispatch(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">MethodCallExpression</span>&nbsp;method,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IDictionary</span>&lt;<span style="color:blue;">string</span>,&nbsp;<span style="color:blue;">object</span>&gt;&nbsp;routeValues);
+}</pre>
+  </p>
+  <p>
+    Notice that the return value of an Abstract Factory <em>doesn't have to</em> be another interface instance; in this case, it's an instance of the concrete class Rouple, which is a data structure without behaviour.
+  </p>
+  <h3 id="fdebfaa652534344a5277d98917f6850">
+    Consider a Facade <a href="#fdebfaa652534344a5277d98917f6850" title="permalink">#</a>
+  </h3>
+  <p>
+    If some objects are difficult to construct, because their classes have complex constructors, consider supplying a <a href="http://en.wikipedia.org/wiki/Facade_pattern">Facade</a> with a good default combination of appropriate dependencies. Often, a simple alternative to a Facade is <a href="http://stackoverflow.com/a/6739953/126014">Constructor Chaining</a>:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;RouteLinker(<span style="color:#2b91af;">HttpRequestMessage</span>&nbsp;request)
+&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;<span style="color:blue;">this</span>(request,&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DefaultRouteDispatcher</span>())
+{
+}
+ 
+<span style="color:blue;">public</span>&nbsp;RouteLinker(<span style="color:#2b91af;">HttpRequestMessage</span>&nbsp;request,&nbsp;<span style="color:#2b91af;">IRouteValuesQuery</span>&nbsp;routeValuesQuery)
+&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;<span style="color:blue;">this</span>(request,&nbsp;routeValuesQuery,&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DefaultRouteDispatcher</span>())
+{
+}
+ 
+<span style="color:blue;">public</span>&nbsp;RouteLinker(<span style="color:#2b91af;">HttpRequestMessage</span>&nbsp;request,&nbsp;<span style="color:#2b91af;">IRouteDispatcher</span>&nbsp;dispatcher)
+&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;<span style="color:blue;">this</span>(request,&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ScalarRouteValuesQuery</span>(),&nbsp;dispatcher)
+{
+}
+ 
+<span style="color:blue;">public</span>&nbsp;RouteLinker(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">HttpRequestMessage</span>&nbsp;request,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IRouteValuesQuery</span>&nbsp;routeValuesQuery,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IRouteDispatcher</span>&nbsp;dispatcher)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(request&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;request&quot;</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(routeValuesQuery&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;routeValuesQuery&quot;</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(dispatcher&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;dispatcher&quot;</span>);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.request&nbsp;=&nbsp;request;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.valuesQuery&nbsp;=&nbsp;routeValuesQuery;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.dispatcher&nbsp;=&nbsp;dispatcher;
+}</pre>
+  </p>
+  <p>
+    Notice how the Routelinker class provides appropriate default values for those dependencies it can.
+  </p>
+  <p>
+    However, a Library with a more complicated API could potentially benefit from a proper Facade. One way to make the API's extensibility points discoverable is by implementing the Facade as a Fluent Builder. The following RouteLinkerBuilder <em>isn't</em> part of Hyprlinkr, because I consider the Constructor Chaining alternative simpler, but it <em>could</em> look like this:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">RouteLinkerBuilder</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IRouteValuesQuery</span>&nbsp;valuesQuery;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IRouteDispatcher</span>&nbsp;dispatcher;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;RouteLinkerBuilder()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;<span style="color:blue;">this</span>(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ScalarRouteValuesQuery</span>(),&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DefaultRouteDispatcher</span>())
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;RouteLinkerBuilder(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IRouteValuesQuery</span>&nbsp;valuesQuery,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IRouteDispatcher</span>&nbsp;dispatcher)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.valuesQuery&nbsp;=&nbsp;valuesQuery;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.dispatcher&nbsp;=&nbsp;dispatcher;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">RouteLinkerBuilder</span>&nbsp;WithValuesQuery(<span style="color:#2b91af;">IRouteValuesQuery</span>&nbsp;newValuesQuery)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">RouteLinkerBuilder</span>(newValuesQuery,&nbsp;<span style="color:blue;">this</span>.dispatcher);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">RouteLinkerBuilder</span>&nbsp;WithDispatcher(<span style="color:#2b91af;">IRouteDispatcher</span>&nbsp;newDispatcher)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">RouteLinkerBuilder</span>(<span style="color:blue;">this</span>.valuesQuery,&nbsp;newDispatcher);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">RouteLinker</span>&nbsp;Create(<span style="color:#2b91af;">HttpRequestMessage</span>&nbsp;request)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">RouteLinker</span>(request,&nbsp;<span style="color:blue;">this</span>.valuesQuery,&nbsp;<span style="color:blue;">this</span>.dispatcher);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IRouteValuesQuery</span>&nbsp;ValuesQuery
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">get</span>&nbsp;{&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>.valuesQuery;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IRouteDispatcher</span>&nbsp;Dispatcher
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">get</span>&nbsp;{&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>.dispatcher;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+  </p>
+  <p>
+    This has the advantage that it's easy to get started with the library:
+  </p>
+  <p>
+    <pre><span style="color:blue;">var</span>&nbsp;linker&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">RouteLinkerBuilder</span>().Create(request);
+</pre>
+  </p>
+  <p>
+    This API is also discoverable, because Intellisense helps users discover how to deviate from the default values:
+  </p>
+  <p>
+    <img src="/content/binary/fluent-builder-intellisense-discoverability.png" alt="Intellisense and Fluent Builder combined enhances discoverability">
+  </p>
+  <p>
+    It enables users to override only those values they care about:
+  </p>
+  <p>
+    <pre><span style="color:blue;">var</span>&nbsp;linker&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">RouteLinkerBuilder</span>().WithDispatcher(customDispatcher).Create(request);</pre>
+  </p>
+  <p>
+    If I had wanted to <em>force</em> users of Hyprlinkr to use the (hypothetical) RouteLinkerBuilder, I could make the RouteLinker constructor <code>internal</code>, but I don't much care for that option; I prefer to empower my users, not constrain them.
+  </p>
+  <h3 id="e1d10ddc3425466a9ef4616a57259892">
+    Composition <a href="#e1d10ddc3425466a9ef4616a57259892" title="permalink">#</a>
+  </h3>
+  <p>
+    Any application that uses your library can compose objects from it in its Composition Root. Here's a hand-coded example from one of <a href="http://grean.com">Grean's</a> code bases:
+  </p>
+  <p>
+    <pre><span style="color:blue;">private</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">RouteLinker</span>&nbsp;CreateDefaultRouteLinker(<span style="color:#2b91af;">HttpRequestMessage</span>&nbsp;request)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">RouteLinker</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;request,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ModelFilterRouteDispatcher</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DefaultRouteDispatcher</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)
+&nbsp;&nbsp;&nbsp;&nbsp;);
+}</pre>
+  </p>
+  <p>
+    This example is just a small helper method in the Composition Root, but as you can see, it composes a RouteLinker instance using <em>our custom</em> ModelFilterRouteDispatcher class as a Decorator for Hyprlinkr's built-in DefaultRouteDispatcher.
+  </p>
+  <p>
+    However, it would also be easy to configure a DI Container to do this instead.
+  </p>
+  <h3 id="0dc90645d62b4b9abea87c241380aaef">
+    Summary <a href="#0dc90645d62b4b9abea87c241380aaef" title="permalink">#</a>
+  </h3>
+  <p>
+    If you follow SOLID, and normal rules for encapsulation, your library is likely to be DI-friendly. No special infrastructure is required to add 'DI support' to a library.
+  </p>
+</div>
+<div id="comments">
+  <hr>
+  <h2 id="comments-header">
+  	Comments
+  </h2>
+  
+  <div class="comment" id="eb364b0e94ce434797b6d95967653ded">
+    <div class="comment-author">Maris Krivtezs</div>
+    <div class="comment-content">
+    	<p>
+    	  I found great library for in process messaging made by Jimmy Bogard - <a href="https://github.com/jbogard/MediatR">MediatR</a>, but it uses service locator. Implemented mediator uses service locator to lookup for handlers matching message type registered in container. <a href="https://github.com/jbogard/MediatR/blob/master/src/MediatR/Mediator.cs#L84">Source.</a>
+    	</p>
+    	<p>
+    	  What would be best approach to eliminate service locator in this case? Would it be better to pass all handler instances in mediator constructor and then lookup for matching one?
+    	</p>
+    </div>
+    <div class="comment-date">2014-06-02 20:10 UTC</div>
+  </div>
+
+  <div class="comment" id="475829539c754b759bef404ba03d97cb">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Maris, thank you for writing. Hopefully, <a href="/2011/09/19/MessageDispatchingwithoutServiceLocation">this article</a> answers your question.
+      </p>
+    </div>
+    <div class="comment-date">2014-06-03 9:20 UTC</div>
+  </div>
+</div>

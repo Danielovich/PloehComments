@@ -1,0 +1,128 @@
+---
+layout: post
+title: "Monoids accumulate"
+description: "You can accumulate an arbitrary number of monoidal values to a single value. An article for object-oriented programmers."
+date: 2017-11-20 8:00 UTC
+tags: [Software Design]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is part of a <a href="/2017/10/06/monoids">series about monoids</a>. In short, a <em>monoid</em> is an associative binary operation with a neutral element (also known as <em>identity</em>).
+	</p>
+	<p>
+		Recall that a binary operation is an operation involving two arguments of the same type, and returning a value of that type.		
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">Foo</span>&nbsp;Op(<span style="color:#2b91af;">Foo</span>&nbsp;x,&nbsp;<span style="color:#2b91af;">Foo</span>&nbsp;y)</pre>
+	</p>
+	<p>
+		Notice that such an operation reduces two <code>Foo</code> values to a single <code>Foo</code> value.
+	</p>
+	<h3 id="a7ab99d4b96c4f8d8a57bf5dde29714b">
+		Accumulation <a href="#a7ab99d4b96c4f8d8a57bf5dde29714b" title="permalink">#</a>
+	</h3>
+	<p>
+		Since you have an operation that can reduce two values to a single value, you can use that single value as the input for yet another binary operation. This enables you to accumulate, or aggregate, an arbitrary number of values.
+	</p>
+	<p>
+		Consider the instance variation of the above <code>Op</code> method:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Foo</span>&nbsp;Op(<span style="color:#2b91af;">Foo</span>&nbsp;foo)</pre>
+	</p>
+	<p>
+		This is another representation of the operation, but instead of being a static method, it's an instance method on the <code>Foo</code> class.
+	</p>
+	<p>
+		When <code>Op</code> is a monoid, you can easily write a function that accumulates an arbitrary number of <code>Foo</code> values:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">Foo</span>&nbsp;Accumulate(<span style="color:#2b91af;">IReadOnlyCollection</span>&lt;<span style="color:#2b91af;">Foo</span>&gt;&nbsp;foos)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;acc&nbsp;=&nbsp;Identity;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">foreach</span>&nbsp;(<span style="color:blue;">var</span>&nbsp;f&nbsp;<span style="color:blue;">in</span>&nbsp;foos)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;acc&nbsp;=&nbsp;acc.Op(f);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;acc;
+}</pre>
+	</p>
+	<p>
+		You start with the <code>Identity</code> value, which also becomes the return value if <code>foos</code> is empty. Then you simply loop over each value in <code>foos</code> and use <code>Op</code> with the value accumulated so far (<code>acc</code>) and the current element in the sequence.
+	</p>
+	<p>
+		Once you're done looping, you return the accumulator.
+	</p>
+	<p>
+		This implementation isn't always guaranteed to be the most efficient, but you can <em>always</em> write accumulation like that. Sometimes, a more efficient algorithm exists, but that doesn't change the overall result that you can always reduce an arbitrary number of values whenever a monoid exists for those values.
+	</p>
+	<h3 id="4d836a93139e4b94918378a7f605392e">
+		Generalisation <a href="#4d836a93139e4b94918378a7f605392e" title="permalink">#</a>
+	</h3>
+	<p>
+		You can do this with any monoid. In <a href="https://www.haskell.org">Haskell</a>, this function is called <code>mconcat</code>, and it has this type:
+	</p>
+	<p>
+		<pre>mconcat :: Monoid a =&gt; [a] -&gt; a</pre>
+	</p>
+	<p>
+		The way you can read this is that for any monoid <code>a</code>, <code>mconcat</code> is a function that takes a linked list of <code>a</code> values as input, and returns a single <code>a</code> value as output.
+	</p>
+	<p>
+		This function seems both more general, and more constrained, than the above C# example. It's more general than the C# example because it works on any monoid, instead of just <code>Foo.Op</code>. On the other hand, it seems more limited because it works only on Haskell lists. The C# example, in contrast, can accumulate any <code>IReadOnlyCollection&lt;Foo&gt;</code>. Could you somehow combine those two generalisations?
+	</p>
+	<p>
+		Nothing stops you from doing that, but it's already in Haskell's <code>Data.Foldable</code> module:
+	</p>
+	<p>
+		<pre>fold :: (Monoid m, Foldable t) =&gt; t m -&gt; m</pre>
+	</p>
+	<p>
+		The way to read this is that there's a function called <code>fold</code>, and it accumulates any monoid <code>m</code> contained in any 'foldable' data container <code>t</code>. That a data container is 'foldable' means that there's a way to somehow fold, or aggregate, the element(s) in the container into a value.
+	</p>
+	<p>
+		Linked lists, arrays, and other types of sequences are foldable, as are <a href="/2018/03/26/the-maybe-functor">Maybe</a> and <a href="/2018/08/06/a-tree-functor">trees</a>.
+	</p>
+	<p>
+		In fact, there's little difference between Haskell's <code>Foldable</code> type class and .NET's <code>IEnumerable&lt;T&gt;</code>, but as the names suggest, their foci are different. In Haskell, the focus is being able to fold, accumulate, or aggregate a data structure, whereas on .NET the focus is on being able to enumerate the values inside the data structure. Ultimately, though, both abstractions afford the same capabilities.
+	</p>
+	<p>
+		In .NET, the focal abstraction is the <a href="https://en.wikipedia.org/wiki/Iterator_pattern">Iterator pattern</a>, which enables you to enumerate the values in the data container. On top of that abstraction, you can derive other behaviour, such as the ability to <a href="https://msdn.microsoft.com/en-us/library/system.linq.enumerable.aggregate">Aggregate</a> data.
+	</p>
+	<p>
+		In Haskell, the focus is on the ability to fold, but from that central abstraction follows the ability to convert the data container into a linked list, which you can then enumerate.
+	</p>
+	<h3 id="3a34228e6ed44c1d957284c4e3f94831">
+		Summary <a href="#3a34228e6ed44c1d957284c4e3f94831" title="permalink">#</a>
+	</h3>
+	<p>
+		You can accumulate an arbitrary number of monoidal values as long as they're held in a container that enables you to 'fold' it. This includes all sorts of lists and arrays.
+	</p>
+	<p>
+		This article concludes the article series about monoids. In the next series of articles, you'll learn about a related category of operations.
+	</p>
+	<p>
+		<strong>Next: </strong> <a href="/2017/11/27/semigroups">Semigroups</a>.
+	</p>
+</div>
+
+<div id="comments">
+	<hr />
+	<h2 id="comments-header">Comments</h2>
+
+	<div class="comment" id="db96e1b2e6fd43c88285a9c299570dd0">
+		<div class="comment-author"><a href="https://about.me/carsten.koenig">Carsten König</a></div>
+		<div class="comment-content">
+			<p>
+				<a href="https://twitter.com/ploeh">@ploeh</a> as always I loved your blog post but I don't 100% agree on your comparison of the iterator pattern with Foldable - the iterator pattern allows usually sideeffects and you have Traversable for that - you might also like this: <a href="http://www.cs.ox.ac.uk/jeremy.gibbons/publications/iterator.pdf">http://www.cs.ox.ac.uk/jeremy.gibbons/publications/iterator.pdf</a> …
+			</p>
+			<p>
+				(Comment <a href="https://twitter.com/CarstenK_Dev/status/932597257584676864">submitted via Twitter</a>)
+			</p>
+		</div>
+		<div class="comment-date">2017-11-20 13:11 UTC</div>
+	</div>
+</div>

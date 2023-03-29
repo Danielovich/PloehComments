@@ -1,0 +1,407 @@
+---
+layout: post
+title: "Tail Recurse"
+description: "Tips on refactoring recursive functions to tail-recursive functions."
+date: 2015-12-22 09:11 UTC
+tags: [F#, Languages, Functional Programming]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		In a recent article, I described <a href="/2015/12/01/recurse">how to refactor an imperative loop to a recursive function</a>. If you're coming from C# or Java, however, you may have learned to avoid recursion, since it leads to stack overflows when the recursion is too deep.
+	</p>
+	<p>
+		In some Functional languages, like F# and Haskell, such stack overflows can be prevented with <a href="https://en.wikipedia.org/wiki/Tail_call">tail recursion</a>. If the <em>last</em> function call being made is a recursive call to the function itself, the current stack frame can be eliminated because execution is effectively completed. This allows a tail-recursive function to keep recursing without ever overflowing.
+	</p>
+	<p>
+		When you have a recursive function that's <em>not</em> tail recursive, however, it can sometimes be difficult to figure out how to refactor it so that it becomes tail recursive. In this article, I'll outline some techniques I've found to be effective.
+	</p>
+	<h3 id="4f80428a94344fe1bf99245749f2ff69">
+		Introduce an accumulator <a href="#4f80428a94344fe1bf99245749f2ff69" title="permalink">#</a>
+	</h3>
+	<p>
+		It seems as though the universal trick related to recursion is to introduce an accumulator argument. This is <a href="/2015/12/01/recurse">how you refactor an imperative loop to a recursive function</a>, but it can also be used to make a non-tail-recursive function tail recursive. This will also require you to introduce an 'implementation function' that does the actual work.
+	</p>
+	<h3 id="5169722dc6aa4e8b98800ee6d1ce99e0">
+		Example: discarding candidate points when finding a convex hull <a href="#5169722dc6aa4e8b98800ee6d1ce99e0" title="permalink">#</a>
+	</h3>
+	<p>
+		In <a href="/2015/10/19/visual-value-verification">previous articles</a> I've described various problems I had when implementing the <a href="https://en.wikipedia.org/wiki/Graham_scan">Graham Scan</a> algorithm to find the <a href="https://en.wikipedia.org/wiki/Convex_hull">convex hull</a> of a set of points.
+	</p>
+	<p>
+		One of my functions examined the three last points in a sequence of points in order to determine if the next-to-last point is in the interior of the set, or if that point could potentially be on the hull. If the point is positively known to be in the interior of the set, it should be discarded. At one stage, the function was implemented this way:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">tryDiscard</span>&nbsp;points&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;<span style="color:navy;">tryDiscardImp</span>&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[p1;&nbsp;p2;&nbsp;p3]&nbsp;<span style="color:blue;">when</span>&nbsp;<span style="color:navy;">turn</span>&nbsp;p1&nbsp;p2&nbsp;p3&nbsp;=&nbsp;<span style="color:#4ec9b0;">Direction</span>.Right&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;[p1;&nbsp;p3]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[p1;&nbsp;p2;&nbsp;p3]&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;[p1;&nbsp;p2;&nbsp;p3]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;p&nbsp;<span style="color:navy;">::</span>&nbsp;ps&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;p&nbsp;<span style="color:navy;">::</span>&nbsp;<span style="color:navy;">tryDiscardImp</span>&nbsp;ps
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[]&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;[]
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;newPoints&nbsp;=&nbsp;<span style="color:navy;">tryDiscardImp</span>&nbsp;points
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;newPoints.Length&nbsp;&lt;&gt;&nbsp;points.Length
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">then</span>&nbsp;<span style="color:navy;">Some</span>&nbsp;newPoints
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>&nbsp;<span style="color:navy;">None</span></pre>
+	</p>
+	<p>
+		This function was earlier called <code>check</code>, which is the name used in <a href="/2015/12/01/recurse">the article about refactoring to recursion</a>. The tryDiscard function is actually an inner function in a more complex function that's defined with the <code>inline</code> keyword, so the type of tryDiscard is somewhat complicated, but think of it as having the type <code>(int * int) list -&gt; (int * int) list option</code>. If a point was discarded, the new, reduced list of points is returned in a Some case; otherwise, None is returned.
+	</p>		
+	<p>
+		The tryDiscard function already has an 'implementation function' called tryDiscardImp, but while tryDiscardImp is recursive, it isn't <em>tail</em> recursive. The problem is that in the <code>p :: ps</code> case, the recursive call to tryDiscardImp isn't the tail call. Rather, the stack frame has to wait for the recursive call <code>tryDiscardImp ps</code> to complete, because only then can it cons <code>p</code> onto its return value.
+	</p>
+	<p>
+		Since an 'implementation function' already exists, you can make it tail recursive by adding an accumulator argument to tryDiscardImp:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">tryDiscard</span>&nbsp;points&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;<span style="color:navy;">tryDiscardImp</span>&nbsp;acc&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[p1;&nbsp;p2;&nbsp;p3]&nbsp;<span style="color:blue;">when</span>&nbsp;<span style="color:navy;">turn</span>&nbsp;p1&nbsp;p2&nbsp;p3&nbsp;=&nbsp;<span style="color:#4ec9b0;">Direction</span>.Right&nbsp;<span style="color:blue;">-&gt;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;acc&nbsp;@&nbsp;[p1;&nbsp;p3]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[p1;&nbsp;p2;&nbsp;p3]&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;acc&nbsp;@&nbsp;[p1;&nbsp;p2;&nbsp;p3]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;p&nbsp;<span style="color:navy;">::</span>&nbsp;ps&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">tryDiscardImp</span>&nbsp;(acc&nbsp;@&nbsp;[p])&nbsp;ps
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[]&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;acc
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;newPoints&nbsp;=&nbsp;<span style="color:navy;">tryDiscardImp</span>&nbsp;[]&nbsp;points
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;newPoints.Length&nbsp;&lt;&gt;&nbsp;points.Length
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">then</span>&nbsp;<span style="color:navy;">Some</span>&nbsp;newPoints
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>&nbsp;<span style="color:navy;">None</span></pre>
+	</p>
+	<p>
+		As you can see, I added the <code>acc</code> argument to tryDiscardImp; it has the type <code>(int * int) list</code> (again: not really, but close enough). Instead of returning from each case, the tryDiscardImp function now appends points to <code>acc</code> until it reaches the end of the list, which is when it returns the accumulator. The <code>p :: ps</code> case now <em>first</em> appends the point in consideration to the accumulator (<code>acc @ [p]</code>), and only then recursively calls tryDiscardImp. This puts the call to tryDiscardImp in the tail position.
+	</p>
+	<p>
+		The repeated use of the append operator (<code>@</code>) is terribly inefficient, though, but I'll return to this issue later in this article. For now, let's take a step back.
+	</p>
+	<h3 id="f15281234b484c6380b2139515536a55">
+		Example: implementing map with recursion <a href="#f15281234b484c6380b2139515536a55" title="permalink">#</a>
+	</h3>
+	<p>
+		A common exercise for people new to Functional Programming is to implement a map function (C# developers will know it as <a href="https://msdn.microsoft.com/library/bb548891">Select</a>) using recursion. This function <a href="https://msdn.microsoft.com/en-us/library/ee370378.aspx">already exists in the List module</a>, but it can be enlightening to do the exercise.
+	</p>
+	<p>
+		An easy, but naive implementation is only two lines of code, using pattern matching:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;<span style="color:navy;">mapNaive</span>&nbsp;<span style="color:navy;">f</span>&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[]&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;[]
+&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;h<span style="color:navy;">::</span>t&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">f</span>&nbsp;h&nbsp;<span style="color:navy;">::</span>&nbsp;<span style="color:navy;">mapNaive</span>&nbsp;<span style="color:navy;">f</span>&nbsp;t</pre>
+	</p>
+	<p>
+		Is mapNaive tail recursive? No, it isn't. The last operation happening is that <code>f h</code> is consed unto the return value of <code>mapNaive f t</code>. While <code>mapNaive f t</code> is a recursive call, it's not in the tail position. For long lists, this will create a stack overflow.
+	</p>
+	<p>
+		How can you create a tail-recursive map implementation?
+	</p>
+	<h3 id="7e4e30b794594de2895d126f8a0ef622">
+		Example: inefficient tail-recursive map implementation <a href="#7e4e30b794594de2895d126f8a0ef622" title="permalink">#</a>
+	</h3>
+	<p>
+		According to my introduction, adding an accumulator and an 'implementation' function should do the trick. Here's the straightforward application of that technique:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">mapTailRecursiveUsingAppend</span>&nbsp;<span style="color:navy;">f</span>&nbsp;xs&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;<span style="color:navy;">mapImp</span>&nbsp;<span style="color:navy;">f</span>&nbsp;acc&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[]&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;acc
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;h<span style="color:navy;">::</span>t&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">mapImp</span>&nbsp;<span style="color:navy;">f</span>&nbsp;(acc&nbsp;@&nbsp;[<span style="color:navy;">f</span>&nbsp;h])&nbsp;t
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">mapImp</span>&nbsp;<span style="color:navy;">f</span>&nbsp;[]&nbsp;xs</pre>
+	</p>
+	<p>
+		The mapImp function does the actual work, and it's tail recursive. It appends the result of mapping the head of the list unto the accumulator: <code>acc @ [f h]</code>. Only then does it recursively call itself with the new accumulator and the tail of the list.
+	</p>
+	<p>
+		While this version is tail recursive, it's horribly inefficient, because appending to the tail of a (linked) list is inefficient. In theory, this implementation would never result in a stack overflow, but the question is whether anyone has the patience to wait for that to happen?
+	</p>
+	<p>
+		<pre>&gt; mapTailRecursiveUsingAppend ((*) 2) [1..100000];;
+Real: 00:02:46.104, CPU: 00:02:44.750, GC gen0: 13068, gen1: 6380, gen2: 1
+val it : int list =
+  [2; 4; 6; 8; 10; 12; 14; 16; 18; 20; 22; 24; 26; 28; 30; 32; 34; 36; ...]</pre>
+	</p>
+	<p>
+		Doubling 100,000 integers this way takes nearly 3 minutes on my (admittedly mediocre) laptop. A better approach is required.
+	</p>
+	<h3 id="09a1591c7d8743dca23abf5c7a863096">
+		Example: efficient tail-recursive map implementation <a href="#09a1591c7d8743dca23abf5c7a863096" title="permalink">#</a>
+	</h3>
+	<p>
+		The problem with mapTailRecursiveUsingAppend is that appending to a list is slow when the left-hand list is long. This is because lists are linked lists, so the append operation has to traverse the entire list and copy all the element to link to the right-hand list.
+	</p>
+	<p>
+		Consing a single item unto an existing list, on the other hand, is efficient:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">mapTailRecursiveUsingRev</span>&nbsp;<span style="color:navy;">f</span>&nbsp;xs&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;<span style="color:navy;">mapImp</span>&nbsp;<span style="color:navy;">f</span>&nbsp;acc&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[]&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;acc
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;h<span style="color:navy;">::</span>t&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">mapImp</span>&nbsp;<span style="color:navy;">f</span>&nbsp;(<span style="color:navy;">f</span>&nbsp;h&nbsp;<span style="color:navy;">::</span>&nbsp;acc)&nbsp;t
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">mapImp</span>&nbsp;<span style="color:navy;">f</span>&nbsp;[]&nbsp;xs&nbsp;|&gt;&nbsp;<span style="color:#4ec9b0;">List</span>.<span style="color:navy;">rev</span></pre>
+	</p>
+	<p>
+		This function conses unto the accumulator (<code>f h :: acc</code>) instead of appending to the accumulator. The only problem with this is that <code>acc</code> is in reverse order compared to the input, so the final step must be to reverse the output of mapImp. While there's a cost to reversing a list, you pay it only once. In practice, it turns out to be efficient:
+	</p>
+	<p>
+		<pre>&gt; mapTailRecursiveUsingRev ((*) 2) [1..100000];;
+Real: 00:00:00.017, CPU: 00:00:00.015, GC gen0: 1, gen1: 0, gen2: 0
+val it : int list =
+  [2; 4; 6; 8; 10; 12; 14; 16; 18; 20; 22; 24; 26; 28; 30; 32; 34; 36; ...]</pre>
+	</p>
+	<p>
+		From nearly three minutes to 17 milliseconds! That's a nice performance improvement.
+	</p>
+	<p>
+		The only problem, from a point of view where <em>learning</em> is in focus, is that it feels a bit like cheating: we've delegated an important step in the algorithm to <a href="https://msdn.microsoft.com/en-us/library/ee340277.aspx">List.rev</a>. If we think it's OK to use the library functions, we could have directly used <a href="https://msdn.microsoft.com/en-us/library/ee370378.aspx">List.map</a>. The whole point of this exercise, however, is to learn something about how to write tail-recursive functions.
+	</p>
+	<p>
+		At this point, we have two options:
+		<ul>
+			<li>Learn how to write an efficient, tail-recursive implementation of <code>rev</code>.</li>
+			<li>Consider alternatives.</li>
+		</ul>
+		Ultimately, it turns out that List.rev is <a href="https://github.com/Microsoft/visualfsharp/blob/master/src/fsharp/FSharp.Core/local.fs">implemented in a fashion similar to above, using an 'implementation function' and an accumulator</a>. Let us, therefore, turn our attention to another alternative.
+	</p>
+	<h3 id="36ebbcd8edf1428cbd8894cccbdb1fb5">
+		Example: efficient tail-recursive map using a difference list <a href="#36ebbcd8edf1428cbd8894cccbdb1fb5" title="permalink">#</a>
+	</h3>
+	<p>
+		The mapTailRecursiveUsingAppend function is attractive because of its simplicity. If only there was an efficient way to append a single item to the tail of a (long) list, like <code>acc appendSingle (f h)</code>! (appendSingle is a hypothetical function that we wish existed.)
+	</p>
+	<p>
+		So far, we've treated data as data, and functions as functions, but in Functional Programming, functions are data as well!
+	</p>
+	<p>
+		What if we could <em>partially</em> apply a cons operation?
+	</p>
+	<p>
+		Unfortunately, the cons operator (<code>::</code>) <a href="http://stackoverflow.com/q/3821472/126014">can't be used as a function</a>, so you'll have to introduce a little helper function:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;&#39;a&nbsp;-&gt;&nbsp;&#39;a&nbsp;list&nbsp;-&gt;&nbsp;&#39;a&nbsp;list</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">cons</span>&nbsp;x&nbsp;xs&nbsp;=&nbsp;x&nbsp;<span style="color:navy;">::</span>&nbsp;xs</pre>
+	</p>
+	<p>
+		This enables you to partially apply a cons operation:
+	</p>
+	<p>
+		<pre>&gt; cons 1;;
+val it : (int list -&gt; int list) = &lt;fun:it@4-5&gt;</pre>
+	</p>
+	<p>
+		The expression <code>cons 1</code> is a <em>function</em> that awaits an <code>int list</code> argument. You can, for example, call it with the empty list, or another list:
+	</p>
+	<p>
+		<pre>&gt; (cons 1) [];;
+val it : int list = [1]
+&gt; (cons 1) [2];;
+val it : int list = [1; 2]</pre>
+	</p>
+	<p>
+		That hardly seems useful, but what happens if you start <em>composing</em> such partially applied functions?
+	</p>
+	<p>
+		<pre>&gt; cons 1 &gt;&gt; cons 2;;
+val it : (int list -&gt; int list) = &lt;fun:it@7-8&gt;</pre>
+	</p>
+	<p>
+		Notice that the result is another function with the same signature as <code>cons 1</code>. A way to read it is: <code>cons 1</code> is a function that takes a list as input, appends the list after <code>1</code>, and returns that new list. The return value of <code>cons 1</code> is passed to <code>cons 2</code>, which takes that input, appends that list after <code>2</code>, and returns that list. Got it? Try it out:
+	</p>
+	<p>
+		<pre>&gt; (cons 1 &gt;&gt; cons 2) [];;
+val it : int list = [2; 1]</pre>
+	</p>
+	<p>
+		Not what you expected? Try going through the data flow again. The input is the empty list (<code>[]</code>), which, when applied to <code>cons 1</code> produces <code>[1]</code>. That value is then passed to <code>cons 2</code>, which puts <code>2</code> at the head of <code>[1]</code>, yielding the final result of <code>[2; 1]</code>.
+	</p>
+	<p>
+		This still doesn't seem to help, because it still reverses the list. True, but you can <em>reverse the composition:</em>
+	</p>
+	<p>
+		<pre>&gt; (cons 2 &gt;&gt; cons 1) [];;
+val it : int list = [1; 2]
+&gt; (cons 1 &lt;&lt; cons 2) [];;
+val it : int list = [1; 2]</pre>
+	</p>
+	<p>
+		Notice that in the first line, I reversed the composition by changing the order of partially applied functions. This, however, is equivalent to keeping the order, but using the reverse composition operator (<code>&lt;&lt;</code>).
+	</p>
+	<p>
+		You can repeat this composition:
+	</p>
+	<p>
+		<pre>&gt; (cons 1 &lt;&lt; cons 2 &lt;&lt; cons 3 &lt;&lt; cons 4) [];;
+val it : int list = [1; 2; 3; 4]</pre>
+	</p>
+	<p>
+		That's exactly what you need, enabling you to write <code>acc &lt;&lt; (cons (f h))</code> in order to efficiently append a single element to the tail of a list!
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">mapTailRecursiveUsingDifferenceList</span>&nbsp;<span style="color:navy;">f</span>&nbsp;xs&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">cons</span>&nbsp;x&nbsp;xs&nbsp;=&nbsp;x&nbsp;<span style="color:navy;">::</span>&nbsp;xs
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">rec</span>&nbsp;<span style="color:navy;">mapImp</span>&nbsp;<span style="color:navy;">f</span>&nbsp;<span style="color:navy;">acc</span>&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;[]&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">acc</span>&nbsp;[]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;h<span style="color:navy;">::</span>t&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">mapImp</span>&nbsp;<span style="color:navy;">f</span>&nbsp;(<span style="color:navy;">acc</span>&nbsp;&lt;&lt;&nbsp;(<span style="color:navy;">cons</span>&nbsp;(<span style="color:navy;">f</span>&nbsp;h)))&nbsp;t
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">mapImp</span>&nbsp;<span style="color:navy;">f</span>&nbsp;<span style="color:navy;">id</span>&nbsp;xs</pre>
+	</p>
+	<p>
+		This implementation of <em>map</em> uses this technique, introduced by <a href="https://en.wikipedia.org/wiki/John_Hughes_(computer_scientist)">John Hughes</a> in 1985. <a href="http://bit.ly/real-world-haskell">Real World Haskell</a> calls the technique a <em>difference list</em>, without explaining why.
+	</p>
+	<p>
+		This mapImp function's accumulator is no longer a list, but a <em>function</em>. For every item, it composes a new accumulator function from the old one, effectively appending the mapped item to the tail of the accumulated list. Yet, because <code>acc</code> isn't a list, but rather a function, the 'append' operation doesn't trigger a list traversal.
+	</p>
+	<p>
+		When the recursive function finally reaches the end of the list (the <code>[]</code> case), it invokes the <code>acc</code> function with the empty list (<code>[]</code>) as the initial input.
+	</p>
+	<p>
+		This implementation is also tail recursive, because the accumulator is being completely composed (<code>acc &lt;&lt; (cons (f h))</code>) <em>before</em> mapImp is recursively invoked.
+	</p>
+	<p>
+		Is it efficient, then?
+	</p>
+	<p>
+		<pre>&gt; mapTailRecursiveUsingDifferenceList ((*) 2) [1..100000];;
+Real: 00:00:00.024, CPU: 00:00:00.031, GC gen0: 1, gen1: 0, gen2: 0
+val it : int list =
+  [2; 4; 6; 8; 10; 12; 14; 16; 18; 20; 22; 24; 26; 28; 30; 32; 34; 36; ...]</pre>
+	</p>
+	<p>
+		24 milliseconds is decent. It's not as good as mapTailRecursiveUsingRev (17 milliseconds), but it's close.
+	</p>
+	<p>
+		In practice, you'll probably find that mapTailRecursiveUsingRev is not only more efficient, but also easier to understand. The advantage of using the difference list technique, however, is that now mapImp has a shape that almost screams to be refactored to a fold.
+	</p>
+	<h3 id="e4c2abcda9194f63944d4982a0672b70">
+		Example: implementing map with fold <a href="#e4c2abcda9194f63944d4982a0672b70" title="permalink">#</a>
+	</h3>
+	<p>
+		The mapImp function in mapTailRecursiveUsingDifferenceList almost has the shape required by the accumulator function in <a href="https://msdn.microsoft.com/en-us/library/ee353894.aspx">List.fold</a>. This enables you to rewrite mapImp using fold:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">mapUsingFold</span>&nbsp;<span style="color:navy;">f</span>&nbsp;xs&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">cons</span>&nbsp;x&nbsp;xs&nbsp;=&nbsp;x&nbsp;<span style="color:navy;">::</span>&nbsp;xs
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">mapImp</span>&nbsp;=&nbsp;<span style="color:#4ec9b0;">List</span>.<span style="color:navy;">fold</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;<span style="color:navy;">acc</span>&nbsp;h&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">acc</span>&nbsp;&lt;&lt;&nbsp;(<span style="color:navy;">cons</span>&nbsp;(<span style="color:navy;">f</span>&nbsp;h)))&nbsp;<span style="color:navy;">id</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">mapImp</span>&nbsp;xs&nbsp;[]</pre>
+	</p>
+	<p>
+		As usual in Functional Programming, the ultimate goal seems to be to avoid writing recursive functions after all!
+	</p>
+	<p>
+		The mapUsingFold function is as efficient as mapTailRecursiveUsingDifferenceList:
+	</p>
+	<p>
+		<pre>&gt; mapUsingFold ((*) 2) [1..100000];;
+Real: 00:00:00.025, CPU: 00:00:00.031, GC gen0: 2, gen1: 1, gen2: 1
+val it : int list =
+  [2; 4; 6; 8; 10; 12; 14; 16; 18; 20; 22; 24; 26; 28; 30; 32; 34; 36; ...]</pre>
+	</p>
+	<p>
+		Not only does 25 milliseconds seem fast, but it's also comparable with the performance of the built-in map function:
+	</p>
+	<p>
+		<pre>&gt; List.map ((*) 2) [1..100000];;
+Real: 00:00:00.011, CPU: 00:00:00.015, GC gen0: 0, gen1: 0, gen2: 0
+val it : int list =
+  [2; 4; 6; 8; 10; 12; 14; 16; 18; 20; 22; 24; 26; 28; 30; 32; 34; 36; ...]</pre>
+	</p>
+	<p>
+		Granted, List.map seems to be twice as fast, but it's also been the subject of more scrutiny than the above fun exercise.
+	</p>
+	<h3 id="1fad6f0b7cfd4e568fd0c3c30e1e1db1">
+		Summary <a href="#1fad6f0b7cfd4e568fd0c3c30e1e1db1" title="permalink">#</a>
+	</h3>
+	<p>
+		In Functional Programming, recursive functions take the place of imperative loops. In order to be efficient, they must be tail recursive.
+	</p>
+	<p>
+		You can make a function tail recursive by introducing an accumulator argument to an 'implementation function'. This also tends to put you in a position where you can ultimately refactor the implementation to use a fold instead of explicit recursion.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	<div class="comment" id="eb1bb3250ca243119873d890f3952979">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				I verified the behavior you showed for <code>mapTailRecursiveUsingDifferenceList</code> and <code>mapUsingFold</code>: when executed in the F# Interactive window, both functions have the correct behavior.  I further verified that both functions have the same correct behavior when executed as a unit test compiled in <code>RELEASE</code> mode.  However, when executed as a unit test compiled in <code>DEBUG</code> mode, both tests fail (technically aborted when using XUnit) because each overflows the stack.  In contrast, <code>List.map</code> has the correct behavior in all three situations.
+			</p>
+			<p>
+				I haven't tested the same in Haskell.  I don't even know if Haskell has complication modes like <code>DEBUG</code> and <code>RELEASE</code>.
+			</p>
+			<p>
+				Do you know how to implement <code>map</code> for <code>list</code> in F# so that it does not stack overflow the stack even when executed in <code>DEBUG</code> mode?  Of course your function <code>mapTailRecursiveUsingRev</code> achieves that goal.  The problem that I actually want to solve is figure out how to implement <code>map</code> for the type <code>'a -&gt; 'b</code> as a (covariant) functor in <code>'b</code> in such a way that the stack does not overflow.  See <a href="https://github.com/hedgehogqa/fsharp-hedgehog/issues/289">this issue</a> for more details.  I am thinking that seeing such a <code>map</code> function implemented for <code>list</code> without using <code>List.rev</code> will help me figure out how to correctly implement this for the type <code>'a -&gt; 'b</code> as a (covariant) functor in <code>'b</code>.
+			</p>
+		</div>
+		<div class="comment-date">2021-01-24 17:21 UTC</div>
+	</div>
+	
+	<div class="comment" id="5fca9ec14f5742dcbccfb2b75778296d">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<blockquote>
+				Ultimately, it turns out that List.rev is <a href="https://github.com/Microsoft/visualfsharp/blob/master/src/fsharp/FSharp.Core/local.fs">implemented in a fashion similar to above, using an 'implementation function' and an accumulator</a>.
+			</blockquote>
+			<p>
+				Oh, that code partially answers my question.  First, that is legacy code now.  The current version is hosted in the <a href="https://github.com/dotnet/fsharp">dotnet/fsharp repository</a>.  Then <a href="https://github.com/dotnet/fsharp/blob/d416b6b07b6b914232581c4913648d6656091a32/src/fsharp/FSharp.Core/list.fs#L75"><code>List.map</code></a> delegates to <a href="https://github.com/fsharp/fsharp/blob/d6244d4a1b7bc4efce42bc050ad08384cdce0320/src/fsharp/FSharp.Core/local.fs#L247-L254"><code>Microsoft.FSharp.Primitives.Basics.List.map</code></a>, which, by way of <a href="https://github.com/fsharp/fsharp/blob/d6244d4a1b7bc4efce42bc050ad08384cdce0320/src/fsharp/FSharp.Core/local.fs#L238-L245"><code>mapToFreshConsTail</code></a> calls the impure function <a href="https://github.com/fsharp/fsharp/blob/d6244d4a1b7bc4efce42bc050ad08384cdce0320/src/fsharp/FSharp.Core/local.fs#L93-L95"><code>setFreshConsTail</code></a> that is allowed to mutate the tail pointer of a cons cell.
+			</p>
+			<blockquote>
+				<p>
+					Not only does 25 milliseconds seem fast [for <code>mapUsingFold</code>], but it's also comparable with the performance of the built-in map function:
+				</p>
+				<p>
+					[...]
+				</p>
+				<p>
+					Granted, List.map seems to be twice as fast, but it's also been the subject of more scrutiny than the above fun exercise.
+				</p>
+			</blockquote>
+			<p>
+				<code>List.map</code> is "twice as fast" because it does "half as much work".  <code>mapUsingFold</code> calls <code>List.fold</code>, which executes in linear time, to essentially compute the elements that will be in the final list.  Then it calls <code>mapImp</code>, which also executes in linear time, to construct that final list.  In contrast, <code>List.map</code> does both of those in one pass with its ability to mutate the tail pointer of a cons cell.
+			</p>
+			<p>
+				I wonder if I can use mutability in a similarly pure way to achieve my goal.  <i>**Goes away to think**</i>
+			</p>
+		</div>
+		<div class="comment-date">2021-01-24 19:20 UTC</div>
+	</div>
+	
+	<div class="comment" id="409ece5f355040a68ece3cd9af492cc5">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				To avoid overflowing the stack, it is a necessary condition that all recursive calls are tail calls.  However, this is not sufficient.  In <code>mapTailRecursiveUsingDifferenceList</code>, it is crucial (at least in F#) that the function composition <code>acc &lt;&lt; (cons (f h))</code> (which I prefer to write as <code>(cons (f h)) &gt;&gt; acc</code>) happened in that order.  If John Hughes had designed the code differently so that the composition was <code>acc &gt;&gt; (cons (f h))</code> (which, as you demonstrated, would be the correct output if only this change were made except with the order reversed), then the stack would still overflow even though all recursive fucntions only involve tail calls.  See <a href="https://github.com/hedgehogqa/fsharp-hedgehog/issues/289#issuecomment-766530121">this comment</a> for more information.
+			</p>
+		</div>
+		<div class="comment-date">2021-01-25 04:43 UTC</div>
+	</div>
+	
+	<div class="comment" id="e9289d008277475c8571af430949e69b">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				I figured out how to use the difference list technique to avoid overflowing the stack when composing on the right.  See <a href="https://github.com/hedgehogqa/fsharp-hedgehog/issues/289#issuecomment-767299791">this comment</a>.  I wonder if my implementation can be simplified.  This problem of avoiding stack overflows when composing on the right has to be a standard problem with a well-known answer.
+			</p>
+			<p>
+				Thanks for being a great place for me to share this partial stream of consciousness that I have had over the last couple days.
+			</p>
+			<p>
+				P.S. You can simplify <code>mapTailRecursiveUsingDifferenceList</code> a bit.  The local function <code>mapImp</code> is always given the same value of <code>f</code>.  Therefore, this arguemnt can be removed (since the same <code>f</code> is also in scope).  The resulting code does not overflow the stack (which, again, is a stronger statement than staying that all recursive calls in <code>mapImp</code> are tail calls).  You essentially made this simplification when you implemented <code>mapUsingFold</code>.
+			</p>
+		</div>
+		<div class="comment-date">2021-01-26 05:34 UTC</div>
+	</div>
+
+	<div class="comment" id="ce882ece457a42d0b770f2765a2e21ab">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Tyson, thank you for writing. I have to admit that I've now lost track... Did you manage to unravel all you wanted to know by yourself, or is there still a question left?
+			</p>
+		</div>
+		<div class="comment-date">2021-01-26 16:41 UTC</div>
+	</div>
+</div>

@@ -1,0 +1,407 @@
+---
+layout: post
+title: "From design patterns to category theory"
+description: "How do you design good abstractions? By using abstractions that already exist."
+date: 2017-10-4 10:43 UTC
+tags: [Software Design, Design Patterns, Article Series]
+image: "/content/binary/playback-controls.png"
+image_alt: "Rewind, play/pause, and fast forward symbols."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		When I was a boy, I had a <a href="https://en.wikipedia.org/wiki/Cassette_deck">cassette tape player</a>. It came with playback controls like these:
+	</p>
+	<p>
+		<img src="/content/binary/playback-controls.png" alt="Rewind, play/pause, and fast forward symbols.">
+	</p>
+	<p>
+		Soon after cassette players had become widely adopted, <a href="https://en.wikipedia.org/wiki/Videocassette_recorder">VCR</a> manufacturers figured out that they could reuse those symbols to make their machines easier to use. Everyone could play a video tape, but 'no one' could 'program' them, because, while playback controls were already universally understood by consumers, each VCR came with its own proprietary interface for 'programming'.
+	</p>
+	<p>
+		Then came <a href="https://en.wikipedia.org/wiki/CD_player">CD players</a>. Same controls.
+	</p>
+	<p>
+		MP3 players. Same controls.
+	</p>
+	<p>
+		Streaming audio and video players. Same controls.
+	</p>
+	<p>
+		If you download an app that plays music, odds are that you'll find it easy to get started playing music. One reason is that all playback apps seem to have the same common set of controls. It's an abstraction that you already know.
+	</p>
+	<h3 id="b07a5341dd654a529ea45517c4e80aff">
+		Understanding source code <a href="#b07a5341dd654a529ea45517c4e80aff" title="permalink">#</a>
+	</h3>
+	<p>
+		As I explain in my <a href="https://cleancoders.com/episode/humane-code-real-episode-1/show">Humane Code</a> video, you can't program without abstractions. To summarise, in <a href="http://amzn.to/19W4JHk">the words of Robert C. Martin</a>
+		<blockquote>
+			"Abstraction is the elimination of the irrelevant and the amplification of the essential"
+		</blockquote>
+		With such abstractions, source code becomes easier to understand. Like everything else, there's no silver bullet, but good coding abstractions can save you much grief, and make it easier to understand big and complex code bases.
+	</p>
+	<p>
+		Not only can a good abstraction shield you from having to understand all the details in a big system, but if you're familiar with the abstraction, you may be able to quickly get up to speed.
+	</p>
+	<p>
+		While the above definition is great for identifying a good abstraction, it doesn't tell you how to create one.
+	</p>
+	<h3 id="d0a8ec8fa11e4455bbed098d9a61c24c">
+		Design patterns <a href="#d0a8ec8fa11e4455bbed098d9a61c24c" title="permalink">#</a>
+	</h3>
+	<p>
+		<a href="http://amzn.to/XBYukB">Design Patterns</a> explains that a design pattern is a general reusable solution to a commonly occurring problem. As I interpret the original intent of the Gang of Four, the book was an attempt to collect and abstract solutions that were repeatedly observed 'in the wild'. The design patterns in the book are <em>descriptive</em>, not prescriptive.
+	</p>
+	<p>
+		Design patterns are useful in two ways:
+		<ul>
+			<li>They offer solutions</li>
+			<li>They form a vocabulary</li>
+		</ul>
+		In my opinion, however, people often overlook the second advantage. Programmers are often eager to find <em>solutions</em>. "I have a problem; what's the solution? Oh, here's a design pattern that fits!"
+	</p>
+	<p>
+		I have no problems with ready-made solutions, but I think that the other advantage may be even bigger. When you're looking at unfamiliar source code, you struggle to understand how it's structured, and what it does. If, hypothetically, you discover that pieces of that unfamiliar source code follows a design pattern that you know, then understanding the code becomes much easier.
+	</p>
+	<p>
+		There are two criteria for this to happen:
+		<ul>
+			<li>The reader (you) must already know the pattern</li>
+			<li>The original author (also you?) must have implemented the pattern without any surprising deviations</li>
+		</ul>
+		As a programmer (code author), you can help readers (users) of your code. Don't use every design pattern in the book, but when you use one, make it as obvious to the reader as you can: Use the terminology, class names, and so on from the book. Add comments where your naming deviates. Add links that the novice user can follow to learn more.
+	</p>
+	<h3 id="3f4cb22e7a8642cd9938c89b22c098bf">
+		Ambiguous specification <a href="#3f4cb22e7a8642cd9938c89b22c098bf" title="permalink">#</a>
+	</h3>
+	<p>
+		Programming to a well-known abstraction is a force multiplier, but it does require that those two conditions are satisfied: prior knowledge, and correct implementation.
+	</p>
+	<p>
+		I don't know how to solve the <em>prior knowledge</em> requirement, other than to tell you to study. I do, however, think that it's possible to formalise some of the known design patterns.
+	</p>
+	<p>
+		Most design patterns are described in some depth. They come with sections on motivation, when to use and not to use, diagrams, and example code. Furthermore, they also come with an overview of <em>variations</em>.
+	</p>
+	<p>
+		Picture this: as a reader, you've just identified that the code you're looking at is an implementation of a design pattern. Then you realise that it isn't structured like you'd expect, or that its behaviour surprises you. Was the author incompetent, after all?
+	</p>
+	<p>
+		While you're inclined to believe the worst about your fellow (wo)man, you look up the original pattern, and there it is: the author is using a variation of the pattern.
+	</p>
+	<p>
+		Design patterns are ambiguous.
+	</p>
+	<h3 id="a90284d241c4463583401504395a4a8a">
+		Universal abstractions <a href="#a90284d241c4463583401504395a4a8a" title="permalink">#</a>
+	</h3>
+	<p>
+		<em>Design Patterns</em> was a great effort in 1994, and I've personally benefited from it. The catalogue was an attempt to discover good abstractions.
+	</p>
+	<p>
+		What's a good abstraction? As already quoted, it's a model that amplifies the essentials, etcetera. I think a good abstraction should also be <em>intuitive</em>.
+	</p>
+	<p>
+		What's the most intuitive abstractions ever?
+	</p>
+	<p>
+		Mathematics.
+	</p>
+	<p>
+		Stay with me, please. If you're a normal reader of my blog, you're most likely an 'industry programmer' or <a href="/2012/12/18/RangersandZookeepers">enterprise developer</a>. You're not interested in mathematics. Perhaps mathematics even turns you off, and at the very least, you never had use for mathematics in programming.
+	</p>
+	<p>
+		You may not find <em>n</em>-dimensional <a href="https://en.wikipedia.org/wiki/Differential_topology">differential topology</a>, or <a href="https://en.wikipedia.org/wiki/Stochastic_calculus">stochastic calculus</a>, intuitive, but that's not the kind of mathematics I have in mind.
+	</p>
+	<p>
+		Basic arithmetic is intuitive. You know: <em>1 + 3 = 4</em>, or <em>3 * 4 = 12</em>. In fact, it's <em>so intuitive</em> that you can't formally prove it -without <a href="https://en.wikipedia.org/wiki/Axiom">axioms</a>, that is. <a href="https://en.wikipedia.org/wiki/Peano_axioms">These axioms</a> are unprovable; you must take them at face value, but you'll readily do that because they're <em>so intuitive</em>.
+	</p>
+	<p>
+		Mathematics is a big structure, but it's all based on intuitive axioms. Mathematics is intuitive.
+	</p>
+	<p>
+		Writers before me have celebrated the power of mathematical abstraction in programming. For instance, in <a href="http://amzn.to/WBCwx7">Domain-Driven Design</a> Eric Evans discusses how <em>Closure of Operations</em> leads to object models reminiscent of arithmetic. If you can design <a href="https://martinfowler.com/bliki/ValueObject.html">Value Objects</a> in such a way that you can somehow 'add' them together, you have an intuitive and powerful abstraction.
+	</p>
+	<p>
+		Notice that there's more than one way to combine numbers. You can add them together, but you can also multiply them. Could there be a common abstraction for that? What about objects that can somehow be combined, even if they aren't 'number-like'? The generalisation of such operations is a branch of mathematics called <a href="https://en.wikipedia.org/wiki/Category_theory">category theory</a>, and it has turned out to be productive when applied to functional programming. <a href="https://www.haskell.org">Haskell</a> is the most prominent example.
+	</p>
+	<p>
+		By an interesting coincidence, the 'things' in category theory are called <em>objects</em>, and while they aren't objects in the sense that we think of in object-oriented design, there <em>is</em> some equivalence. Category theory concerns itself with how objects map to other objects. A functional programmer would interpret such <em>morphisms</em> as functions, but in a sense, you can also think of them as well-defined behaviour that's associated with data.
+	</p>
+	<p>
+		The objects of category theory are universal abstractions. Some of them, it turns out, coincide with known design patterns. The difference is, however, that category theory concepts are governed by specific laws. In order to be a functor, for example, an object must obey certain simple and intuitive laws. This makes the category theory concepts more specific, and less ambiguous, than design patterns.
+	</p>
+	<p>
+		The coming article series is an exploration of this space:
+		<ul>
+			<li><a href="/2017/10/05/monoids-semigroups-and-friends">Monoids, semigroups, and friends</a>
+				<ul>
+					<li><a href="/2017/10/06/monoids">Monoids</a>
+						<ul>
+							<li><a href="/2018/07/16/angular-addition-monoid">Angular addition monoid</a></li>
+							<li><a href="/2017/10/10/strings-lists-and-sequences-as-a-monoid">Strings, lists, and sequences as a monoid</a></li>
+							<li><a href="/2017/10/16/money-monoid">Money monoid</a></li>
+							<li><a href="/2017/10/23/convex-hull-monoid">Convex hull monoid</a></li>
+							<li><a href="/2017/10/30/tuple-monoids">Tuple monoids</a></li>
+							<li><a href="/2017/11/06/function-monoids">Function monoids</a></li>
+							<li><a href="/2017/11/13/endomorphism-monoid">Endomorphism monoid</a></li>
+							<li><a href="/2018/04/03/maybe-monoids">Maybe monoids</a></li>
+							<li><a href="/2019/04/15/lazy-monoids">Lazy monoids</a></li>
+							<li><a href="/2017/11/20/monoids-accumulate">Monoids accumulate</a></li>
+						</ul>
+					</li>
+					<li><a href="/2017/11/27/semigroups">Semigroups</a>
+						<ul>
+							<li><a href="/2017/12/04/bounding-box-semigroup">Bounding box semigroup</a></li>
+							<li><a href="/2017/12/11/semigroups-accumulate">Semigroups accumulate</a></li>
+						</ul>
+					</li>
+					<li><a href="/2017/12/18/quasigroups">Quasigroups</a></li>
+					<li><a href="/2017/12/27/magmas">Magmas</a>
+						<ul>
+							<li><a href="/2017/12/28/rock-paper-scissors-magma">Rock Paper Scissors magma</a></li>
+							<li><a href="/2018/01/02/colour-mixing-magma">Colour-mixing magma</a></li>
+						</ul>
+					</li>
+				</ul>
+			</li>
+			<li><a href="/2018/03/19/functors-applicatives-and-friends">Functors, applicatives, and friends</a>
+				<ul>
+					<li><a href="/2018/03/22/functors">Functors</a>
+						<ul>
+							<li><a href="/2018/03/26/the-maybe-functor">The Maybe functor</a></li>
+							<li><a href="/2019/01/14/an-either-functor">An Either functor</a></li>
+							<li><a href="/2018/08/06/a-tree-functor">A Tree functor</a></li>
+							<li><a href="/2019/08/19/a-rose-tree-functor">A rose tree functor</a></li>
+							<li><a href="/2018/08/13/a-visitor-functor">A Visitor functor</a></li>
+							<li><a href="/2018/08/20/reactive-functor">Reactive functor</a></li>
+							<li><a href="/2018/09/03/the-identity-functor">The Identity functor</a></li>
+							<li><a href="/2018/09/10/the-lazy-functor">The Lazy functor</a></li>
+							<li><a href="/2018/09/24/asynchronous-functors">Asynchronous functors</a></li>
+							<li><a href="/2021/07/19/the-state-functor">The State functor</a></li>
+							<li><a href="/2021/08/30/the-reader-functor">The Reader functor</a></li>
+							<li><a href="/2020/06/22/the-io-functor">The IO functor</a></li>
+							<li><a href="/2020/10/19/monomorphic-functors">Monomorphic functors</a></li>
+							<li><a href="/2018/12/03/set-is-not-a-functor">Set is not a functor</a></li>
+						</ul>
+					</li>
+					<li><a href="/2018/10/01/applicative-functors">Applicative functors</a>
+						<ul>
+							<li><a href="/2018/10/08/full-deck">Full deck</a></li>
+							<li><a href="/2018/10/15/an-applicative-password-list">An applicative password list</a></li>
+							<li><a href="/2018/10/22/applicative-combinations-of-functions">Applicative combinations of functions</a></li>
+							<li><a href="/2018/10/29/the-maybe-applicative-functor">The Maybe applicative functor</a></li>
+							<li><a href="/2018/11/05/applicative-validation">Applicative validation</a></li>
+							<li><a href="/2018/11/26/the-test-data-generator-applicative-functor">The Test Data Generator applicative functor</a></li>
+							<li><a href="/2018/12/10/danish-cpr-numbers-in-f">Danish CPR numbers in F#</a></li>
+							<li><a href="/2018/12/17/the-lazy-applicative-functor">The Lazy applicative functor</a></li>
+							<li><a href="/2019/04/22/applicative-monoids">Applicative monoids</a></li>
+						</ul>
+					</li>
+					<li><a href="/2018/12/24/bifunctors">Bifunctors</a>
+						<ul>
+							<li><a href="/2018/12/31/tuple-bifunctor">Tuple bifunctor</a></li>
+							<li><a href="/2019/01/07/either-bifunctor">Either bifunctor</a></li>
+							<li><a href="/2019/08/12/rose-tree-bifunctor">Rose tree bifunctor</a></li>
+						</ul>
+					</li>
+					<li><a href="/2021/09/02/contravariant-functors">Contravariant functors</a>
+						<ul>
+							<li><a href="/2021/09/06/the-command-handler-contravariant-functor">The Command Handler contravariant functor</a></li>
+							<li><a href="/2021/09/09/the-specification-contravariant-functor">The Specification contravariant functor</a></li>
+							<li><a href="/2021/09/27/the-equivalence-contravariant-functor">The Equivalence contravariant functor</a></li>
+							<li><a href="/2021/10/04/reader-as-a-contravariant-functor">Reader as a contravariant functor</a></li>
+							<li><a href="/2021/10/25/functor-variance-compared-to-cs-notion-of-variance">Functor variance compared to C#'s notion of variance</a></li>
+							<li><a href="/2022/03/21/contravariant-dependency-injection">Contravariant Dependency Injection</a></li>
+						</ul>
+					</li>
+					<li><a href="/2021/11/01/profunctors">Profunctors</a>
+						<ul>
+							<li><a href="/2021/11/08/reader-as-a-profunctor">Reader as a profunctor</a></li>
+						</ul>
+					</li>
+					<li><a href="/2022/08/01/invariant-functors">Invariant functors</a>
+						<ul>
+							<li><a href="/2022/08/08/endomorphism-as-an-invariant-functor">Endomorphism as an invariant functor</a></li>
+							<li><a href="/2022/08/29/natural-transformations-as-invariant-functors">Natural transformations as invariant functors</a></li>
+							<li><a href="/2022/12/26/functors-as-invariant-functors">Functors as invariant functors</a></li>
+							<li><a href="/2023/02/06/contravariant-functors-as-invariant-functors">Contravariant functors as invariant functors</a></li>
+						</ul>
+					</li>
+					<li><a href="/2022/03/28/monads">Monads</a>
+						<ul>
+							<li><a href="/2022/04/04/kleisli-composition">Kleisli composition</a></li>
+							<li><a href="/2022/04/11/monad-laws">Monad laws</a></li>
+							<li><a href="/2022/04/19/the-list-monad">The List monad</a></li>
+							<li><a href="/2022/04/25/the-maybe-monad">The Maybe monad</a></li>
+							<li><a href="/2022/05/09/an-either-monad">An Either monad</a></li>
+							<li><a href="/2022/05/16/the-identity-monad">The Identity monad</a></li>
+							<li><a href="/2022/05/30/the-lazy-monad">The Lazy monad</a></li>
+							<li><a href="/2022/06/06/asynchronous-monads">Asynchronous monads</a></li>
+							<li><a href="/2022/06/20/the-state-monad">The State monad</a></li>
+							<li><a href="/2022/11/14/the-reader-monad">The Reader monad</a></li>
+							<li><a href="/2023/01/09/the-io-monad">The IO monad</a></li>
+							<li><a href="/2023/02/27/test-data-generator-monad">Test Data Generator monad</a></li>
+						</ul>
+					</li>
+					<li><a href="/2022/07/11/functor-relationships">Functor relationships</a>
+						<ul>
+							<li><a href="/2022/07/18/natural-transformations">Natural transformations</a></li>
+							<li>Traversals</li>
+							<li>Functor compositions</li>
+							<li>Functor products</li>
+							<li>Functor sums</li>
+						</ul>
+					</li>
+				</ul>
+			</li>
+			<li><a href="/2018/01/08/software-design-isomorphisms">Software design isomorphisms</a>
+				<ul>
+					<li><a href="/2018/01/15/unit-isomorphisms">Unit isomorphisms</a></li>
+					<li><a href="/2018/01/22/function-isomorphisms">Function isomorphisms</a></li>
+					<li><a href="/2018/01/29/argument-list-isomorphisms">Argument list isomorphisms</a></li>
+					<li><a href="/2018/02/05/uncurry-isomorphisms">Uncurry isomorphisms</a></li>
+					<li><a href="/2018/02/12/object-isomorphisms">Object isomorphisms</a></li>
+					<li><a href="/2018/02/19/abstract-class-isomorphism">Abstract class isomorphism</a></li>
+					<li><a href="/2018/02/26/inheritance-composition-isomorphism">Inheritance-composition isomorphism</a></li>
+					<li><a href="/2019/07/15/tester-doer-isomorphisms">Tester-Doer isomorphisms</a></li>
+					<li><a href="/2020/02/10/builder-isomorphisms">Builder isomorphisms</a></li>
+				</ul>
+			</li>			
+			<li><a href="/2018/05/22/church-encoding">Church encoding</a>
+				<ul>
+					<li><a href="/2018/05/24/church-encoded-boolean-values">Church-encoded Boolean values</a></li>
+					<li><a href="/2018/05/28/church-encoded-natural-numbers">Church-encoded natural numbers</a></li>
+					<li><a href="/2018/06/04/church-encoded-maybe">Church-encoded Maybe</a></li>
+					<li><a href="/2018/06/11/church-encoded-either">Church-encoded Either</a></li>
+					<li><a href="/2018/06/18/church-encoded-payment-types">Church-encoded payment types</a></li>
+					<li><a href="/2019/07/29/church-encoded-rose-tree">Church-encoded rose tree</a></li>
+				</ul>
+			</li>
+			<li><a href="/2019/04/29/catamorphisms">Catamorphisms</a>
+				<ul>
+					<li><a href="/2019/05/06/boolean-catamorphism">Boolean catamorphism</a></li>
+					<li><a href="/2019/05/13/peano-catamorphism">Peano catamorphism</a></li>
+					<li><a href="/2019/05/20/maybe-catamorphism">Maybe catamorphism</a></li>
+					<li><a href="/2019/05/27/list-catamorphism">List catamorphism</a></li>
+					<li><a href="/2019/06/03/either-catamorphism">Either catamorphism</a></li>
+					<li><a href="/2019/06/10/tree-catamorphism">Tree catamorphism</a></li>
+					<li><a href="/2019/08/05/rose-tree-catamorphism">Rose tree catamorphism</a></li>
+					<li><a href="/2019/06/24/full-binary-tree-catamorphism">Full binary tree catamorphism</a></li>
+					<li><a href="/2019/07/08/payment-types-catamorphism">Payment types catamorphism</a></li>
+				</ul>
+			</li>
+			<li><a href="/2018/03/05/some-design-patterns-as-universal-abstractions">Some design patterns as universal abstractions</a>
+				<ul>
+					<li><a href="/2018/03/12/composite-as-a-monoid">Composite as a monoid</a>
+						<ul>
+							<li><a href="/2018/04/09/coalescing-composite-as-a-monoid">Coalescing Composite as a monoid</a></li>
+							<li><a href="/2018/04/16/endomorphic-composite-as-a-monoid">Endomorphic Composite as a monoid</a></li>
+						</ul>
+					</li>
+					<li><a href="/2018/04/23/null-object-as-identity">Null Object as identity</a></li>
+					<li><a href="/2020/02/17/builder-as-a-monoid">Builder as a monoid</a></li>
+					<li><a href="/2018/06/25/visitor-as-a-sum-type">Visitor as a sum type</a></li>
+					<li><a href="/2019/07/22/chain-of-responsibility-as-catamorphisms">Chain of Responsibility as catamorphisms</a></li>
+					<li><a href="/2022/09/05/the-state-pattern-and-the-state-monad">The State pattern and the State monad</a>
+						<ul>
+							<li><a href="/2022/09/26/refactoring-the-tcp-state-pattern-example-to-pure-functions">Refactoring the TCP State pattern example to pure functions</a></li>
+							<li><a href="/2022/10/10/refactoring-a-saga-from-the-state-pattern-to-the-state-monad">Refactoring a saga from the State pattern to the State monad</a></li>
+						</ul>
+					</li>
+					<li><a href="/2021/11/29/postels-law-as-a-profunctor">Postel's law as a profunctor</a></li>
+					<li><a href="/2021/12/06/the-liskov-substitution-principle-as-a-profunctor">The Liskov Substitution Principle as a profunctor</a></li>
+					<li><a href="/2021/12/13/backwards-compatibility-as-a-profunctor">Backwards compatibility as a profunctor</a></li>
+				</ul>
+			</li>
+		</ul>
+		I believe that learning about these universal abstractions is the next step in software design. If you know design patterns, you have a vocabulary, but the details are still open to interpretation. If you know category theory, you have a better vocabulary. Just like design patterns, you have to learn these things, but once you've learned them, you've learned something that transcends a particular software library, a particular framework, a particular programming language. Learning about functors, monoids, and so on, is a good investment, because these concepts are rooted in mathematics, not any particular technology.
+	</p>
+	<h3 id="4c0cdfcad93b4112a7241abd9b9df556">
+		Motivation <a href="#4c0cdfcad93b4112a7241abd9b9df556" title="permalink">#</a>
+	</h3>
+	<p>
+		The purpose of this article series is two-fold. Depending on your needs and interests, you can use it to
+		<ul>
+			<li>learn better abstractions</li>
+			<li>learn how functional programming is a real alternative to object-oriented programming</li>
+		</ul>
+		You've already read how it's in your interest to learn universal abstractions. It'll make your code clearer, more concise, and you'll have a better software design vocabulary.
+	</p>
+	<p>
+		The other goal of these articles may be less clear. Object-oriented programming (OOP) is the dominant software design <a href="https://en.wikipedia.org/wiki/Paradigm">paradigm</a>. It wasn't always so. When OOP was new, many veteran programmers couldn't see how it could be useful. They were schooled in one paradigm, and it was difficult for them to shift to the new paradigm. They were used to do things in one way (typically, procedural), and it wasn't clear how to achieve the same goals with idiomatic object-oriented design.
+	</p>
+	<p>
+		The same sort of resistance applies to functional programming. Tasks that are easy in OOP seem impossible in functional programming. How do you make a <em>for</em> loop? How do you change state? How do you break out of a routine?
+	</p>
+	<p>
+		This leads to both frustration, and dismissal of functional programming, which is still seen as either academic, or something only interesting in computation-heavy domains like science or finance.
+	</p>
+	<p>
+		It's my secondary goal with these articles to show that:
+		<ol>
+			<li>There are clear equivalences between known design patterns and concepts from category theory</li>
+			<li>Thus, functional programming is as universally useful as OOP</li>
+			<li>Since equivalences exist, there's a learning path</li>
+		</ol>
+		If you're an object-oriented programmer, you can use this catalogue as a learning path. If you'd normally use a <a href="https://en.wikipedia.org/wiki/Composite_pattern">Composite</a>, you can look it up and realise that it's the same as a monoid.
+	</p>
+	<h3 id="44a9afc2e9874072ac40747c958f93f3">
+		Work in progress <a href="#44a9afc2e9874072ac40747c958f93f3" title="permalink">#</a>
+	</h3>
+	<p>
+		I've been thinking about these topics for years. What's a good abstraction? When do abstractions compose?
+	</p>
+	<p>
+		My <a href="/2010/12/03/Towardsbetterabstractions">first attempt at answering these questions</a> was in 2010, but while I had the experience that certain abstractions composed better than others, I lacked the vocabulary. I've been wanting to write a better treatment of the topic ever since, but I've been constantly learning as I've grappled with the concepts.
+	</p>
+	<p>
+		I believe that I now have the vocabulary to take a stab at this again. This is hardly the ultimate treatment. A year from now, I hope to have learned even more, and perhaps that'll lead to further insights or refinement. Still, I can't postpone writing this article until I've stopped learning, because at that time I'll either be dead or senile.
+	</p>
+	<p>
+		I'll write these articles in an authoritative voice, because a text that constantly moderates and qualifies its assertions easily becomes unreadable. Don't consider the tone an indication that I'm certain that I'm right. I've tried to be as rigorous in my arguments as I could, but I don't have a formal education in computer science. I welcome feedback on any article, both if it's to corroborate my findings, or if it's to refute them. If you have any sort of feedback, then <a href="https://github.com/ploeh/ploeh.github.com#readme">please leave a comment</a>.
+	</p>
+	<p>
+		I consider the publication of these articles as though I submit them to peer review. If you can refute them, they deserve to be refuted. If not, they just may be valuable to other people.
+	</p>
+	<h3 id="dee0b130c2184c4da1dbb73b8e6b6fca">
+		Summary <a href="#dee0b130c2184c4da1dbb73b8e6b6fca" title="permalink">#</a>
+	</h3>
+	<p>
+		Category theory generalises some intuitive relations, such as how numbers combine (e.g. via addition or multiplication). Instead of discussing numbers, however, category theory considers abstract 'objects'. This field of mathematics explore how object relate and compose.
+	</p>
+	<p>
+		Some category theory concepts can be translated to code. These universal abstractions can form the basis of a powerful and concise software design vocabulary.
+	</p>
+	<p>
+		The design patterns movement was an early attempt to create such a vocabulary. I think using category theory offers the chance of a better vocabulary, but fortunately, all the work that went into design patterns isn't wasted. It seems to me that some design patterns are essentially ad-hoc, informally specified, specialised instances of basic category theory concepts. There's quite a bit of overlap. This should further strengthen the argument that category theory is valuable in programming, because some of the concepts are equivalent to design patterns that have already proven useful.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2017/10/05/monoids-semigroups-and-friends">Monoids, semigroups, and friends</a>.
+	</p>
+</div>
+
+<div id="comments">
+	<hr />
+	<h2 id="comments-header">Comments</h2>
+	<div class="comment" id="4ef6608d77ea49e7b8335562a9a6fa19">
+		<div class="comment-author">
+			<a href="https://hettomei.github.io/">Tim</a>
+		</div>
+		<div class="comment-content">
+			<p>What a perfect introduction !</p>
+
+			<p>I heard about category theory more than one year ago. But it was from a PhD who code in 'haskell' and I thought it was too hard for me to understand.</p>
+
+			<p>And then, this post.</p>
+
+			<p>Thank you a lot! (you aleardy published the follow up ! yeah)</p>
+
+		</div>
+		<div class="comment-date">2017-10-05 21:39 UTC</div>
+	</div>
+</div>

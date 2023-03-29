@@ -1,0 +1,808 @@
+---
+layout: post
+title: "Dependency rejection"
+description: "In functional programming, the notion of dependencies must be rejected. Instead, applications should be composed from pure and impure functions."
+date: 2017-02-02 08:56 UTC
+tags: [Software Design, Dependency Injection, F#, Haskell, Functional Programming]
+image: "/content/binary/unit-with-dependencies-and-direct-and-indirect-input-and-output.png"
+image_alt: "A unit with dependencies and direct and indirect input and output."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This is the third article in a small article series called <a href="/2017/01/27/from-dependency-injection-to-dependency-rejection">from dependency injection to dependency rejection</a>. In the <a href="/2017/01/30/partial-application-is-dependency-injection">previous article in the series</a>, you learned that dependency injection can't be functional, because it makes everything impure. In this article, you'll see what to do instead.
+	</p>
+	<h3 id="198f33430dcd4d7381cdb9993c0ed8ee">
+		Indirect input and output <a href="#198f33430dcd4d7381cdb9993c0ed8ee" title="permalink">#</a>
+	</h3>
+	<p>
+		One of the first concepts you learned when you learned to program was that units of operation (functions, methods, procedures) take input and produce output. Input is in the form of input parameters, and output is in the form of return values. (Sometimes, though, a method returns nothing, but we know from category theory that nothing is also a value (called <em>unit</em>).)
+	</p>
+	<p>
+		In addition to such input and output, a unit with dependencies also take indirect input, and produce indirect output:
+	</p>
+	<p>
+		<img src="/content/binary/unit-with-dependencies-and-direct-and-indirect-input-and-output.png" alt="A unit with dependencies and direct and indirect input and output.">
+	</p>
+	<p>
+		When a unit queries a dependency for data, the data returned from the dependency is indirect input. In the restaurant reservation example used in this article series, when <code>tryAccept</code> calls <code>readReservations</code>, the returned reservations are indirect input.
+	</p>
+	<p>
+		Likewise, when a unit invokes a dependency, all arguments passed to that dependency constitute indirect output. In the example, when <code>tryAccept</code> calls <code>createReservation</code>, the reservation value it uses as input argument to that function call becomes output. The intent, in this case, is to save the reservation in a database.
+	</p>	
+	<h3 id="3cb914d1dcf84ff79fc333362927a19c">
+		From indirect output to direct output <a href="#3cb914d1dcf84ff79fc333362927a19c" title="permalink">#</a>
+	</h3>
+	<p>
+		Instead of producing indirect output, you can refactor functions to produce direct output.
+	</p>
+	<p>
+		<img src="/content/binary/unit-with-dependencies-and-direct-input-and-output-but-no-indirect-output.png" alt="A unit with dependencies and direct input and output, but no indirect output.">
+	</p>
+	<p>
+		Such a refactoring is often problematic in mainstream object-oriented languages like C# and Java, because you wish to control the circumstances in which the indirect output must be produced. Indirect output often implies side-effects, but perhaps the side-effect must only happen when certain conditions are fulfilled. In the restaurant reservation example, the desired side-effect is to add a reservation to a database, but this must only happen when the restaurant has sufficient remaining capacity to serve the requested number of people. Since languages like C# and Java are statement-based, it can be difficult to separate the decision from the action.
+	</p>
+	<p>
+		In expression-based languages like F# and Haskell, <a href="/2016/09/26/decoupling-decisions-from-effects">it's trivial to decouple decisions from effects</a>.
+	</p>
+	<p>
+		In the <a href="/2017/01/30/partial-application-is-dependency-injection">previous article</a>, you saw a version of <code>tryAccept</code> with this signature:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;int&nbsp;-&gt;&nbsp;(DateTimeOffset&nbsp;-&gt;&nbsp;Reservation&nbsp;list)&nbsp;-&gt;&nbsp;(Reservation&nbsp;-&gt;&nbsp;int)&nbsp;-&gt;&nbsp;Reservation</span>
+<span style="color:green;">//&nbsp;-&gt;&nbsp;int&nbsp;option</span></pre>
+	</p>
+	<p>
+		The second function argument, with the type <code>Reservation&nbsp;-&gt;&nbsp;int</code>, produces indirect output. The <code>Reservation</code> value is the output. The function even violates Command Query Separation and returns the database ID of the added reservation, so that's additional indirect input. The overall function returns <code>int option</code>: the database ID if the reservation was added, and <code>None</code> if it wasn't.
+	</p>
+	<p>
+		Refactoring the indirect output to direct output is easy, then: just remove the <code>createReservation</code> function and return the <code>Reservation</code> value instead:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;int&nbsp;-&gt;&nbsp;(DateTimeOffset&nbsp;-&gt;&nbsp;Reservation&nbsp;list)&nbsp;-&gt;&nbsp;Reservation&nbsp;-&gt;&nbsp;Reservation&nbsp;option</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">tryAccept</span>&nbsp;capacity&nbsp;<span style="color:navy;">readReservations</span>&nbsp;reservation&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;reservedSeats&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">readReservations</span>&nbsp;reservation.Date&nbsp;|&gt;&nbsp;<span style="color:teal;">List</span>.<span style="color:navy;">sumBy</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x.Quantity)
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;reservedSeats&nbsp;+&nbsp;reservation.Quantity&nbsp;&lt;=&nbsp;capacity
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">then</span>&nbsp;{&nbsp;reservation&nbsp;<span style="color:blue;">with</span>&nbsp;IsAccepted&nbsp;=&nbsp;<span style="color:blue;">true</span>&nbsp;}&nbsp;|&gt;&nbsp;<span style="color:navy;">Some</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>&nbsp;<span style="color:navy;">None</span></pre>
+	</p>
+	<p>
+		Notice that this refactored version of <code>tryAccept</code> returns a <code>Reservation option</code> value. The implication is that the reservation was accepted if the return value is a <code>Some</code> case, and rejected if the value is <code>None</code>. The decision is embedded in the value, but decoupled from the side-effect of writing to the database.
+	</p>
+	<p>
+		This function clearly never writes to the database, so at the boundary of your application, you'll have to connect the decision to the effect. To keep the example consistent with the previous article, you can do this in a <code>tryAcceptComposition</code> function, like this:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;Reservation&nbsp;-&gt;&nbsp;int&nbsp;option</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">tryAcceptComposition</span>&nbsp;reservation&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;reservation
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:navy;">tryAccept</span>&nbsp;10&nbsp;(<span style="color:teal;">DB</span>.<span style="color:navy;">readReservations</span>&nbsp;connectionString)
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">Option</span>.<span style="color:navy;">map</span>&nbsp;(<span style="color:teal;">DB</span>.<span style="color:navy;">createReservation</span>&nbsp;connectionString)</pre>
+	</p>
+	<p>
+		Notice that the type of <code>tryAcceptComposition</code> remains <code>Reservation&nbsp;-&gt;&nbsp;int&nbsp;option</code>. This is a true refactoring. The overall API remains the same, as does the behaviour. The reservation is added to the database only if there's sufficient remaining capacity, and in that case, the ID of the reservation is returned.
+	</p>
+	<h3 id="4e81006bbf974c1797ba57935681f938">
+		From indirect input to direct input <a href="#4e81006bbf974c1797ba57935681f938" title="permalink">#</a>
+	</h3>
+	<p>
+		Just as you can refactor from indirect output to direct output can you refactor from indirect input to direct input.
+	</p>
+	<p>
+		<img src="/content/binary/unit-with-dependencies-and-direct-input-and-output.png" alt="A unit with dependencies and direct input and output.">
+	</p>
+	<p>
+		Again, in statement-based languages like C# and Java, this may be problematic, because you may wish to defer a query, or base it on a decision inside the unit. In expression-based languages you can decouple decisions from effects, and deferred execution can always be done by lazy evaluation, if that's required. In the case of the current example, however, the refactoring is easy:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;int&nbsp;-&gt;&nbsp;Reservation&nbsp;list&nbsp;-&gt;&nbsp;Reservation&nbsp;-&gt;&nbsp;Reservation&nbsp;option</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">tryAccept</span>&nbsp;capacity&nbsp;reservations&nbsp;reservation&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;reservedSeats&nbsp;=&nbsp;reservations&nbsp;|&gt;&nbsp;<span style="color:teal;">List</span>.<span style="color:navy;">sumBy</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x.Quantity)
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;reservedSeats&nbsp;+&nbsp;reservation.Quantity&nbsp;&lt;=&nbsp;capacity
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">then</span>&nbsp;{&nbsp;reservation&nbsp;<span style="color:blue;">with</span>&nbsp;IsAccepted&nbsp;=&nbsp;<span style="color:blue;">true</span>&nbsp;}&nbsp;|&gt;&nbsp;<span style="color:navy;">Some</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>&nbsp;<span style="color:navy;">None</span></pre>
+	</p>
+	<p>
+		Instead of calling a (potentially impure) function, this version of <code>tryAccept</code> takes a list of existing reservations as input. It still sums over all the quantities, and the rest of the code is the same as before.
+	</p>
+	<p>
+		Obviously, the list of existing reservations must come from somewhere, like a database, so <code>tryAcceptComposition</code> will still have to take care of that:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;(&#39;a&nbsp;-&gt;&nbsp;&#39;b&nbsp;-&gt;&nbsp;&#39;c)&nbsp;-&gt;&nbsp;&#39;b&nbsp;-&gt;&nbsp;&#39;a&nbsp;-&gt;&nbsp;&#39;c</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">flip</span>&nbsp;<span style="color:navy;">f</span>&nbsp;x&nbsp;y&nbsp;=&nbsp;<span style="color:navy;">f</span>&nbsp;y&nbsp;x
+ 
+<span style="color:green;">//&nbsp;Reservation&nbsp;-&gt;&nbsp;int&nbsp;option</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">tryAcceptComposition</span>&nbsp;reservation&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;reservation.Date
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">DB</span>.<span style="color:navy;">readReservations</span>&nbsp;connectionString
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:navy;">flip</span>&nbsp;(<span style="color:navy;">tryAccept</span>&nbsp;10)&nbsp;reservation
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">Option</span>.<span style="color:navy;">map</span>&nbsp;(<span style="color:teal;">DB</span>.<span style="color:navy;">createReservation</span>&nbsp;connectionString)</pre>
+	</p>
+	<p>
+		The type and behaviour of this composition is still the same as before, but the data flow is different. First, the function queries the database, which is an impure operation. Then, it pipes the resulting list of reservations to <code>tryAccept</code>, which is now a <a href="https://en.wikipedia.org/wiki/Pure_function">pure function</a>. It returns a <code>Reservation option</code> that's finally mapped to another impure operation, which writes the reservation to the database if the reservation was accepted.
+	</p>
+	<p>
+		You'll notice that I also added a <code>flip</code> function in order to make the composition more concise, but I could also have used a lambda expression when invoking <code>tryAccept</code>. The <code>flip</code> function is a part of Haskell's standard library, but isn't in F#'s core library. It's not crucial to the example, though.
+	</p>
+	<h3 id="5e098486e1bd4d6daaffdab01c8e7e86">
+		Evaluation <a href="#5e098486e1bd4d6daaffdab01c8e7e86" title="permalink">#</a>
+	</h3>
+	<p>
+		Did you notice that in the previous diagram, above, all arrows between the unit and its dependencies were gone? This means that the unit no longer has any dependencies:
+	</p>
+	<p>
+		<img src="/content/binary/unit-with-direct-input-and-output.png" alt="A unit with direct input and output, but no dependencies.">
+	</p>
+	<p>
+		Dependencies are, by their nature, impure, and since pure functions can't call impure functions, functional programming must reject the notion of dependencies. Pure functions can't <em>depend</em> on impure functions.
+	</p>
+	<p>
+		Instead, pure functions must take direct input and produce direct output, and the impure boundary of an application must compose impure and pure functions together in order to achieve the desired behaviour.
+	</p>
+	<p>
+		In the previous article, you saw how Haskell can be used to evaluate whether or not an implementation is functional. You can port the above F# code to Haskell to verify that this is the case.
+	</p>
+	<p>
+		<pre><span style="color:#600277;">tryAccept</span>&nbsp;::&nbsp;Int&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;[<span style="color:blue;">Reservation</span>]&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:blue;">Reservation</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;Maybe&nbsp;<span style="color:blue;">Reservation</span>
+tryAccept&nbsp;capacity&nbsp;reservations&nbsp;reservation&nbsp;<span style="color:#666666;">=</span>
+&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;reservedSeats&nbsp;<span style="color:#666666;">=</span>&nbsp;sum&nbsp;<span style="color:#666666;">$</span>&nbsp;map&nbsp;quantity&nbsp;reservations
+&nbsp;&nbsp;<span style="color:blue;">in</span>&nbsp;&nbsp;<span style="color:#af00db;">if</span>&nbsp;reservedSeats&nbsp;<span style="color:#666666;">+</span>&nbsp;quantity&nbsp;reservation&nbsp;<span style="color:#666666;">&lt;=</span>&nbsp;capacity
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#af00db;">then</span>&nbsp;Just&nbsp;<span style="color:#666666;">$</span>&nbsp;reservation&nbsp;{&nbsp;isAccepted&nbsp;<span style="color:#666666;">=</span>&nbsp;True&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#af00db;">else</span>&nbsp;Nothing</pre>
+	</p>
+	<p>
+		This version of <code>tryAccept</code> is pure, and compiles, but as you learned in the previous article, that's not the crucial question. The question is whether the composition compiles?
+	</p>
+	<p>
+		<pre><span style="color:#600277;">tryAcceptComposition</span>&nbsp;::&nbsp;<span style="color:blue;">Reservation</span>&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;IO&nbsp;(Maybe&nbsp;Int)
+tryAcceptComposition&nbsp;reservation&nbsp;<span style="color:#666666;">=</span>&nbsp;runMaybeT&nbsp;<span style="color:#666666;">$</span>
+&nbsp;&nbsp;liftIO&nbsp;(<span style="color:#dd0000;">DB</span><span style="color:#666666;">.</span>readReservations&nbsp;connectionString&nbsp;<span style="color:#666666;">$</span>&nbsp;date&nbsp;reservation)
+&nbsp;&nbsp;<span style="color:#666666;">&gt;&gt;=</span>&nbsp;<span style="color:#dd0000;">MaybeT</span>&nbsp;<span style="color:#666666;">.</span>&nbsp;return&nbsp;<span style="color:#666666;">.</span>&nbsp;flip&nbsp;(tryAccept&nbsp;<span style="color:#09885a;">10</span>)&nbsp;reservation
+&nbsp;&nbsp;<span style="color:#666666;">&gt;&gt;=</span>&nbsp;liftIO&nbsp;<span style="color:#666666;">.</span>&nbsp;<span style="color:#dd0000;">DB</span><span style="color:#666666;">.</span>createReservation&nbsp;connectionString</pre>
+	</p>
+	<p>
+		This version of <code>tryAcceptComposition</code> compiles, and works as desired. The code exhibits a common pattern for Haskell: First, gather data from impure sources. Second, pass pure data to pure functions. Third, take the pure output from the pure functions, and do something impure with it.
+	</p>
+	<p>
+		It's like a <a href="/2020/03/02/impureim-sandwich">sandwich</a>, with the best parts in the middle, and some necessary stuff surrounding it.
+	</p>
+	<h3 id="2768ff7f9aa94e7f962ba706d2cf30e6">
+		Summary <a href="#2768ff7f9aa94e7f962ba706d2cf30e6" title="permalink">#</a>
+	</h3>
+	<p>
+		Dependencies are, by nature, impure. They're either non-deterministic, have side-effects, or both. Pure functions can't call impure functions (because that would make them impure as well), so pure functions can't have dependencies. Functional programming must reject the notion of dependencies.
+	</p>
+	<p>
+		Obviously, software is only useful with impure behaviour, so instead of injecting dependencies, functional programs must be composed in impure contexts. Impure functions can call pure functions, so at the boundary, an application must gather impure data, and use it to call pure functions. This <a href="/2016/03/18/functional-architecture-is-ports-and-adapters">automatically leads to the ports and adapters architecture</a>.
+	</p>
+	<p>
+		This style of programming is surprisingly often possible, but <a href="/2017/07/10/pure-interactions">it's not a universal solution; other alternatives exist</a>.
+	</p>
+</div>
+<div id="comments">
+<hr>
+<h2 id="comments-header">Comments</h2>
+	<div class="comment" id="b76e91ee831445549c6ca25358dda23a">
+		<div class="comment-author"><a href="https://dusted.codes/">Dustin Moris Gorski</a></div>
+		<div class="comment-content">
+			<p>Hi, Thank you for this blog post series. I also read your other posts on ports and adapters and the proposed architecture makes sense in terms of how it works, but I struggle to see the benefit in a real world application. Maybe let me explain my question with a quick example.</p>
+			<p>In the 2nd blog post of this series you demonstrated this function:</p>
+			<pre><code>// int -&gt; (DateTimeOffset -&gt; Reservation list) -&gt; (Reservation -&gt; int) -&gt; Reservation
+// -&gt; int option
+let tryAccept capacity readReservations createReservation reservation =
+    let reservedSeats =
+        readReservations reservation.Date |&gt; List.sumBy (fun x -&gt; x.Quantity)
+    if reservedSeats + reservation.Quantity &lt;= capacity
+    then createReservation { reservation with IsAccepted = true } |&gt; Some
+    else None</code></pre>
+			<p>If I understand it correctly this function is pure if <code>readReservations</code> and <code>createReservation</code> are both pure otherwise it is impure.</p>
+			<p>I also understand the benefit of having a pure function, because it is a lot easier to understand the code, test the code and reason about it. That makes sense as well :).</p>
+			<p>So in the 3rd blog post you make <code>tryAccept</code> a pure function, by removing the function dependencies and replacing it with simple values:</p>
+			<pre><code>// int -&gt; Reservation list -&gt; Reservation -&gt; Reservation option
+let tryAccept capacity reservations reservation =
+    let reservedSeats = reservations |&gt; List.sumBy (fun x -&gt; x.Quantity)
+    if reservedSeats + reservation.Quantity &lt;= capacity
+    then { reservation with IsAccepted = true } |&gt; Some
+    else None</code></pre>
+			<p>However this was only possible because you essentially moved the impure code into another new function:</p>
+			<pre><code>// Reservation -&gt; int option
+let tryAcceptComposition reservation =
+    reservation.Date
+    |&gt; DB.readReservations connectionString
+    |&gt; flip (tryAccept 10) reservation
+    |&gt; Option.map (DB.createReservation connectionString)</code></pre>
+			<p>So after all the application hasn't really reduced the total number of impure functions (still 3 in each case - <code>readReservations</code>, <code>createReservation</code> and <code>tryAccept[Composition]</code>).</p>
+			<p>The only difference I see is that one impure function has been refactored into 2 functions - one pure and one impure. Considering that the original <code>tryAccept</code> function was already fully testable from a unit testing point of view and quite readable what is the benefit of this additional step? I would almost argue that the original <code>tryAccept</code> function was even easier to read/understand than the combination of <code>tryAccept</code> and <code>tryAcceptComposition</code>. I understand that impure functions like this are not truly functional, but in a real world application you must have some impure functions and I would like to better understand where trade-off benefit of that additional step is? Am I missing something else?</p>
+			<p></p>
+		</div>
+		<div class="comment-date">2017-02-03 10:34 UTC</div>
+	</div>
+	<div class="comment" id="bd82d4b27fdd4ce39f335f0cf1b12f1f">
+		<div class="comment-author">
+			<a href="">Mark Seemann</a>
+		</div>
+		<div class="comment-content">
+		</div>
+			<p>
+				Dustin, thank you for writing. There are several answers to your question, depending on the perspective one is interested in. I'll see if I can cover the most important ones.
+			</p>
+			<h3 id="a0a9544721774f97afbaccc6643f18e1">
+				Is it functional? <a href="#a0a9544721774f97afbaccc6643f18e1" title="permalink">#</a>
+			</h3>
+			<p>
+				On the most fundamental level, I'm interested in learning functional programming. In order to do this, I seek out strictly functional solutions to problems. Haskell is a great help in that endeavour, because it's not a hybrid language. It only allows you to do functional programming.
+			</p>
+			<p>
+				Does it make sense to back-port Haskell solutions to F#, then? That depends on what one is trying to accomplish, but if the goal is nothing but learning how to do it functionally, then that goal is accomplished.
+			</p>
+			<h3 id="2409da61d4554493a88971d6c0205e89">
+				Toy examples <a href="#2409da61d4554493a88971d6c0205e89" title="permalink">#</a>
+			</h3>
+			<p>
+				On another level, the example I've presented here is obviously nothing but a toy example. It's simplified, because if I presented readers with a more realistic example, the complexity of the real problem could easily drown out the message of the example. Additionally, most readers would probably give up reading.
+			</p>
+			<p>
+				I'm asking my readers to pretend that the problem is more complex than the one I present here; pretend that this problem is a stand-in for a harder problem.
+			</p>
+			<p>
+				In this particular context, there could be all sorts of complications:
+				<ul>
+					<li>
+						Reservations could be for time slots instead of whole dates. In order to keep the example simple, I treat each reservation as simply blocking out an entire date. I once dined at a restaurant where they started serving at 19:00, and if you weren't there on time, you'd miss the first courses. Most restaurants, though, allow you to make reservations for a particular time, and many have more than one serving on a single evening.
+					</li>
+					<li>
+						Most restaurants have tables, not seats. Again, the same restaurant I mentioned above seated 12 people at a bar-like arrangement facing the kitchen, but most restaurants have tables of varying sizes. If they get a reservation for three people, they may have to reserve a table for four.
+					</li>
+					<li>
+						Perhaps the restaurant would like to implement a feature where, if it receives a reservation that doesn't fill out a table (like a reservation for three people, and only four-people tables are left), it'd defer the decision to see if a 'better' reservation arrives later.
+					</li>
+					<li>
+						Some people make reservations, but never show up. For that reason, a restaurant may want to allow a degree of overbooking, just like airlines. How much overbooking to allow is a business decision.
+					</li>
+					<li>
+						A further wrinkle on the overbooking business rule is that you may have a different overbooking policy for Fridays than for, say, Wednesdays.
+					</li>
+					<li>
+						Perhaps the restaurant would like to implement a waiting-list feature as well.
+					</li>
+				</ul>
+				As you can see, we could easily imagine that the business logic could be more convoluted. Keeping all of that decision logic pure would be beneficial.
+			</p>
+			<h3 id="176d6f6f7b164416a624d3940b4bcc3f">
+				Separation of concerns <a href="#176d6f6f7b164416a624d3940b4bcc3f" title="permalink">#</a>
+			</h3>
+			<p>
+				In my experience, there's an entire category of software defects that occur because of state mutation in business logic. You could have an area of your code that calls other code, which calls other code, and so on, for several levels of nesting. Somewhere, deep in the bowels of such a system, a conditional statement flips a boolean flag that consequently impact how the rest of the program runs. I've seen plenty of examples of such software, and it's inhumane; it doesn't fit within human cognitive limits.
+			</p>
+			<p>
+				Code that allows arbitrary side-effects is difficult to reason about.
+			</p>
+			<p>
+				Knowing that an subgraph of your call tree is pure reduces defects like that. This is nothing but another way to restate the <a href="https://en.wikipedia.org/wiki/Command%E2%80%93query_separation">command-query separation</a> principle. In F#, we still can't be sure unless we exert some discipline, but in Haskell, all it takes is a look at the type of a function or value. If it doesn't include <code>IO</code>, you know that it's pure.
+			</p>
+			<p>
+				Separating pure code from impure code is separation of concern. Business logic is one concern, and I/O is another concern, and the better you can separate these, the fewer sources of defects you'll have. True, I haven't reduced the amount of code by much, but I've <em>separated</em> concerns by separating the code that contains (side) effects from the pure code.
+			</p>
+			<h3 id="d811d2b8b22743de869c47691b042086">
+				Testability <a href="#d811d2b8b22743de869c47691b042086" title="permalink">#</a>
+			</h3>
+			<p>
+				It's true that the partial application version of <code>tryAccept</code> is <a href="/2015/05/07/functional-design-is-intrinsically-testable">testable, because it has isolation</a>, but the tests are more complicated than they have to be:
+			</p>
+			<p>
+				<pre>[&lt;<span style="color:teal;">Property</span>(QuietOnSuccess&nbsp;=&nbsp;<span style="color:blue;">true</span>)&gt;]
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">``tryAccept&nbsp;behaves&nbsp;correctly&nbsp;when&nbsp;it&nbsp;can&nbsp;accept``</span>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span style="color:navy;">NonNegativeInt</span>&nbsp;excessCapacity)
+&nbsp;&nbsp;&nbsp;&nbsp;(expected&nbsp;:&nbsp;<span style="color:teal;">int</span>)&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:teal;">Tuple2</span>.<span style="color:navy;">curry</span>&nbsp;<span style="color:navy;">id</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;!&gt;&nbsp;<span style="color:teal;">Gen</span>.reservation
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;*&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">listOf</span>&nbsp;<span style="color:teal;">Gen</span>.reservation
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;&nbsp;<span style="color:teal;">Arb</span>.<span style="color:navy;">fromGen</span>&nbsp;|&gt;&nbsp;<span style="color:teal;">Prop</span>.<span style="color:navy;">forAll</span>&nbsp;&lt;|&nbsp;<span style="color:blue;">fun</span>&nbsp;(reservation,&nbsp;reservations)&nbsp;<span style="color:blue;">-&gt;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;capacity&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;excessCapacity
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+&nbsp;(reservations&nbsp;|&gt;&nbsp;<span style="color:teal;">List</span>.<span style="color:navy;">sumBy</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x.Quantity))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+&nbsp;reservation.Quantity
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">readReservations</span>&nbsp;=&nbsp;((=!)&nbsp;reservation.Date)&nbsp;&gt;&gt;!&nbsp;reservations
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">createReservation</span>&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;((=!)&nbsp;{&nbsp;reservation&nbsp;<span style="color:blue;">with</span>&nbsp;IsAccepted&nbsp;=&nbsp;<span style="color:blue;">true</span>&nbsp;})&nbsp;&gt;&gt;!&nbsp;expected
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;actual&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">tryAccept</span>&nbsp;capacity&nbsp;<span style="color:navy;">readReservations</span>&nbsp;<span style="color:navy;">createReservation</span>&nbsp;reservation
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">Some</span>&nbsp;expected&nbsp;=!&nbsp;actual
+ 
+[&lt;<span style="color:teal;">Property</span>(QuietOnSuccess&nbsp;=&nbsp;<span style="color:blue;">true</span>)&gt;]
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">``tryAccept&nbsp;behaves&nbsp;correctly&nbsp;when&nbsp;it&nbsp;can&#39;t&nbsp;accept``</span>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span style="color:navy;">PositiveInt</span>&nbsp;lackingCapacity)&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:teal;">Tuple2</span>.<span style="color:navy;">curry</span>&nbsp;<span style="color:navy;">id</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;!&gt;&nbsp;<span style="color:teal;">Gen</span>.reservation
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;*&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">listOf</span>&nbsp;<span style="color:teal;">Gen</span>.reservation
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;&nbsp;<span style="color:teal;">Arb</span>.<span style="color:navy;">fromGen</span>&nbsp;|&gt;&nbsp;<span style="color:teal;">Prop</span>.<span style="color:navy;">forAll</span>&nbsp;&lt;|&nbsp;<span style="color:blue;">fun</span>&nbsp;(reservation,&nbsp;reservations)&nbsp;<span style="color:blue;">-&gt;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;capacity&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(reservations&nbsp;|&gt;&nbsp;<span style="color:teal;">List</span>.<span style="color:navy;">sumBy</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x.Quantity))&nbsp;-&nbsp;lackingCapacity
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">readReservations</span>&nbsp;_&nbsp;=&nbsp;reservations
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">createReservation</span>&nbsp;_&nbsp;=&nbsp;<span style="color:navy;">failwith</span>&nbsp;<span style="color:#a31515;">&quot;Mock&nbsp;shouldn&#39;t&nbsp;be&nbsp;called.&quot;</span>
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;actual&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">tryAccept</span>&nbsp;capacity&nbsp;<span style="color:navy;">readReservations</span>&nbsp;<span style="color:navy;">createReservation</span>&nbsp;reservation
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">None</span>&nbsp;=!&nbsp;actual</pre>
+			</p>
+			<p>
+				(You can find these tests in <a href="https://github.com/ploeh/dependency-rejection-samples/commit/d2387cceb81eabc349a63ab7df1249236e9b1d13">commit d2387cceb81eabc349a63ab7df1249236e9b1d13 in the accompanying sample code repository</a>.) Contrast those dependency-injection style tests to these tests against the pure version of <code>tryAccept</code>:
+			</p>
+			<p>
+				<pre>[&lt;<span style="color:teal;">Property</span>(QuietOnSuccess&nbsp;=&nbsp;<span style="color:blue;">true</span>)&gt;]
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">``tryAccept&nbsp;behaves&nbsp;correctly&nbsp;when&nbsp;it&nbsp;can&nbsp;accept``</span>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span style="color:navy;">NonNegativeInt</span>&nbsp;excessCapacity)&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:teal;">Tuple2</span>.<span style="color:navy;">curry</span>&nbsp;<span style="color:navy;">id</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;!&gt;&nbsp;<span style="color:teal;">Gen</span>.reservation
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;*&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">listOf</span>&nbsp;<span style="color:teal;">Gen</span>.reservation
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;&nbsp;<span style="color:teal;">Arb</span>.<span style="color:navy;">fromGen</span>&nbsp;|&gt;&nbsp;<span style="color:teal;">Prop</span>.<span style="color:navy;">forAll</span>&nbsp;&lt;|&nbsp;<span style="color:blue;">fun</span>&nbsp;(reservation,&nbsp;reservations)&nbsp;<span style="color:blue;">-&gt;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;capacity&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;excessCapacity
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+&nbsp;(reservations&nbsp;|&gt;&nbsp;<span style="color:teal;">List</span>.<span style="color:navy;">sumBy</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x.Quantity))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+&nbsp;reservation.Quantity
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;actual&nbsp;=&nbsp;<span style="color:navy;">tryAccept</span>&nbsp;capacity&nbsp;reservations&nbsp;reservation
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">Some</span>&nbsp;{&nbsp;reservation&nbsp;<span style="color:blue;">with</span>&nbsp;IsAccepted&nbsp;=&nbsp;<span style="color:blue;">true</span>&nbsp;}&nbsp;=!&nbsp;actual
+ 
+[&lt;<span style="color:teal;">Property</span>(QuietOnSuccess&nbsp;=&nbsp;<span style="color:blue;">true</span>)&gt;]
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">``tryAccept&nbsp;behaves&nbsp;correctly&nbsp;when&nbsp;it&nbsp;can&#39;t&nbsp;accept``</span>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span style="color:navy;">PositiveInt</span>&nbsp;lackingCapacity)&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:teal;">Tuple2</span>.<span style="color:navy;">curry</span>&nbsp;<span style="color:navy;">id</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;!&gt;&nbsp;<span style="color:teal;">Gen</span>.reservation
+&nbsp;&nbsp;&nbsp;&nbsp;&lt;*&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">listOf</span>&nbsp;<span style="color:teal;">Gen</span>.reservation
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;&nbsp;<span style="color:teal;">Arb</span>.<span style="color:navy;">fromGen</span>&nbsp;|&gt;&nbsp;<span style="color:teal;">Prop</span>.<span style="color:navy;">forAll</span>&nbsp;&lt;|&nbsp;<span style="color:blue;">fun</span>&nbsp;(reservation,&nbsp;reservations)&nbsp;<span style="color:blue;">-&gt;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;capacity&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(reservations&nbsp;|&gt;&nbsp;<span style="color:teal;">List</span>.<span style="color:navy;">sumBy</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;x&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;x.Quantity))&nbsp;-&nbsp;lackingCapacity
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;actual&nbsp;=&nbsp;<span style="color:navy;">tryAccept</span>&nbsp;capacity&nbsp;reservations&nbsp;reservation
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">None</span>&nbsp;=!&nbsp;actual</pre>
+			</p>
+			<p>
+				They're simpler, and since they don't use <a href="http://xunitpatterns.com/Mock%20Object.html">mocks</a>, they're more robust. They were easier to write, and I subscribe to the spirit of <a href="http://amzn.to/SM8Yv0">GOOS</a>: <em>if test are difficult to write, the system under test should be simplified</em>.
+			</p>
+		<div class="comment-date">2017-02-05 20:09 UTC</div>
+	</div>
+
+	<div class="comment" id="fc271f644282434b8f9e440af126985a">
+		<div class="comment-author"><a href="http://stackoverflow.com/users/1523776/benjamin-hodgson?tab=profile">Benjamin Hodgson</a></div>
+		<div class="comment-content">
+			<p>Hi Mark,</p>
+			<p>Thanks for your talk at NDC last month, and for writing this series! I feel that the functional community (myself included) has a habit of using examples that aren't obviously relevant to the sort of line-of-business programming most of us do in our day jobs, so articles like this are sorely needed.</p>
+			<p>We talked a little about this in person after your talk at the conference: I wanted to highlight a potential criticism of this style of programming. Namely, there's still some important business logic being carried out by your <code>tryAcceptComposition</code> function, like checking the capacity <i>on the requested reservation date</i>. How do you unit test that <code>readReservations</code> is called with the correct date? Likewise, how do you unit test that rejected reservations don't get saved? Real world business logic isn't always purely functional in nature. Sometimes the side effects that your code performs are part of the requirements.</p>
+			<p>The Haskell philosophy isn't about rejecting side effects outright - it's about measuring and controlling them. I wouldn't write <code>tryAcceptComposition</code> using <code>IO</code>. Instead I'd program to the interface, not the implementation, using an mtl-style class to abstract over monads which support saving and loading reservations.</p>
+			<pre><code>class Monad m =&gt; MonadReservation m where
+    readReservations :: ConnectionString -&gt; Date -&gt; m [Reservation]
+    createReservation :: ConnectionString -&gt; Reservation -&gt; m ReservationId
+
+
+tryAcceptComposition :: MonadReservation m =&gt; Reservation -&gt; m (Maybe ReservationId)
+tryAcceptComposition r = runMaybeT $ do
+    reservations &lt;- lift $ readReservations connectionString (date r)
+    accepted &lt;- MaybeT $ return $ tryAccept 10 reservations r
+    lift $ createReservation connectionString accepted</code></pre>
+			<p>Code that lives in a <code>MonadReservation</code> context can read and create reservations in the database but nothing else; it doesn't have all the power of <code>IO</code>. During unit testing I can use an instance of <code>MonadReservation</code> that returns canned values, and in production I can use a monad that actually talks to the database.</p>
+			<p>Since type classes are syntactic sugar for passing an argument, this is really just a nicer way of writing your original DI-style code. I don't advocate the "free monad" style that's presently trendy in Scala-land because I find it unnecessarily complex. 90% of the purported advantages of free monads are already supported by simpler language features.</p>
+			<p>I suppose the main downside of this design is that you can't express it in F#, at least not cleanly. It relies on type classes and higher-kinded types.</p>
+			<p>Hope you find this interesting, I'd love to hear what you think!</p>
+			<p>Benjamin</p>
+		</div>
+		<div class="comment-date">2017-02-06 16:28 UTC</div>
+	</div>
+
+	<div class="comment" id="be3fcba2cea040f6b153b1d296e87fc7">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Benjamin, thank you for writing. The alternative you propose looks useful in Haskell, but, as you've already suggested, it doesn't translate well into F#.
+			</p>
+			<p>
+				I write F# code professionally, whereas so far, I've only used Haskell to critique my F# code. (If someone who reads this comment would offer to pay me to write some Haskell code, please get in touch.) In other words, I still have much to learn about Haskell. I think I understand as much, however, that I'd be able to use your suggested design to unit test <code>tryAcceptComposition</code> using the <code>Identity</code> monad for Stubs, or perhaps <code>MonadWriter</code> or <code>MonadState</code> for Mocks. I'll have to try that one day...
+			</p>
+			<p>
+				In F#, I write integration tests. Such tests are important regardless, and often they more closely relate to actual requirements, so I find this a worthwhile effort anyway.
+			</p>
+		</div>
+		<div class="comment-date">2017-02-11 22:42 UTC</div>
+	</div>
+
+	<div class="comment" id="f02bb13a98954a67bb74adbcc7906f08">
+		<div class="comment-author"><a href="https://twitter.com/la_yumba">Enrico Buonanno</a></div>
+		<div class="comment-content">
+			<p>
+				Hi Mark,
+			</p>
+			<p>
+				thanks for the post series, which I find interesting and needed. There is one part of your post that I find deserves further exploration. You write:
+				<blockquote>
+					in statement-based languages like C# and Java, this may be problematic, because you may wish to defer a query, or base it on a decision inside the unit. In expression-based languages you can decouple decisions from effects, and deferred execution can always be done by lazy evaluation, if that's required.
+				</blockquote>
+				Firstly, I would say that you can write expression-based programs in any language that has expressions, which naturally includes C# and Java. But that's not particularly relevant to this discussion.
+			</p>
+			<p>
+				More to the point, you're glossing over this as though it were a minor detail, when in fact I don't think it is. Let's explore the case in which "you may wish to defer a query, or base it on a decision inside the unit". The way you do this "by lazy evaluation" would be - I assume - by passing a function as an argument to your unit. But this is then effectively dependency injection, because you're passing in a function which has side effects, which will be called (or not) from the unit.
+			</p>
+			<p>
+				So, it seems to me that your technique of extracting side effects out of the unit provides a good general guideline, but not a completely general way to replace dependency injection.
+			</p>
+		</div>
+		<div class="comment-date">2017-02-16 11:47 UTC</div>
+	</div>
+
+	<div class="comment" id="36c724b49f614104842c47909cd9c916">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Enrico, thank you for writing. There's a lot to unpack in that quote, which was one of the reasons I didn't expand it. It would have made the article too long, and wandered off compared to its main point. I don't mind going into these details here, though.
+			</p>
+			<h3 id="09c47198877a4e0899efa958ccf94ba8">
+				Direction of data <a href="#09c47198877a4e0899efa958ccf94ba8" title="permalink">#</a>
+			</h3>
+			<p>
+				In order to get the obvious out of the way first, the issue you point out is with my refactoring of indirect input to direct input. Refactoring from indirect to output to direct output is, as far as I can tell, not on your agenda. Designing with direct input in mind seems uncontroversial to me, so that makes sense.
+			</p>
+			<h3 id="dc3183b1cc9745c498978e8a7b3c7ac7">
+				No hard rules <a href="#dc3183b1cc9745c498978e8a7b3c7ac7" title="permalink">#</a>
+			</h3>
+			<p>
+				On this blog, I often write articles as I figure out how to deal with problems. Sometimes, I report on my discoveries at a time where I've yet to accumulate years of experience. What I've learned so far is that dependency injection isn't functional. What I'm <em>still</em> exploring is what to do instead.
+			</p>
+			<p>
+				It's my experience that the type of refactoring I demonstrate here can surprisingly often be performed. I don't want to claim that it's always possible to do it like this. In fact, I'm still looking for good examples where this will not be possible. Whenever I think of a simple enough example that I could share it here, I always realise that if only I simplify the problem, I can put it into the shape seen here.
+			</p>
+			<p>
+				My thinking is, however, constrained by my professional experience. I've been doing web (service) development for so many years now that it constraints my imagination. When you execution scope is exclusively a single HTTP request at a time, you tend to keep things simple. I'd welcome a simplified, but still concrete example where the impure/pure/impure sandwich described here isn't going to be possible.
+			</p>
+			<p>
+				This may seem like a digression, but my point is that I don't claim to be the holder of a single, undeniable truth. Still, I find that this article describes a broadly applicable design and implementation technique.
+			</p>
+			<h3 id="206fd472730d42328519b46cd0b8856a">
+				Language specifics <a href="#206fd472730d42328519b46cd0b8856a" title="permalink">#</a>
+			</h3>
+			<p>
+				The next topic we need to consider is our choice of language. When I wrote that deferred execution can always be done by lazy evaluation, that's exactly how Haskell works. Haskell is lazily evaluated, so any value passed as direct input can be unevaluated until required. That goes for <code>IO</code> as well, but then, as we've learned, you can't pass impure data to a pure function.
+			</p>
+			<p>
+				All execution is, in that sense, deferred, unless explicitly forced. Thus, any potential need for deferred execution has no design implications.
+			</p>
+			<p>
+				F#, on the other hand, is an eagerly evaluated language, so there, deferred execution may have design implications.
+			</p>
+			<h3 id="e9aa174b04c14fb9850f2acb03e14f0b">
+				Performance <a href="#e9aa174b04c14fb9850f2acb03e14f0b" title="permalink">#</a>
+			</h3>
+			<p>
+				Perhaps it's my lack of imagination again, but I can't think of a well-designed system where deferred execution is required for purposes of correctness. As far as I can tell, deferred execution is a performance concern. You wish to defer execution of a query because that operation takes significant time.
+			</p>
+			<p>
+				That's a real concern, but I often find that people worry too much about performance. Again, this is probably my lack of wider experience, as I realise that performance can be important in smart phone apps, games, and the like. Clearly, performance is also important in the world of REST APIs, but I've met a lot of people who worry about performance without ever measuring it.
+			</p>
+			<p>
+				When you start measuring performance, you'll often be surprised to discover where your code spends actual time. So my design approach is always to prioritise making the system work first, and then, if there are performance problems, figure out how to tweak it so that it becomes satisfactory. In my experience, such tweaking is only necessary now and then. I'm not claiming that my code is the fastest it could be, but it's often fast enough, and as easy to maintain as I can make it.
+			</p>
+			<h3 id="8adfc672b35b413eabfc1fdd97550322">
+				The need for data <a href="#8adfc672b35b413eabfc1fdd97550322" title="permalink">#</a>
+			</h3>
+			<p>
+				Another concern is the need for data. If you consider the above <code>tryAccept</code> function, it <em>always</em> uses <code>reservations</code>. Thus, there's no gain in deferring the database query, because you'll always need the data.
+			</p>
+			<p>
+				Deferred execution is only required in those cases where you have conditional branching, and only in certain cases do you need to read a particular piece of data.
+			</p>
+			<p>
+				Even conditional branching isn't enough of a criterion, though, because you could have branching where, in 99.9 % of the cases, you'd be performing the query anyway. Would you, then, need deferred execution for the remaining 0.1 % of the cases?
+			</p>
+			<h3 id="6892843a12bc4079ad962a5e952dfe87">
+				Lazy sequences <a href="#6892843a12bc4079ad962a5e952dfe87" title="permalink">#</a>
+			</h3>
+			<p>
+				Still, let's assume that we've implemented a system using pure functions that take pure data, but to our dismay we discover that there's one query that takes time to execute, and that we truly only need it some of the time. In .NET, there are two distinct situations:
+				<ul>
+					<li>We need a scalar value</li>
+					<li>We need a collection of values</li>
+				</ul>
+				If we need a collection of values, we only need to make a minuscule change to the design of our function. Instead of taking an F# list, or an array, as direct input, we can make the function take a sequence (<code>IEnumerable&lt;T&gt;</code> in C#) as input. These can be implemented as lazily evaluated sequences, which gives us the deferred execution we need.
+			</p>
+			<h3 id="27d702bf2900420ab636149be0140216">
+				Lazy scalar values <a href="#27d702bf2900420ab636149be0140216" title="permalink">#</a>
+			</h3>
+			<p>
+				This leaves the corner case where we need a lazily evaluated scalar value. In such cases, I may have to make a concession to performance in my function design, but I wouldn't change the argument to a function, but rather to a <a href="https://docs.microsoft.com/en-us/dotnet/articles/fsharp/language-reference/lazy-computations">lazy</a> value.
+			</p>
+			<p>
+				Lazy values are deferred, but memoised, which is the reason I'd prefer them over function arguments.
+			</p>
+		</div>
+		<div class="comment-date">2017-02-18 19:54 UTC</div>
+	</div>
+
+	<div class="comment" id="ade3787e6e3c4e569854e2c2bd038e29">
+		<div class="comment-author"><a href="https://www.relativisticramblings.com/">Christer van der Meeren</a></div>
+		<div class="comment-content">
+			<p>
+				In a previous comment, you said:
+			</p>
+			<p>
+				<blockquote>
+					I'd welcome a simplified, but still concrete example where the impure/pure/impure sandwich described here isn't going to be possible.
+				</blockquote>
+			</p>
+			<p>
+				I have on two occasions stumbled into cases where I can't find a good way to pull this off. The reason may be that there's a workflow seemingly consisting of several impure steps interleaved with pure decisions. The cases are similar, so I will share one of them as an example.
+			</p>
+			<p>
+				We have an API for allowing users to register. We also have a separate API for two-factor authentication (2FA). When users register, they have to complete a "proof" using the 2FA API to verify ownership of their mobile number.
+			</p>
+			<p>
+				The 2FA API has two relevant endpoints used internally by our other APIs: One is used for creating a proof, and returns a proof ID that can be passed on to the API client. This endpoint is used when a client makes a request without a proof ID, or with an invalid proof ID. The other endpoint is used for verifying that a proof has been completed. This endpoint is used when a client supplies a proof ID in the request.
+			</p>
+			<p>
+				(The 2FA API also has endpoints the client uses to complete the proof, but that is not relevant here.)
+			</p>
+			<p>
+				When a user registers, this is the workflow:
+			</p>
+			<p>
+				<img src="/content/binary/complete-registration-workflow-with-2fa-difficult-to-sandwich.png" alt="A flowchart describing the workflow for completing a registration.">
+			</p>
+			<p>
+				Here is a simple implementation of the workflow using "dependency injection" (I will skip the actual composition function, similar to your <code>tryAcceptComposition</code>, which is not interesting here):
+			</p>
+			<pre>let completeRegistrationWorkflow
+    (createProof: Mobile -&gt; Async&lt;ProofId&gt;)
+    (verifyProof: Mobile -&gt; ProofId -&gt; Async&lt;bool&gt;)
+    (completeRegistration: Registration -&gt; Async&lt;unit&gt;)
+    (proofId: ProofId option)
+    (registration: Registration)
+    : Async&lt;CompleteRegistrationResult&gt; =
+  async {
+    match proofId with
+    | None -&gt;
+        let! proofId = createProof registration.Mobile
+        return ProofRequired proofId
+    | Some proofId -&gt;
+        let! isValid = verifyProof registration.Mobile proofId
+        if isValid then
+          do! completeRegistration registration
+          return RegistrationCompleted
+        else
+          let! proofId = createProof registration.Mobile
+          return ProofRequired proofId
+  }</pre>
+			<p>
+				There are two decisions that are pure and could conceivably be extracted to a pure (non-DI) function, indicated by blue in the flowchart:
+			</p>
+			<ul>
+				<li>
+					Initially: Should we create a new proof or verify an existing proof? (based on whether the client supplied a proof ID)
+				</li>
+				<li>
+					After verifying a supplied proof: Should we complete the registration or create a new proof? (based on whether the supplied proof ID was valid)
+				</li>
+			</ul>
+			<p>
+				My question then, is this: Is it possible to refactor this to direct input/output, in a way that actually reduces complexity where it matters? (In other words, in a way where the decisions mentioned above are part of a pure, non-DI function?)
+			</p>
+			<p>
+				Otherwise, I just want to say that this series has helped me become a better F# programmer. Since originally reading it, I have consistently tried to design for direct input/output as opposed to using "dependency injection", and my code has become better for it. Thanks!
+			</p>
+		</div>
+		<div class="comment-date">2019-11-06 10:06 UTC</div>
+	</div>
+
+	<div class="comment" id="9510e21f27e74685858f5b8d538a79a3">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Christer, thank you for writing. That was such a fruitful question that I wrote <a href="/2019/12/02/refactoring-registration-flow-to-functional-architecture">a new article</a> in order to answer it. I hope you find it useful, but if not, let's continue the discussion there or here, dependening on what makes most sense.
+			</p>
+		</div>
+		<div class="comment-date">2019-12-02 13:22 UTC</div>
+	</div>
+
+	<div class="comment" id="0f1a8f0eaac9ea0812a91c6db65e3e37">
+		<div class="comment-author"><a href="https://twitter.com/danilom_">Danilo S. Morães</a></div>
+		<div class="comment-content">
+			<p>
+				Hi Mark, excelent post series, thank you. Right after finishing this post I had the same questions Dustin Moris Gorski had and I think I still have some, even after your answer.
+			</p>
+			<p>
+				For simplicity's sake, I'll represent TryAccept as 3 operations: read, calculate and maybe create. Both read and create are injected so that I can change their implementations at runtime, if necessary.
+				That is the same exact representation for both the C# and F# codes that use DI, and also the tryAcceptComposition code, with the difference that tryAcceptComposition depends on the actual implementation of DB, so it's relatively more brittle than the DI alternatives.
+			</p>
+			<p>
+				Although TryAccept and TryAcceptComposition are doing the same thing, I'm still trying to think why the latter looks more functional than the first and whether DI is really not necessary. I got to 2 conclusions and I wanted to know your opinion about them:
+			</p>
+			<p>
+				1) The difference between the 2 implementations (TryAccept and TryAcceptComposition) is that the first is following an imperative style, while the second is purely declaritive, with one big composition. Both implementations perform the exact same operations, evoking the same dependencies, but with different code styles.
+			</p>
+			<p>
+				2) If we try and take your style of sandwich to extremes and push dependencies to the very edges of the application, to the point where it's just a simple big composition with dependencies at the beginning and end, we my replace "injection" with import statements, importing our dependencies in the same place the composition is written. I don't think this would work in every scenario as operations in the middle of this composition would need access to dependencies too (which could them be pushed out like TryAccept, but could make the code less readable). Do you think this is doable?
+			</p>
+		</div>
+		<div class="comment-date">2020-01-14 20:37 UTC</div>
+	</div>
+
+	<div class="comment" id="5bfb598be4d34755b4c2272dc1814df4">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Danilo, thank you for writing. Regarding your first point, I'm not sure I follow. Both functions are written in F#, which is an expression-based language (at least when you ignore the interop parts). Imperative code is usually defined as coding with <em>assignments</em> rather than <em>expressions</em>. There's no assignments here.
+			</p>
+			<p>
+				Also, <code>tryAccept</code> and <code>tryAcceptComposition</code> aren't equivalent. One is a specialisation of the other, so to speak. You can't change the behaviour of <code>tryAcceptComposition</code> unless you edit the actual code. You can, on the other hand, change the observable behaviour of <code>tryAccept</code> by composing it with different impure actions.
+			</p>
+			<p>
+				As to your second observation:
+				<blockquote>
+					"I don't think this would work in every scenario as operations in the middle of this composition would need access to dependencies too"
+				</blockquote>
+				I'm still keen on getting some compelling examples of this. Christer van der Meeren kindly <a href="#ade3787e6e3c4e569854e2c2bd038e29">tried to supply such an example</a>, but it <a href="/2019/12/02/refactoring-registration-flow-to-functional-architecture">turned out as another fine sandwich</a>. This happens conspicuously often.
+			</p>
+			<p>
+				I've never claimed that the sandwich architecture is always possible, but every time I try to find a compelling counter-example, it usually turns out to be refactorable into a sandwich after all. Do, however, refer to the comments to <a href="/2019/12/02/refactoring-registration-flow-to-functional-architecture">that later article</a>.
+			</p>
+		</div>
+		<div class="comment-date">2020-01-19 21:07 UTC</div>
+	</div>
+
+		<div class="comment" id="ac27689e0b794aee9c611dd6bd7f31f1">
+		<div class="comment-author"><a href="https://github.com/ledbutter">Sven Grosen</a></div>
+		<div class="comment-content">
+			<p>
+				Hi Mark, I found myself thinking about this early this morning and wondering about scenarios where injecting dependencies may still be "functional" (i.e. pure) and would like your input. It also incorporates TDD (or at least testing strategies).
+			</p>
+			<p>
+				Here's my example: I was recently refactoring some code that was structured like this (C#-ish pseudo-code):
+				<pre>
+				if (shouldNotify(record, supportingRecord, settings)) 
+				{
+					generateEmail(...);
+					record.status = calculateStatusAfterEmail(record, supportingRecord);
+				}
+				else
+				{
+					record.status = calculateStatusWithoutEmail(record, supportingRecord);	
+				}
+				</pre>
+				Let's gloss over the side-effects all over the place here and just focus on the flow.
+			</p>
+			<p>
+				To ease unit testing, I extracted these private methods into a separate interface and am injecting it into this flow. Call me lazy, but I wanted to just mock/stub the results of these pure calls when testing the overall flow and wrote separate tests on the implementation of the new interface that could focus on all the different combinations of values. Is that a strategy you would support/recommend, or would you hesitate to extract pure functions from an implementation just to ease testing? I also convinced myself that I could justify this on the grounds of following the Single Responsibility Principle (i.e. this flow should not need to be modified if the status calculation logic changes).
+			</p>
+			<p>
+				Your thoughts? By the way, your new dependency injection strategies is on its way to me, perhaps that book will provide me with your views on that, but I couldn't resist posting it here.	
+			</p>
+		</div>
+		<div class="comment-date">2020-05-28 14:30 UTC</div>
+	</div>
+
+	<div class="comment" id="d0185b75323c4028b04f7dc24e3f127f">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Sven, thank you for writing. I think that your question deserves a longer answer than what you'll get here. It's a topic that for some time I've been contemplating giving a more detailed treatment. It's a rich enough subject that a couple of articles would be required. I'm still pondering how to organise such content.
+			</p>
+			<p>
+				The short answer is that I'm increasingly looking for alternatives to the sort of interaction-based testing you imply. I think that my <a href="/2019/02/18/from-interaction-based-to-state-based-testing">article series on the benefits of state-based testing</a> outlines most of my current thinking on the topic.
+			</p>
+		</div>
+		<div class="comment-date">2020-06-03 5:46 UTC</div>
+	</div>
+
+	<div class="comment" id="a24bf916c0e941b1b932b39284ea1d53">
+		<div class="comment-author"><a href="https://github.com/chrischen">Chris Chen</a></div>
+		<div class="comment-content">
+			<p>
+			  I read over all the comments and I would like clarification on when logic is required for resolving the dependency being provided. Benjamin Hodgson asked this:
+			</p>
+			<blockquote>Namely, there's still some important business logic being carried out by your tryAcceptComposition function, like checking the capacity on the requested reservation date. How do you unit test that readReservations is called with the correct date?</blockquote>
+			<p>Suppose the readRervations didn't just get <em>all</em> reservations from the dabatase just to process for one restaurant or on one day. Thus the restaurant ID and date may be needed to fetch the correct reservations, and this logic would have to happen outside of the unit. I think you touched on this complication in a response above, but I'd like to confirm if I am understanding your responses correctly: you simply perform this logic outside of the unit and have an integration test for the entire workflow?</p>
+		</div>
+		<div class="comment-date">2021-12-15 22:11 UTC</div>
+	</div>
+
+	<div class="comment" id="a0c775671d224b48b894293eeb05dff9">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Chris, thank you for writing. There are more nuances to that question than might be immediately apparent. At least, I'll answer the question in several ways.
+			</p>
+			<p>
+				First, I'd like to challenge the implicit assumption that one must always test everything. <a href="/2018/11/12/what-to-test-and-not-to-test">What to test and what not to test</a> depend on multiple independent forces, such as how costly an error might be, how likely an error is to occur, and so on.
+			</p>
+			<p>
+				Take, as an example, the code base that accompanies my book <a href="/code-that-fits-in-your-head">Code That Fits in Your Head</a>. This code base is also a restaurant reservation system, but has a realistic level of complexity, so I think it might better highlight the sort of considerations that might be warranted. The code that is most relevant to the question is this snippet from <code>ReservationsController.TryCreate</code>:
+			</p>
+			<p>
+				<pre><span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">reservations</span>&nbsp;=&nbsp;<span style="color:blue;">await</span>&nbsp;Repository
+&nbsp;&nbsp;&nbsp;&nbsp;.ReadReservations(restaurant.Id,&nbsp;reservation.At)
+&nbsp;&nbsp;&nbsp;&nbsp;.ConfigureAwait(<span style="color:blue;">false</span>);
+<span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">now</span>&nbsp;=&nbsp;Clock.GetCurrentDateTime();
+<span style="color:#8f08c4;">if</span>&nbsp;(!restaurant.MaitreD.WillAccept(now,&nbsp;reservations,&nbsp;reservation))
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8f08c4;">return</span>&nbsp;NoTables500InternalServerError();
+ 
+<span style="color:blue;">await</span>&nbsp;Repository.Create(restaurant.Id,&nbsp;reservation)
+&nbsp;&nbsp;&nbsp;&nbsp;.ConfigureAwait(<span style="color:blue;">false</span>);</pre>
+			</p>
+			<p>
+				How likely is it that the code changes in such a way that it calls <code>ReadReservations</code> with the <em>wrong</em> input? Either because the original programmer who wrote the code made a mistake, or because a later developer introduced a change in which this code calls <code>ReadReservations</code> with incorrect input?
+			</p>
+			<p>
+				Now, such errors certainly do occur. Programmers are human, and to err is human.
+			</p>
+			<p>
+				Still, it's important to keep in mind that the risk of introducing an error into a code base is proportional to the amount of code. The more code, the more errors you'll have. This goes for test code as well. You can also, inadvertently, introduce errors into a test.
+			</p>
+			<p>
+				You can counteract some of that by writing the test first. That's the reasons it's so important to see a test fail. Only by seeing it fail can you feel confident that it verifies something real.
+			</p>
+			<p>
+				So, depending on circumstances, it may be relevant and important to write a test that verifies that <code>ReadReservations</code> is called with the correct arguments. Still, I think it's important to weigh advantages and disadvantages before blindly insisting that it's necessary to protect against such a contingency.
+			</p>
+			<p>
+				When I originally wrote the above code, I wrote no unit test that explicitly verify whether <code>ReadReservations</code> is called with the correct arguments. After all, in that context, there's only one <code>DateTime</code> value in scope: <code>reservation.At</code>. (This is not entirely true, because <code>now</code> is also a <code>DateTime</code> value, but as the code is written, it's not available for <code>ReadReservations</code> because it's retrieved <em>after</em> the <code>ReadReservations</code> call. But see below.)
+			</p>
+			<p>
+				In a context like this, you'd have to go out of your way to call <code>ReadReservations</code> with the wrong date. You <em>could</em> create a value on the spot, like this:
+			</p>
+			<p>
+				<pre><span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">reservations</span>&nbsp;=&nbsp;<span style="color:blue;">await</span>&nbsp;Repository
+&nbsp;&nbsp;&nbsp;&nbsp;.ReadReservations(restaurant.Id,&nbsp;<span style="color:blue;">new</span>&nbsp;DateTime(2021,&nbsp;12,&nbsp;19,&nbsp;18,&nbsp;30,&nbsp;0))
+&nbsp;&nbsp;&nbsp;&nbsp;.ConfigureAwait(<span style="color:blue;">false</span>);</pre>
+			</p>
+			<p>
+				or this:
+			</p>
+			<p>
+				<pre><span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">reservations</span>&nbsp;=&nbsp;<span style="color:blue;">await</span>&nbsp;Repository
+&nbsp;&nbsp;&nbsp;&nbsp;.ReadReservations(restaurant.Id,&nbsp;reservation.At.AddDays(1))
+&nbsp;&nbsp;&nbsp;&nbsp;.ConfigureAwait(<span style="color:blue;">false</span>);</pre>
+			</p>
+			<p>
+				None of these are <em>impossible</em>, but I do consider them to be <em>conspicuous</em>. You don't easily make those kinds of mistakes. You'd almost have to go out of your way to make these mistakes, and a good pairing partner or code review ought to catch such a mistake.
+			</p>
+			<p>
+				Another option is if someone finds a good reason to reorder the code:
+			</p>
+			<p>
+				<pre><span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">now</span>&nbsp;=&nbsp;Clock.GetCurrentDateTime();
+<span style="color:blue;">var</span>&nbsp;<span style="color:#1f377f;">reservations</span>&nbsp;=&nbsp;<span style="color:blue;">await</span>&nbsp;Repository
+&nbsp;&nbsp;&nbsp;&nbsp;.ReadReservations(restaurant.Id,&nbsp;now)
+&nbsp;&nbsp;&nbsp;&nbsp;.ConfigureAwait(<span style="color:blue;">false</span>);</pre>
+			</p>
+			<p>
+				In this example, <code>now</code> is available to <code>ReadReservations</code>, and perhaps a later edit might introduce the error of calling it with <code>now</code>.
+			</p>
+			<p>
+				This is perhaps a more realistic, honest mistake.
+			</p>
+			<p>
+				None of the 171 unit tests in the code base catch any of the above three mistakes.
+			</p>
+			<p>
+				Is the code base unsafe, then?
+			</p>
+			<p>
+				No, because as luck would have it, an integration test (<code>NoOverbookingRace</code>) fails on any of these three edits. I admit that this is just a fortunate accident. I added that particular integration test for another reason: to reproduce an unrelated bug that occurred in 'production'.
+			</p>
+			<p>
+				I usually try to base the amount of testing I ask from a team on the quality of the team. The more I trust that they pair-program or perform regular code reviews, the less I insist on test coverage, and vice versa.
+			</p>
+			<p>
+				In summary, though, if I find that it's important to verify that <code>ReadReservations</code> was called with the correct arguments, I'd favour a <a href="/2019/02/18/from-interaction-based-to-state-based-testing">state-based integration test</a>.
+			</p>
+		</div>
+		<div class="comment-date">2021-12-19 12:24 UTC</div>
+	</div>
+</div>

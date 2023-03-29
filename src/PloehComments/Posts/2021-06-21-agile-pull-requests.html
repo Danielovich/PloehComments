@@ -1,0 +1,257 @@
+---
+layout: post
+title: "Agile pull requests"
+description: "If it hurts, do it more often."
+date: 2021-06-21 5:44 UTC
+tags: [Productivity]
+image: "/content/binary/timeline-with-minimal-wait-time.jpg"
+image_alt: "Timeline with short wait time between a feature is submitted for and the review actually takes place."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		The agile software development movement has been instrumental in <a href="https://agilemanifesto.org">uncovering better ways of developing software</a>. Under that umbrella term you find such seminal ideas as test-driven development, continuous delivery, responding to change, and so on. Yet, as we're entering the third decade of agile software development, most organisations still struggle to take in the ethos and adopt its practices.
+	</p>
+	<p>
+		Change is hard. A typical reaction from a development organisation would be:
+	</p>
+	<p>
+		<em>"We tried it, but it doesn't work for us."</em>
+	</p>
+	<p>
+		The usual agile response to such foot-draggery is: <a href="https://martinfowler.com/bliki/FrequencyReducesDifficulty.html">if it hurts, do it more often</a>.
+	</p>
+	<p>
+		I'd like to suggest exactly that remedy for a perceived problem that many agile proponents seem to believe exist.
+	</p>
+	<h3 id="5f207852a69a424fb5ad9625c0e5c1c4">
+		Pull request problems and solutions <a href="#5f207852a69a424fb5ad9625c0e5c1c4" title="permalink">#</a>
+	</h3>
+	<p>
+		I like collaborating with other developers via pull requests, but I also admit that my personality may influence that preference. I like deep contemplation; I like doing things on my own time, to my own schedule; I like having the freedom to self-organise. Yes, I fit <a href="http://amzn.to/1FWUzrM">the description of an introvert</a>. Pull requests do enable contemplation, they do let me self-organise.
+	</p>
+	<p>
+		Yet, I'm quite aware that there are plenty of problems with pull requests. First, many pull requests are poorly done. They are too big, bundle together unrelated things and introduce noise. I wrote an article titled <a href="/2015/01/15/10-tips-for-better-pull-requests">10 tips for better Pull Requests</a> to help developers create better pull requests. With a little practice, you can write small, focused pull requests.
+	</p>
+	<p>
+		If it hurts, do it more often.
+	</p>
+	<p>
+		Another problem with pull requests is in the review process. The most common criticism of the pull request process with its review phase is that it takes too long. I discuss this problem, and a remedy, in my coming book <a href="/code-that-fits-in-your-head">Code That Fits in Your Head</a>:
+		<blockquote>
+			<p>
+				"The problem with typical approaches is illustrated by [the figure below]. A developer submits a piece of work for review. Then much time passes before the review takes place.
+			</p>
+			<p>
+				<img src="/content/binary/timeline-with-long-wait-time.jpg" alt="Timeline with a long wait time between a feature is submitted for review and the review actually takes place.">
+			</p>
+			<p>
+				"[Figure caption:] How not to do code reviews: let much time pass between completion of a feature and the review. (The smaller boxes to the right of the review indicates improvements based on the initial review, and a subsequent review of the improvements.)
+			</p>
+			<p>
+				"[The figure below] illustrates an obvious solution to the problem. Reduce the wait time. Make code reviews part of the daily rhythm of the organisation.
+			</p>
+			<p>
+				<img src="/content/binary/timeline-with-minimal-wait-time.jpg" alt="Timeline with short wait time between a feature is submitted for and the review actually takes place.">
+			</p>
+			<p>
+				"[Figure caption:] Reduce the wait time between feature completion and code review. A review will typically spark some improvements, and a smaller review of those improvements. These activities are indicated by the smaller boxes to the right of the review.
+			</p>
+			<p>
+				"Most people already have a routine that they follow. You should make code reviews part of that routine. You can do that on an individual level, or you can structure your team around a daily rhythm. Many teams already have a daily stand-up. Such a regularly occurring event creates an anchor around which the day revolves. Typically, lunchtime is another natural break in work.
+			</p>
+			<p>
+				"Consider, for example, setting aside half an hour each morning, as well as half an hour after lunch, for reviews.
+			</p>
+			<p>
+				"Keep in mind that you should make only small sets of changes. Sets that represent less than half a day's work. If you do that, and all team members review those small changes twice a day, the maximum wait time will be around four hours."
+			</p>
+		</blockquote>
+		I've tried this in a small organisation, and it <em>can</em> work. I'm not claiming that it's easy, but it's hardly impossible.
+	</p>
+	<p>
+		If it hurts, do it more often.
+	</p>
+	<p>
+		An underlying problem is that people often feel that they don't have the time to review their colleagues' code. This is a real problem. If you are being measured (formally or informally) on your 'individual contribution', then anything you do to help your team looks like a waste of time. This is, in my opinion, an organisational problem, rather than a problem with doing reviews.
+	</p>
+	<p>
+		It's also a problem that pair programming <em>doesn't</em> solve.
+	</p>
+	<h3 id="0b6cf5764f084c22adb075e197249e3d">
+		Pull requests versus pair programming <a href="#0b6cf5764f084c22adb075e197249e3d" title="permalink">#</a>
+	</h3>
+	<p>
+		You <em>can</em> make the pull request process work, but should you? Isn't pair (or ensemble) programming better?
+	</p>
+	<p>
+		Pair programming can also be effective. I discuss that too in <a href="/code-that-fits-in-your-head">my new book</a>. What works best, I believe, is a question of trade-offs. What's more important to you? <a href="/2020/03/16/conways-law-latency-versus-throughput">Latency or throughput</a>?
+	</p>
+	<p>
+		In other words, while I have a personality-based preference for the contemplative, asynchronous pull request process, I readily admit that pair or ensemble programming may be better in many situations.
+	</p>
+	<p>
+		I suspect, however, that many proponents of pair programming are as driven by their personality-based preference as I am, but that since they might be extroverts, they favour close personal interaction over contemplation.
+	</p>
+	<p>
+		In any case, use what works for you, but be wary of unequivocal claims that one way is clearly better than the other. We have <a href="/2020/05/25/wheres-the-science">scant scientific knowledge about software development</a>. Most of what I write, and what industry luminaries write, is based on <a href="https://martinfowler.com/bliki/AnecdotalEvidence.html">anecdotal evidence</a>. This also applies to this discussion of pull requests versus pair programming.
+	</p>
+	<h3 id="3bfdb00387e64164a634722325f9710e">
+		Conclusion <a href="#3bfdb00387e64164a634722325f9710e" title="permalink">#</a>
+	</h3>
+	<p>
+		I have anecdotal evidence that pull requests can work in an 'agile' setting. One team had implemented continuous deployment and used pull requests because more than half the team members were working from remote (this was before the COVID-19 pandemic). Pull requests were small and reviews could typically be done in five-ten minutes. Knowing this, reviews were prompt and frequent. Turnaround-time was good.
+	</p>
+	<p>
+		I also have anecdotal evidence that ensemble programming works well. To me, it solves a completely different problem, but I've used it to great effect for knowledge transfer.
+	</p>
+	<p>
+		Programmers more extrovert than me report anecdotal evidence that pair programming is best, and I accept that this is true - for them. I do not, however, accept it as a universal truth. Neither do I claim that my personal preference for pull request is incontrovertibly best.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+
+    <div class="comment" id="b91ee20d71f840b9901d1150ba7e9fc0">
+		<div class="comment-author">Timothée</div>
+		<div class="comment-content">
+			<p>
+				Hi. Thanks for this insight. 
+                                And thank you for the emphasize about 'anecdotal' vs 'scientific proof'.
+		        </p>
+		        <p>
+                                About this topic, do you have any information regarding <a href="http://www.knosof.co.uk/ESEUR/">Evidence-based Software Engineering (free ebook)</a> ? If so, is it worth reading ? (Yep, I have total confidence about your knowledge and your judgment)
+			</p>
+		</div>
+		<div class="comment-date">2021-06-21 20:36 UTC</div>
+	</div>
+
+	<div class="comment" id="89eeaad6eded422b859e901e1157a589">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Timothée, thank you for writing. I haven't read or heard about <em>Evidence-based Software Engineering</em>. After having read both <a href="http://bit.ly/leprechauns-of-software-engineering">The Leprechauns of Software Engineering</a> (<a href="https://www.goodreads.com/review/show/1956107880">wonderful book</a>) and <a href="https://amzn.to/2OBNBoY">Making Software: What Really Works, and Why We Believe It</a> (<a href="https://www.goodreads.com/review/show/3718825945">not so much</a>), I don't feel like reading another one.
+			</p>
+		</div>
+		<div class="comment-date">2021-06-23 5:23 UTC</div>
+	</div>
+	
+	
+	<div class="comment" id="51b23b2d7a974445a5c80fee82407a93">
+		<div class="comment-author">Gonzalo Waszczuk</div>
+		<div class="comment-content">
+			<p>
+				You mention the adage "If it hurts, do it more often", and I 100% agree. But couldn't it also apply to those personality traits you mention?
+				If you like doing things in your own time, to your own schedule, having the freedom to self-organize, then it means that doing the opposite "hurts", as an introvert. Couldn't that mean that it would be a good idea to actually try it out, and "do it more often"? 
+				I am an introvert too, and the urge to do things on my own and in peace is strong. But over the past years I've realized that perhaps the #1 most important aspect in our work is communication. I try to go against my introvert nature and talk to others, and be involved in face-to-face instances as much as I can.				
+			</p>
+			<p>
+				In regards to code reviews, I found that a face-to-face code review works well, and is a sensible middle point between pair programming and pull-request-based code review. You get the benefits of pair programming where you can transfer knowledge to someone else; have a face to face discussion on design decisions; it's easy to have a back and forth of ideas; it's easier to develop a shared coding standard; etc. On the other hand it's easier to apply this to every feature/development since it takes "less time" from developers than pair programming (which could be harder to apply or convince management to do, since it theoretically halves developer throughput).
+				You can also forego the back and forths that would be done via comments in a pull request, having them occur in the moment, instead of over a span of a few days/hours. The author can answer questions and doubts from the reviewer much more quickly; the author can provide context and a "story" of the feature so the reviewer has it easier to review it.
+				I found that is provides a lot of benefits. However, I must admit I have had more experience with this face-to-face style of code review than the pull-request style of code review. What do you think?
+			</p>
+		</div>
+		<div class="comment-date">2021-06-23 14:43 UTC</div>
+	</div>
+
+	<div class="comment" id="d13706d1689c405fbf9c0dc579a22237">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Gonzalo, thank you for writing. You're right, it goes both ways. For what it's worth, I've done quite a bit of ensemble programming the last few years, and I find it quite effective for knowledge transfer.
+			</p>
+			<p>
+				In general, there's definitely a case to be made for face-to-face communication. Earlier in my career, once or twice I've fallen into the trap of maintaining a written discussion for weeks. Then, when someone finally called a meeting, we could amiably resolve the issues within an hour.
+			</p>
+			<p>
+				What concerns me about face-to-face code reviews, however, is the following: When you, as a reviewer, encounter something that you don't understand, you can immediately ask about it. What happens when you receive an answer? Do you then accept the answer and move on?
+			</p>
+			<p>
+				If so, haven't you collectively failed to address an underlying problem with the code? If there's something you don't understand, and you have to ask the original programmer, what happens if that colleague is no longer around? Or what happens when that team member has also forgotten the answer?
+			</p>
+			<p>
+				The code is the only artefact that contains the truth about how the software is defined. The code <em>is</em> the specification. If the code is difficult to understand, aren't you relying on collective tacit knowledge?
+			</p>
+			<p>
+				That's my concern, but it may be misplaced. I haven't worked in a team that does code reviews as you describe, so I have no experience with it.
+			</p>
+		</div>
+		<div class="comment-date">2021-06-26 4:18 UTC</div>
+	</div>
+	
+	<div class="comment" id="d2ce7f6191214e97a8f1ed70063f4d28">
+		<div class="comment-author">Gonzalo Waszczuk</div>
+		<div class="comment-content">
+			<p>Hi Mark. If, in the code review, I find something I don't understand, the author responds, and I agree with his response, how is it any different than making a comment in the pull request, the author responding, and me taking that comment/change request back?</p>
+			<p>If he responds and I still find it confusing, or I still believe it should be changed, then I would ask him to change it, and the feature should not be merged until he makes those changes. I don't see what could be different from the pull-request based approach here</p>
+		</div>
+		<div class="comment-date">2021-07-01 14:41 UTC</div>
+	</div>
+
+	<div class="comment" id="7c5640fbc0a8418799e4b7a6266a01b2">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Gonzalo, thank you for writing. I suppose you can make it work with an oral review as well, but doesn't it require more discipline to stick to protocol?
+			</p>
+			<p>
+				As a reviewer, whether or not <em>I</em>, personally, understand the proposed code is a local concern. The broader responsibility is to ensure that the code, itself, is understandable. <a href="https://en.wikipedia.org/wiki/Immanuel_Kant">Kant's</a> <a href="https://en.wikipedia.org/wiki/Categorical_imperative">categorical imperative</a> comes to mind:
+				<blockquote>
+					<p>
+						"Act only according to that maxim whereby you can, at the same time, will that it should become a universal law."
+					</p>
+					<footer><cite><a href="https://www.goodreads.com/review/show/1892459700">Immanuel Kant</a></cite></footer>
+				</blockquote>
+				A code review should be conducted in such a manner that the implied protocol can be raised to a universal rule to the benefit of all team members. As a team member, I'd like the code review process to benefit <em>me</em>, even when I'm taking no part in it.
+			</p>
+			<p>
+				Assume that I'm not the person doing the review. Instead, assume that another team member performs the review. If she runs into something she doesn't understand, it doesn't help <em>me</em> that she receives an answer that satisfies her. If I have to maintain the code, I'm not aware of the exchange that took place during the review.
+			</p>
+			<p>
+				If there's an issue with the proposed code, it's a symptom. You can relieve the symptom by answering an immediate query, or you can address the underlying problem. I prefer the latter.
+			</p>
+			<p>
+				When doing a written pull request review, most online services (GitHub, Azure DevOps) keep track of issues and require you to actively mark ongoing discussions as resolved. When I perform a review, I usually don't consider an <em>answer</em> as a resolution to the issue. An answer doesn't change the code, which means that the issue remains for the next reader to struggle with.
+			</p>
+			<p>
+				Instead, I will request that the contributor amends the proposed code to address the problem. This may include refactoring, renaming a method, or just adding a comment to the code. In its most basic form, if I had a question, other team members may have the same question. If the contributor can satisfactorily answer the question, then the least he or she can do is to add the answer as a comment to the code base so that it's readily available to all readers of it.
+			</p>
+			<p>
+				This turns <a href="https://en.wikipedia.org/wiki/Tacit_knowledge">tacit knowledge</a> into explicit knowledge.
+			</p>
+			<p>
+				In my new book <a href="/code-that-fits-in-your-head">Code That Fits in Your Head</a> I propose a <em>hierarchy of communication:</em>
+				<ol>
+					<li>Guide the reader by giving APIs distinct types.</li>
+					<li>Guide the reader by giving methods helpful names.</li>
+					<li>Guide the reader by writing good comments.</li>
+					<li>Guide the reader by providing illustrative examples as automated tests.</li>
+					<li>Guide the reader by writing helpful commit messages in Git.</li>
+					<li>Guide the reader by writing good documentation</li>
+				</ol>
+				I admit that I, like everyone else, am biased by my experience. The above suggested heuristic arose in a context. Most development organisations I've worked with has a major problem with tacit knowledge. I'm biased toward combating that problem by encouraging team members to capture knowledge in writing, and put it where it's discoverable.
+			</p>
+			<p>
+				If you don't have a problem with tacit knowledge, I suppose that most of the above doesn't apply.
+			</p>
+			<p>
+				What concerns me about an oral code review is that knowledge remains tacit. I suppose that with a sufficient rigorous review protocol, you could still address that problem. You could keep a log of the questions you ask, so that even if the reviewer receives a satisfactory answer, the log still states that the question was asked. The log indicates that there are unresolved issues with the proposed code. After the review, the contributor would have to take the log and address the questions by updating the pull request.
+			</p>
+			<p>
+				I suppose I'm not convinced that most people have the discipline to follow such a protocol, which is why I favour the nudging provided by review tools like those offered by GitHub and Azure DevOps.
+			</p>
+			<p>
+				Perhaps I'm painting myself into a corner here. Perhaps your concerns are completely different. Are you addressing a different problem?
+			</p>
+		</div>
+		<div class="comment-date">2021-07-02 6:35 UTC</div>
+	</div>
+</div>

@@ -1,0 +1,570 @@
+---
+layout: post
+title: "CQS versus server generated IDs"
+description: "How can you both follow Command Query Separation and assign unique IDs to Entities when you save them? This post examines some options."
+date: 2014-08-11 19:40 UTC
+tags: [Software Design]
+---
+{% include JB/setup %}
+
+<div id="post">
+  <p>
+    <em>{{ page.description }}</em>
+  </p>
+  <p>
+    In my <a href="{{ site.production_url }}/encapsulation-and-solid">Encapsulation and SOLID</a> Pluralsight course, I explain why <a href="http://en.wikipedia.org/wiki/Command%E2%80%93query_separation">Command Query Separation</a> (CQS) is an important component of Encapsulation. When first exposed to CQS, many people start to look for edge cases, so a common question is something like this:
+    <blockquote>
+      What would you do if you had a service that saves to a database and returns the ID (which is set by the database)? The Save operation is a Command, but if it returns void, how do I get the ID?
+    </blockquote>
+    This is actually an exercise I've given participants when I've given the course as a workshop, so before you read my proposed solutions, consider taking a moment to see if you can come up with a solution yourself.
+  </p>
+  <h3 id="3f97f73518a54378965837bdbbc0d3a9">
+    Typical, CQS-violating design <a href="#3f97f73518a54378965837bdbbc0d3a9" title="permalink">#</a>
+  </h3>
+  <p>
+    The problem is that in many code bases, you occasionally need to save a brand-new Entity to persistent storage. Since the object is an Entity (as defined in <a href="http://amzn.to/WBCwx7">Domain-Driven Design</a>), it must have a unique ID. If your system is a concurrent system, you can't just pick a number and expect it to be unique... or can you?
+  </p>
+  <p>
+    Instead, many programmers rely on their underlying database to add a unique ID to the Entity when it saves it, and then return the ID to the client. Accordingly, they introduce designs like this:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IRepository</span>&lt;T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">int</span>&nbsp;Create(T&nbsp;item);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;other&nbsp;members</span>
+}</pre>
+  </p>
+  <p>
+    The problem with this design, obviously, is that it violates CQS. The Create method ought to be a Command, but it returns a value. From the perspective of Encapsulation, this is problematic, because if we look only at the method signature, we could be tricked into believing that since it returns a value, the Create method is a Query, and therefore has no side-effects - which it clearly has. That makes it difficult to reason about the code.
+  </p>
+  <p>
+    It's also a leaky abstraction, because most developers or architects implicitly rely on a database implementation to provide the ID. What if an implementation doesn't have the ability to come up with a unique ID? This sounds like a <a href="http://en.wikipedia.org/wiki/Liskov_substitution_principle">Liskov Substitution Principle</a> violation just waiting to happen!
+  </p>
+  <h3 id="d95d9b6941594aff8b100757eaddf732">
+    The easiest solution <a href="#d95d9b6941594aff8b100757eaddf732" title="permalink">#</a>
+  </h3>
+  <p>
+    When I wrote "you can't just pick a number and expect it to be unique", I almost gave away the easiest solution to this problem:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IRepository</span>&lt;T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Create(<span style="color:#2b91af;">Guid</span>&nbsp;id,&nbsp;T&nbsp;item);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;other&nbsp;members</span>
+}</pre>
+  </p>
+  <p>
+    Just change the ID from an integer to a GUID (or UUID, if you prefer). This <em>does</em> enable clients to come up with a unique ID for the Entity - after all, that's the whole point of GUIDs.
+  </p>
+  <p>
+    Notice how, in this alternative design, the Create method returns void, making it a proper Command. From an encapsulation perspective, this is important because it enables you to immediately identify that this is a method with side-effects - just by looking at the method signature.
+  </p>
+  <p>
+    But wait: what if you <em>do</em> need the ID to be an integer? That's not a problem; there's also a solution for that.
+  </p>
+  <h3 id="a3e2a969a331467897153c1dbbecf71e">
+    A solution with integer IDs <a href="#a3e2a969a331467897153c1dbbecf71e" title="permalink">#</a>
+  </h3>
+  <p>
+    You may not like the easy solution above, but it <em>is</em> a good solution that fits in a wide variety in situations. Still, there can be valid reasons that using a GUID isn't an acceptable solution:
+    <ul>
+      <li>
+        Some databases (e.g. SQL Server) don't particularly like if you use GUIDs as table keys. You can, but integer keys often perform better, and they are also shorter.
+      </li>
+      <li>
+        Sometimes, the Entity ID isn't only for internal use. Once, I worked on a customer support ticket system, and my suggestion of using a GUID as an ID wasn't met with enthusiasm. When a customer calls on the phone about an existing support case, it isn't reasonable to ask him or her to read an entire GUID aloud; it's simply too error-prone.
+      </li>
+    </ul>
+    In some cases, you just need some human-readable integers as IDs. What can you do?
+  </p>
+  <p>
+    Here's my modified solution:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IRepository</span>&lt;T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Create(<span style="color:#2b91af;">Guid</span>&nbsp;id,&nbsp;T&nbsp;item);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">int</span>&nbsp;GetHumanReadableId(<span style="color:#2b91af;">Guid</span>&nbsp;id);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;other&nbsp;members</span>
+}</pre>
+  </p>
+  <p>
+    Notice that the Create method is the same as before. The client must still supply a GUID for the Entity, and that GUID may or may not be the 'real' ID of the Entity. However, in addition to the GUID, the system also associates a (human-readable) integer ID with the Entity. Which one is the 'real' ID isn't particularly important; the important part is that there's <em>another</em> method you can use to get the integer ID associated with the GUID: the GetHumanReadableId method.
+  </p>
+  <p>
+    The Create method is a Command, which is only proper, because creating (or saving) the Entity mutates the state of the system. The GetHumanReadableId method, on the other hand, is a Query: you can call it as many times as you like: it doesn't change the state of the system.
+  </p>
+  <p>
+    If you want to store your Entities in a database, you can still do that. When you save the Entity, you save it with the GUID, but you can also let the database engine assign an integer ID; it might even be a monotonically increasing ID (1, 2, 3, 4, etc.). At the same time, you could have a secondary index on the GUID.
+  </p>
+  <p>
+    When a client invokes the GetHumanReadableId method, the database can use the secondary index on the GUID to quickly find the Entity and return its integer ID.
+  </p>
+  <h3 id="35e605d8fee9493ba3f2be53747802fa">
+    Performance <a href="#35e605d8fee9493ba3f2be53747802fa" title="permalink">#</a>
+  </h3>
+  <p>
+    "But," you're likely to say, "I don't like that! It's bad for performance!"
+  </p>
+  <p>
+    Perhaps. My first impulse is to <a href="http://c2.com/cgi/wiki?PrematureOptimization">quote Donald Knuth</a> at you, but in the end, I may have to yield that my proposed design may result in two out-of-process calls instead of one. Still, I never promised that my solution wouldn't involve a trade-off. Most software design decisions involve trade-offs, and so does this one. You gain better encapsulation for potentially worse performance.
+  </p>
+  <p>
+    Still, the performance drawback may not involve <em>problems</em> as such. First, while having to make two round trips to the database may perform worse than a single one, it may still be fast enough. Second, even if you need to know the (human-readable) integer ID, you <em>may not need to know it when you create it</em>. Sometimes you can get away with saving the Entity in one action, and then you may only need to know what the ID is seconds or minutes later. In this case, separating reads and writes may actually turn out to be an advantage.
+  </p>
+  <h3 id="f53b34ca8e4742a19b78eb4d72f7369b">
+    Must all code be designed like this? <a href="#f53b34ca8e4742a19b78eb4d72f7369b" title="permalink">#</a>
+  </h3>
+  <p>
+    Even if you disregard your concerns about performance, you may find this design overly complex, and more difficult to use. Do I really recommend that <em>all</em> code should be designed like that?
+  </p>
+  <p>
+    No, I don't recommend that <em>all</em> code should be designed according to the CQS principle. As Martin Fowler <a href="http://martinfowler.com/bliki/CommandQuerySeparation.html">points out</a>, in <a href="http://amzn.to/1claOin">Object-Oriented Software Construction</a>, Bertrand Meyer explains how to design an API for a Stack with CQS. It involves a Pop Command, and a Top Query: in order to use it, you would first have to invoke the Top Query to get the item on the top of the stack, and then subsequently invoke the Pop Command to modify the state of the stack.
+  </p>
+  <p>
+    One of the problems with such a design is that it isn't thread-safe. It's also more unwieldy to use than e.g. the standard <a href="http://msdn.microsoft.com/en-us/library/9say334k.aspx">Stack&lt;T&gt;.Pop</a> method.
+  </p>
+  <p>
+    My point with all of this isn't to dictate to you that you should <em>always</em> follow CQS. The point is that you can always come up with a design that does.
+  </p>
+  <p>
+    In my career, I've met many programmers who write a poorly designed class or interface, and then put a little <a href="http://butunclebob.com/ArticleS.TimOttinger.ApologizeIncode">apology</a> on top of it:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IRepository</span>&lt;T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;CQS&nbsp;is&nbsp;impossible&nbsp;here,&nbsp;because&nbsp;we&nbsp;need&nbsp;the&nbsp;ID</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">int</span>&nbsp;Create(T&nbsp;item);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;other&nbsp;members</span>
+}</pre>
+  </p>
+  <p>
+    Many times, we don't know of a better way to do things, but it doesn't mean that such a way doesn't exist; we just haven't learned about it yet. In this article, I've shown you how to solve a seemingly impossible design challenge with CQS.
+  </p>
+  <p>
+    Knowing that even a design problem such as this <em>can</em> be solved with CQS should put you in a better position to make an <em>informed</em> decision. You may still decide to violate CQS and define a Create method that returns an integer, but if you've done that, it's because you've weighed the alternatives; not because you thought it impossible.
+  </p>
+  <h3 id="17ff00b34a9644dea4cb292e8cf85f55">
+    Summary <a href="#17ff00b34a9644dea4cb292e8cf85f55" title="permalink">#</a>
+  </h3>
+  <p>
+    It's possible to apply CQS to most problems. As always, there are trade-offs involved, but knowing how to apply CQS, even if, at first glance, it seems impossible, is an important design skill.
+  </p>
+  <p>
+    Personally, I tend to adhere closely to CQS when I do Object-Oriented Design, but I also, occasionally, decide to break that principle. When I do, I do so realising that I'm making a trade-off, and I don't do it lightly.
+  </p>
+</div>
+<div id="comments">
+  <hr>
+  <h2 id="comments-header">
+      Comments
+  </h2>
+  <div class="comment" id="601039fd761c49c5be0f23707ef82955">
+      <div class="comment-author"><a href="http://www.tonyabell.com">Tony Abell</a></div>
+      <div class="comment-content">
+          How would you model a REST End Point, for example:
+          <br/><br />
+          POST /api/users
+          <br /><br />
+          This should return the Location of the created url.
+          Would you suggest, the location be the status of the create user command.
+         
+          <br /><br />
+          GET /api/users/createtoken/abc123
+          <br /><br />
+          UI Developers do not like this pattern.  It creates extra work for them.
+         
+      </div>
+      <div class="comment-date">2014-08-12 4:24 UTC</div>
+  </div>
+  <div class="comment" id="1ba94a4d1aa34e7b893966306cd9abcc">
+      <div class="comment-author">Steve Byrne</div>
+      <div class="comment-content">
+          Would raising an event of some kind from the Repository be a valid solution in this case?<br /><br />
+          (Bear in mind I'm pretty ignorant when it comes to CQRS but I figured that it would get around not being
+          able to return anything directly from a command)
+          <br /><br />But then again I suppose you'd still need the GetHumanReadableId method for later on...
+      </div>
+      <div class="comment-date">2014-08-14 00:18 UTC</div>
+  </div>
+  <div class="comment" id="38e51d071833421897f0b8cd508a923a">
+      <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+      <div class="comment-content">
+        <p>
+          Tony, thank you for writing. What you suggest is one way to model it. Essentially, if a client starts with:
+        </p>
+        <p>
+          <pre>POST /api/users</pre>
+        </p>
+        <p>
+          One option for a response is, as you suggest, something like:
+        </p>
+        <p>
+          <pre>HTTP/1.1 202 Accepted
+Location: /api/status/1234</pre>
+        </p>
+        <p>
+          A client can poll on that URL to get the status of the task. When the resource is ready, it will include a link to the user resource that was finally created. This is essentially a workflow just like the RESTbucks example in <a href="http://amzn.to/18aNOla">REST in Practice</a>. You'll also see an example of this approach in my <a href="{{ site.production_url }}/functional-architecture-with-fsharp">Pluralsight course on Functional Architecture</a>, and yes, this makes it more complicated to implement the client. One example is the <a href="https://github.com/ploeh/booking-web-ui">publicly available sample client code</a> for that course.
+        </p>
+        <p>
+          While it puts an extra burden on the client developer, it's a very robust implementation because it's based on asynchronous workflows, which not only makes it horizontally scalable, but also makes it much easier to implement robust occasionally connected clients.
+        </p>
+        <p>
+          However, this isn't the only RESTful option. Here's an alternative. The request is the same as before:
+        </p>
+        <p>
+          <pre>POST /api/users</pre>
+        </p>
+        <p>
+          But now, the response is instead:
+        </p>
+        <p>
+          <pre>HTTP/1.1 201 Created
+Location: /api/users/8765
+
+{ "name" : "Mark Seemann" }</pre>        
+        </p>
+        <p>
+          Notice that this immediately creates the resource, as well as returns a representation of it in the response (consider the JSON in the example a placeholder). This should be easier on the poor UI Developers :)
+        </p>
+        <p>
+          In any case, this discussion is entirely orthogonal to CQS, because <a href="/2011/05/31/AttheBoundaries,ApplicationsareNotObject-Oriented">at the boundaries, applications aren't Object-Oriented</a> - thus, CQS doesn't apply to REST API design. Both POST, PUT, and DELETE verbs imply the intention to modify a resource's state, yet the HTTP specification describes how such requests should return proper responses. These verbs violate CQS because they both involve state mutation and returning a response.
+        </p>
+      </div>
+      <div class="comment-date">2014-08-15 17:57 UTC</div>
+  </div>
+  <div class="comment" id="45f6bd29680746f089a252ccab8e1122">
+      <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+      <div class="comment-content">
+        <p>
+          Steve, thank you for writing. Yes, raising an event from a Command is definitely valid, since a Command is all about side-effects, and an event is also a side effect. The corollary of this is that you can't raise events from Queries if you want to adhere to CQS. In <a href="{{ site.production_url }}/encapsulation-and-solid">my Pluralsight course on encapsulation</a>, I briefly touch on this subject in the <em>Encapsulation</em> module (module 2), in the clip called <em>Queries</em>, at 1:52.
+        </p>
+        <p>
+          (BTW, in this article, and the course as well, I'm discussing CQS (<a href="http://en.wikipedia.org/wiki/Command%E2%80%93query_separation">Command Query Separation</a>), not CQRS (Command Query Responsibility Segregation). Although these ideas are related, it's important to realise that they aren't synonymous. CQS dates back to the 1980s, while CQRS is a more recent invention, from the 2000s - the earliest <em>dated</em> publication that's easy to find is <a href="http://codebetter.com/gregyoung/2010/02/16/cqrs-task-based-uis-event-sourcing-agh/">from 2010</a>, but it discusses CQRS as though people already know what it is, so the idea must be a bit older than that.)
+        </p>
+      </div>
+      <div class="comment-date">2014-08-16 7:37 UTC</div>
+  </div>
+  <div class="comment" id="e6627a42d0454367a4fb618a6c5562f1">
+      <div class="comment-author">Kenny Pflug</div>
+      <div class="comment-content">
+          <p>Mark, thank you for this post and sorry for my late response, but I've got some questions about it.</p>
+          <p>First of all, I would not have designed the repository the way you showed at the beginning of your post - instead I would have opted for something like this:</p>
+          <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IRepository</span>&lt;T&gt;
+{
+    T CreateEntity();
+
+    <span style="color:blue;">void</span>&nbsp;AttachEntity(T entity);
+}</pre>
+          <p>The <span style="font-family:Consolas">CreateEntity</span> method behaves like a factory in that it creates a new instance of the specified entity without an ID assigned (the entity is also not attached to the repository). The <span style="font-family:Consolas">AttachEntity</span> method takes an existing entity and assigns a valid ID to it. After a call to this method, the client can get the new ID by using the corresponding <span style="font-family:Consolas;color:blue">get</span> method on the entity. This way the repository acts like a service facade as it provides creational, querying and persistance services to the client for a single type of entities.</p>
+          <p>What do you think about this? From my point of view, the <span style="font-family:Consolas">AttachEntity</span> method is clearly a command, but what about the <span style="font-family:Consolas">CreateEntity</span> method? I would say it is a query because it does not change the state of the underlying repository when it is called - but is this really the case? If not, could we say that factories always violate CQS? What about a <span style="font-family:Consolas">CreateEntity</span> implementation that attaches the newly created entity to the repository?</p>
+      </div>
+      <div class="comment-date">2014-08-25 7:55 UTC</div>
+  </div>
+  <div class="comment" id="682723a87e7048f8a9eaaa4131b0f2ce">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Kenny, thank you for writing. FWIW, I wouldn't have designed a Repository like I show in the beginning of the article either, but I've seen lots of Repositories designed like that.
+      </p>
+      <p>
+        Your proposed solution looks like it respects CQS as well, so that's another alternative to my suggested solutions. Based on your suggested method signatures, at least, CreateEntity looks like a Query. If a factory only creates a new object and returns it, it doesn't change the observable state of the system (no class fields mutated, no files were written to disk, no bytes were sent over the network, etc.).
+      </p>
+      <p>
+        If, on the other hand, the CreateEntity method also attaches the newly created entity to the repository, then it would violate CQS, because <em>that</em> would change the observable state of the system.
+      </p>
+      <p>
+        Your design isn't too far from the one I suggest in this very article - I just don't include the CreateEntity method in my interface definition, because I consider the creation of an Entity (in memory) to be a separate concern from being able to persist it.
+      </p>
+      <p>
+        Then, if you omit the CreateEntity method, you'll see that your AttachEntity method plays the same role is my Create method; the only difference is that I keep the ID separate from the Entity, while you have the ID as a writable property on the Entity. Instead of invoking a separate Query (GetHumanReadableId) to figure out what the server-generated ID is, you invoke a Query attached to the Entity (its ID property).
+      </p>
+      <p>
+        The reason I didn't chose this design is because it messes with the invariants of the Entity. If you consider an Entity as defined in <a href="http://amzn.to/WBCwx7">Domain-Driven Design</a>, an Entity is an object that has a long-lasting identity. This is most often implemented by giving the Entity an Id property; I do that too, but make sure that the id is mandatory by requiring clients to supply it through the constructor. As I explain in <a href="{{ site.production_url }}/encapsulation-and-solid">my Pluralsight course about encapsulation</a>, a very important part about encapsulation is to make sure that it's impossible (or at least difficult) to put an object into an invalid state. If you allow an Entity to be put into a state where it has no ID, I would consider that an invalid state.
+      </p>
+    </div>
+    <div class="comment-date">2014-08-26 15:10 UTC</div>
+  </div>
+    <div class="comment" id="1f57272d0e6e4e528095788be3ec0c7f">
+        <div class="comment-author">Kenny Pflug</div>
+        <div class="comment-content">
+            <p>Thank you for your comprehensive answer, Mark. I also like the idea of injecting the ID of an entity directly into its constructor - but I haven't actually applied this 'pattern' in my projects yet. Although it's a bit off-topic, I have to ask: the ID injection would result in something like this:</p>
+            <pre><span style="color:blue">public abstract class</span> <span style="color:#2b91af;">Entity</span>&lt;T&gt;
+{
+    <span style="color:blue">private readonly</span> T _id;
+    
+    <span style="color:blue">protected</span> <span style="color:#2b91af;">Entity</span>(T id)
+    {
+        _id = id;
+    }
+
+    <span style="color:blue">public</span> T ID { <span style="color:blue">get</span> { <span style="color:blue">return</span> _id; } }
+
+    <span style="color:blue">public override int</span> GetHashCode()
+    {
+        <span style="color:blue">return</span> _id.GetHashCode();
+    }
+
+    <span style="color:blue">public override bool</span> Equals(object other)
+    {
+        <span style="color:blue">var</span> otherEntity = other as <span style="color:#2b91af;">Entity</span>;
+        <span style="color:blue">if</span> (otherEntity == <span style="color:blue">null</span>)
+            <span style="color:blue">return false</span>;
+
+        <span style="color:blue">return</span> _id == otherEntity._id;
+    }
+}</pre>
+            <p>I know it is not perfect, so please think about it as a template.</p>
+            <p>Anyway, I prefer this design but often this results in unnecessarily complicated code, e.g. when the user is able to create an entity object temporarily in a dialog and he or she can choose whether to add it or discard of it at the end of the dialog. In this case I would use a DTO / View Model etc. that only exists because I cannot assign a valid ID to an entity yet.</p>
+            <p>Do you have a pattern that circumvents this problem? E.g. clone an existing entity with an temporary / invalid ID and assign a valid one to it (which I would find very reasonable)?</p>
+        </div>
+        <div class="comment-date">2014-08-26 22:30 UTC</div>
+    </div>
+  <div class="comment" id="518d961032204c10b806f58c8c3a62f7">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Kenny, thank you for writing. Yes, you <em>could</em> model it like that Entity&lt;T&gt; class, although there are various different concerns mixed here. Whether or not you want to override Equals and GetHashCode is independent of the discussion about protecting invariants. This may already be clear to you, but I just wanted to get that out of the way.
+      </p>
+      <p>
+        The best answer to your question, then, is to make it simpler, if at all possible. The first question you should ask yourself is: can the ID really be <em>any</em> type? Can you have an Entity&lt;object&gt;? Entity&lt;Random&gt;? Entity&lt;UriBuilder&gt;? That seems strange to me, and probably not what you had in mind.
+      </p>
+      <p>
+        The simplest solution to the problem you pose is simply to settle on GUIDs as IDs. That would make an Entity look like this:
+      </p>
+      <p>
+        <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Foo</span><br/>{<br/>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">Guid</span>&nbsp;id;<br/> <br/>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;Foo(<span style="color:#2b91af;">Guid</span>&nbsp;id)<br/>&nbsp;&nbsp;&nbsp;&nbsp;{<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(id&nbsp;==&nbsp;<span style="color:#2b91af;">Guid</span>.Empty)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentException</span>(<span style="color:#a31515;">&quot;Empty&nbsp;GUIDs&nbsp;not&nbsp;allowed.&quot;</span>,&nbsp;<span style="color:#a31515;">&quot;id&quot;</span>);<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.id&nbsp;=&nbsp;id;<br/>&nbsp;&nbsp;&nbsp;&nbsp;}<br/> <br/>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Guid</span>&nbsp;Id<br/>&nbsp;&nbsp;&nbsp;&nbsp;{<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">get</span>&nbsp;{&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>.id;&nbsp;}<br/>&nbsp;&nbsp;&nbsp;&nbsp;}<br/> <br/>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;other&nbsp;members&nbsp;go&nbsp;here...</span><br/>}</pre>
+      </p>
+      <p>
+        Obviously, this makes the simplification that the ID is a GUID, which makes it easy to create a 'temporary' instance if you need to do that. You'll also note that it protects its invariants by guarding against the empty GUID.
+      </p>
+      <p>
+        (Although not particularly relevant for this discussion, you'll also notice that I made this a concrete class. In general, I favour composition over inheritance, and I see no reason to introduce an abstract base class only in order to take and expose an ID - <a href="/2014/08/07/why-dry">such code is unlikely to change much</a>. There's no behaviour here because I also don't override Equals or GetHashCode, because I've come to realise that doing so with the implementation you suggest is counter-productive... but that, again, is another discussion.)
+      </p>
+      <p>
+        Then what if you can't use a GUID. Well, you could still resort to the solution that I outline above, and <em>still</em> use a GUID, and then have another Query that can give you an integer that corresponds to the GUID.
+      </p>
+      <p>
+        However, ultimately, this isn't how I tend to architect my systems these days. As <a href="http://goodenoughsoftware.net">Greg Young</a> has pointed out in a white paper draft (sadly) no longer available on the internet, you can't really expect to make Distributed Domain-Driven Design work with the 'classic' n-layer architecture. However, once you separate reads and writes (AKA CQRS) you no longer have the sort of problem you ask about, because your write model should be modelling commands and events, instead of Entities. FWIW, in my <a href="{{ site.production_url }}/functional-architecture-with-fsharp">Functional Architecture with F# Pluralsight course</a>, I also touch on some of those concepts.
+      </p>
+    </div>
+    <div class="comment-date">2014-08-29 17:37 UTC</div>
+  </div>
+  <div class="comment" id="7c1a93c731c14d08bd5e18f21775b9b4">
+    <div class="comment-author">Vladimir</div>
+    <div class="comment-content">
+      <p>
+        It's a great topic. There's another approach used for this problem in some ORMs, particularly in NHibernate: Hi/Lo algorithm.
+      </p>
+      <p>
+        It is possible to preload a batch of IDs and distribute them among new objects. I've written a blog post about it: <a href="http://enterprisecraftsmanship.com/2014/11/15/cqs-with-database-generated-ids/">link</a>
+      </p>
+    </div>
+    <div class="comment-date">2014-11-15 14:52 UTC</div>
+  </div>
+  <div class="comment" id="ff2fa54be8dd4ceabc995b0bb083ba95">
+    <div class="comment-author">Irfan Charania</div>
+    <div class="comment-content">
+      <p>In the proposed solution that uses both integer IDs and Guids, would you expect child tables to use GUIDs as foreign keys also?
+      </p>
+      <p>If the aggregate is passed in its entirety into a stored procedure, then scope_identity() can come into play. 
+        When a merge/replication scenario is not of concern, then you would be able to make use of integer IDs everywhere internally.
+      </p>
+    </div>
+    <div class="comment-date">2017-10-13 3:51 UTC</div>
+  </div>
+
+  <div class="comment" id="405ab29ce4bb41ea90fdf10725a72425">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Irfan, thank you for writing. To the degree you choose to use GUIDs as described in this article, it's in order to obey the CQS principle. Thus, it's entirely a concern of the client(s). How you relate tables inside of a relational database is an implementation detail.
+      </p>
+      <p>
+        If by 'aggregate' you mean an <em>Aggregate Root</em> as described in <a href="http://amzn.to/WBCwx7">DDD</a>, then the root is the root of a tree. Translated to typical relational database design, it'd be a row in a table. By definition, any children of such a root don't have individual identity, so I don't see how it'd make sense to associate a GUID with the children; you'd never query them individually, because if you do, then the Aggregate Root is no longer an Aggregate Root.
+      </p>
+      <p>
+        How you associate the children with the root is an implementation detail. Again, in typical, normalised database design, you'd typically find children via foreign key relationship. Since this is an implementation detail, you can use any key type you'd like for that purpose; most likely, that'll be some sort of integer.
+      </p>
+    </div>
+    <div class="comment-date">2017-10-14 8:06 UTC</div>
+  </div>
+  <div class="comment" id="84b8f1a295f643118a01b7fd0a45dc1b">
+    <div class="comment-author">Ben Bedinghaus</div>
+    <div class="comment-content">
+      <p>
+        Hi Mark. I noticed in a comment to one of Kenny's questions you said you would not design a repository the way it was originally designed in this example. How would you design a repository layer? I've always found this type of repository design to not quite feel right but see it all over the place. 
+        <br />
+        Thanks,
+        <br />
+        Ben
+      </p>
+      
+    </div>
+    <div class="comment-date">2018-06-05 16:12 UTC</div>
+  </div>
+
+  <div class="comment" id="2f8cdd1eaf0c4697aeabd8c0a6325ab7">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Ben, thank you for writing. To be clear, the Repository pattern is one of the most misunderstood and misrepresented design patterns that I can think of. It was originally described in <a href="https://martinfowler.com">Martin Fowler's</a> book <a href="http://bit.ly/patternsofeaa">Patterns of Enterprise Application Architecture</a>, but if you look up the pattern description there, it has nothing to do with how people normally use it. It's a prime example of design patterns being ambiguous and open not only to interpretation, but to semantic shift.
+      </p>
+      <p>
+        Regardless of the interpretation, I don't use the Repository design pattern. Following the <a href="https://en.wikipedia.org/wiki/Dependency_inversion_principle">Dependency Inversion Principle</a>, "clients […] own the abstract interfaces" (<a href="http://amzn.to/19W4JHk">APPP</a>, chapter 11), so if I need to, say, read some data from a database, I define a data reader interface in the client library. <a href="/2014/03/10/solid-the-next-step-is-functional">Following other SOLID principles as well, I'd typically end up with most interfaces having only a single member</a>. These days, though, if I do Dependency Injection at all, I mostly <a href="/2017/01/30/partial-application-is-dependency-injection">use partial application of higher-order functions</a>.
+      </p>
+    </div>
+    <div class="comment-date">2018-06-06 6:32 UTC</div>
+  </div>
+
+  <div class="comment" id="30bb5f13f69346daa473ec3637b4f01e">
+    <div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+    <div class="comment-content">
+      <p>
+        Mark, when you get to choose the database design, do most of your tables include both a (supplied) <code>Guid</code> ID and a (database-generated) <code>int</code> ID?
+      </p>
+    </div>
+    <div class="comment-date">2020-12-03 01:22 UTC</div>
+  </div>
+
+  <div class="comment" id="d2db67591fec400a8f0cd7cec41c3a62">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Tyson, thank you for writing. There are a couple of options.
+      </p>
+      <p>
+        You could just use a GUID as the table key. DBAs typically dislike that option because, if you use that as the table's clustered index, it'll force the database to physically rearrange the table every time you insert a row (since GUIDs aren't, in general, increasing). Notice, however, that this argument is entirely concerned with performance. Using a GUID as a table key has no impact on database design in general. It is, after all, just an integer.
+      </p>
+      <p>
+        Thus, if the table in question is likely to remain small (i.e. have few rows) and with only the occasional insert, I see no reason to have the standard <code>INT IDENTITY</code> column.
+      </p>
+      <p>
+        For busier tables, you can have both columns. For example, the code base I'm currently working with defines its <code>Reservations</code> table like this:
+      </p>
+      <p>
+        <pre><span style="color:blue;">CREATE</span>&nbsp;<span style="color:blue;">TABLE</span>&nbsp;[dbo]<span style="color:gray;">.</span>[Reservations]<span style="color:blue;">&nbsp;</span><span style="color:gray;">(</span>
+&nbsp;&nbsp;&nbsp;&nbsp;[Id]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">INT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:gray;">NOT</span>&nbsp;<span style="color:gray;">NULL</span>&nbsp;<span style="color:blue;">IDENTITY</span><span style="color:gray;">,</span>
+&nbsp;&nbsp;&nbsp;&nbsp;[At]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">DATETIME2&nbsp;</span><span style="color:gray;">(</span>7<span style="color:gray;">)</span>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:gray;">NOT</span>&nbsp;<span style="color:gray;">NULL,</span>
+&nbsp;&nbsp;&nbsp;&nbsp;[Name]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">NVARCHAR&nbsp;</span><span style="color:gray;">(</span>50<span style="color:gray;">)</span>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:gray;">NOT</span>&nbsp;<span style="color:gray;">NULL,</span>
+&nbsp;&nbsp;&nbsp;&nbsp;[Email]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">NVARCHAR&nbsp;</span><span style="color:gray;">(</span>50<span style="color:gray;">)</span>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:gray;">NOT</span>&nbsp;<span style="color:gray;">NULL,</span>
+&nbsp;&nbsp;&nbsp;&nbsp;[Quantity]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">INT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:gray;">NOT</span>&nbsp;<span style="color:gray;">NULL,</span>
+&nbsp;&nbsp;&nbsp;&nbsp;[PublicId]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">UNIQUEIDENTIFIER</span>&nbsp;<span style="color:gray;">NOT</span>&nbsp;<span style="color:gray;">NULL</span>&nbsp;<span style="color:blue;">UNIQUE</span><span style="color:gray;">,</span>
+&nbsp;&nbsp;&nbsp;&nbsp;[RestaurantId]&nbsp;<span style="color:blue;">INT</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:gray;">NOT</span>&nbsp;<span style="color:gray;">NULL</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">PRIMARY</span>&nbsp;<span style="color:blue;">KEY</span>&nbsp;<span style="color:blue;">CLUSTERED&nbsp;</span><span style="color:gray;">(</span>[Id]&nbsp;<span style="color:blue;">ASC</span><span style="color:gray;">)</span>
+<span style="color:gray;">)</span></pre>
+      </p>
+      <p>
+        The <code>Id</code> column exclusively exists to keep the database happy. The code that interacts with the database never uses it; it uses <code>PublicId</code>.
+      </p>
+      <p>
+        To be honest, I used to have a decent grasp on database design, SQL Server, and related performance considerations, but it's about a decade back. I'm sure you could produce some cases where such a design would be detrimental, but on the other hand, I believe that the majority of code out there isn't even near the extremes where you need to compromise on the design.
+      </p>
+    </div>
+    <div class="comment-date">2020-12-03 7:27 UTC</div>
+  </div>
+
+  <div class="comment" id="29385868c075445bb75c08a368edaec6">
+    <div class="comment-author">Zach Robinson</div>
+    <div class="comment-content">
+      <p>
+        Hello, Mark! Thank you for the encyclopedia of knowledge and experience you have shared and continue to share with us through this blog and your books!
+      </p>
+      <p>
+        I've recently read <a href="https://www.amazon.com/Domain-Modeling-Made-Functional-Domain-Driven/dp/1680502549">Domain Modeling Made Functional by Scott Wlaschin</a> and am currently reading your new book, <a href="https://www.amazon.com/Code-That-Fits-Your-Head/dp/0137464401">Code That Fits in Your Head</a>.
+        I've taken quite a liking to the idea that not just entities, but also events should be modeled within a domain.
+        In addition to common events such as queries/commands, any expected error or success cases can also be wrapped in a type. 
+        This manner of extensive typing seems to help improve the "What you see is all there is" factor when learning/understanding a code base.
+        Given that we have some expected events that occur when interacting with a database through commands and queries, it might make sense to encapsulate that domain model in the return types of these methods.
+      </p>
+      <p>
+        The query portion is straightforward. As you've discussed in your book, we can use <code>Maybe&lt;T&gt;</code> to indicate a successful or unsuccessful query. We might also be so crazy as to use an <code>Either&lt;T, TException&gt;</code> to propagate some exception message&sol;data to be logged&sol;returned at the bread-end of our impure&sol;pure workflow.
+      </p>
+      <p>
+        Would it violate CQS to do the same for commands? 
+        We're doing a side effect on the database, no question. 
+        We're also probably returning some data that is relevant to the incoming command parameter within the resulting message from either the IOSuccess or IOFailure.
+        A pattern I've been using for a web API project is something similar to the following:
+      </p>
+      <p>
+        <pre>
+<span style="color:blue;">public sealed</span> record IOSuccess(string Value);
+<span style="color:blue;">public abstract</span> record Failure(string Value);
+<span style="color:blue;">public sealed</span> record ValidationFailure(string Value) : Failure(Value);
+<span style="color:blue;">public sealed</span> record IOFailure(string Value) : Failure(Value);
+
+<span style="color:blue;">public sealed</span> record GetBalloonQuery(BalloonId Id);
+<span style="color:blue;">public sealed</span> record UpdateBalloonCommand(Balloon Balloon);
+<span style="color:blue;">public sealed</span> record PopBalloonCommand(BalloonId Id, IPointyObject Needle);
+
+<span style="color:blue;">public interface</span> IBalloonRepository
+{
+  Task&lt;Either&lt;IReadOnlyCollection&lt;Balloon&gt;, IOFailure&gt;&gt; GetBalloonsAsync();
+  Task&lt;Either&lt;Balloon, IOFailure&gt;&gt; GetBalloonAsync(GetBalloonQuery query);
+  Task&lt;Either&lt;IOSuccess, IOFailure&gt;&gt; UpdateBalloonAsync(UpdateBalloonCommand command);
+  Task&lt;Either&lt;IOSuccess, IOFailure&gt;&gt; DeleteBalloonAsync(PopBalloonCommand command);
+}
+        </pre>
+      </p>
+      <p>
+        I think this fits quite well with the idea that we can XXX out the name of the method and the types will tell the full story, no question at all.
+        I also like that this seems to follow from Domain Driven Design, where we are being super explicit about the domain event because of the specificity of the object parameters we're sending down the wire.
+      </p>
+      <p>
+        Does this idea hold any merit when looking to design APIs that follow the CQS philosophy? Where might you direct a greenhorn developer to learn more about this topic?
+      </p>
+    </div>
+    <div class="comment-date">2022-03-31 04:30 UTC</div>
+  </div>
+
+  <div class="comment" id="3080cfd9318440a3896691c51f4a2987">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Zach, thank you for writing.
+      </p>
+      <p>
+        As <a href="#f53b34ca8e4742a19b78eb4d72f7369b">I write above</a>, it's up to you if you want to follow CQS. If you do, however, you have to play by the rules, and the rules are that Commands don't return data.
+      </p>
+      <p>
+        We may have to make some concessions to the language in which we work. In C#, for example, we have to accept that <a href="https://docs.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> (without a generic type argument) is 'asynchronous <code>void</code>', even though it looks like a return value.
+      </p>
+      <p>
+        If you want to be explicit about errors, then yes, there's always a risk that a state mutation may fail. Being explicit about that, too, might compel you to model a Command as having a return type like <code>Task&lt;Either&lt;MyError, Unit&gt;&gt;</code> (customarily, for Either values, errors go to the left, contrary to the isomorphic Result, where they go to the right). I don't, however, design side-effecting actions like that in C#.
+      </p>
+      <p>
+        Even so, in none of these variations does a Command return data in the happy-path scenario.
+      </p>
+      <p>
+        The API you suggest violate the rule that Commands mustn't return data. You are, of course, free to design APIs as you like, but CQS it isn't. As a counterexample, <code>UpdateBalloonAsync</code> returns an <code>IOSuccess</code> in the happy-path scenario, and that value again contains a <code>string</code>.
+      </p>
+      <p>
+        If you removed the <code>string Value</code> from <code>IOSuccess</code> it'd be isomorphic to <a href="/2018/01/15/unit-isomorphisms">unit</a>. Transitively, then, the return type of <code>UpdateBalloonAsync</code> would be isomorphic to <code>Task&lt;Either&lt;IOFailure, Unit&gt;&gt;</code> (again, errors go to the left, because 'success is right'). If you allow Commands to throw exceptions, that again would be isomorphic to <code>Task</code>, with the implied understanding that the Command may throw an exception.
+      </p>
+      <p>
+        Where would I direct someone who want to learn more about the topic?
+      </p>
+      <p>
+        That's not that easy to answer. As Bertrand Meyer writes:
+      </p>
+      <blockquote>
+        <p>
+          "Side-effect-producing functions, which have been elevated by some languages (C seems to be the most extreme example) to the status of an institution, conflict with the classical notion of function in mathematics."
+        </p>
+        <footer><cite>Bertrand Meyer, <a href="/ref/oosc">Object-oriented Software Construction</a></cite>, p. 134</footer>
+      </blockquote>
+      <p>
+        As far as I can tell, that 'institution' continues with most mainstream languages like C#, Java, JavaScript, etcetera. This implies that you're unlikely to find strong treatment of the topic of CQS in 'traditional' object-oriented material.
+      </p>
+      <p>
+        As the above quote also implies by its use of the word <em>function</em>, you'll find that this distinction between <a href="https://en.wikipedia.org/wiki/Pure_function">pure functions</a> and impure actions is <a href="/2018/11/19/functional-architecture-a-definition">more prevalent and explicit in functional programming</<a>.
+      </p>
+    </div>
+    <div class="comment-date">2022-04-02 8:22 UTC</div>
+  </div>
+</div>

@@ -1,0 +1,693 @@
+---
+layout: post
+title: "Functional design is intrinsically testable"
+description: "TDD with Functional Programming doesn't lead to test-induced damage. Here's why."
+date: 2015-05-07 6:13 UTC
+tags: [Unit Testing, Software Design, Functional Programming]
+image: "/content/binary/ideal-function-isolation-testability-stacked-venn.png"
+image_alt: "Stacked Venn diagram that show that an ideal function is a subset of isolated functions, which is again a subset of testable functions."
+---
+{% include JB/setup %}
+
+<div id="post">
+  <p>
+    <em>{{ page.description }}</em>
+  </p>
+  <p>
+    Over the years, there's been much criticism of Test-Driven Development (TDD). Perhaps <a href="http://david.heinemeierhansson.com">David Heinemeier Hansson</a> best condensed this criticism by claiming that <a href="http://david.heinemeierhansson.com/2014/test-induced-design-damage.html">TDD leads to test-induced design damage</a>. This isn't a criticism you can just brush away; it hits a sore point.
+  </p>
+  <p>
+    Personally, I don't believe that TDD <em>has</em> to lead to test-induced damage (not even in Object-Oriented Programming), but I'm the first to admit that <a href="/2010/12/22/TheTDDApostate">it's not a design methodology</a>.
+  </p>
+  <p>
+    In this article, though, you're going to learn about the fundamental reason that TDD with <em>Functional Programming</em> doesn't lead to test-induced damage.
+  </p>
+  <p>
+    In Functional Programming, the ideal function is a <a href="http://en.wikipedia.org/wiki/Pure_function">Pure function</a>. A Pure function is a function that always returns the same value given the same input, and has no side-effects.
+  </p>
+  <h3 id="a20359945e5c406a8dbf3bd692dc2a1b">
+    Isolation <a href="#a20359945e5c406a8dbf3bd692dc2a1b" title="permalink">#</a>
+  </h3>
+  <p>
+    The first characteristic of a Pure function means that an ideal function can't depend on any implicit knowledge about the external world. Only the input into the function can influence the evaluation of the function.
+  </p>
+  <p>
+    This is what <a href="http://jessitron.com">Jessica Kerr</a> <a href="http://www.functionalgeekery.com/episode-8-jessica-kerr">calls <em>Isolation</em></a>. A function has the property of Isolation when the only information it has about the external word is passed into it via arguments.
+  </p>
+  <p>
+    You can think about Isolation as the <em>dual</em> of Encapsulation.
+  </p>
+  <p>
+    In Object-Oriented Programming, <a href="http://en.wikipedia.org/wiki/Encapsulation_%28object-oriented_programming%29">Encapsulation</a> is a very important concept. It means that while an object contains state, the external world doesn't know about that state, unless the object <strong>explicitly makes it available</strong>.
+  </p>
+  <p>
+    In Functional Programming, a function is Isolated when it knows nothing about the state of the external world, unless it's <strong>explicitly made available to it</strong>.
+  </p>
+  <p>
+    A Pure function, the ideal of Functional Programming, is Isolated.
+  </p>
+  <h3 id="55f5f9040e4b434cad839390ec1f038c">
+    Unit testing <a href="#55f5f9040e4b434cad839390ec1f038c" title="permalink">#</a>
+  </h3>
+  <p>
+    Why is this interesting?
+  </p>
+  <p>
+    It's interesting if you start to think about what unit testing means. There are tons of conflicting definitions of what exactly constitutes a unit test, but most experts seem to be able to agree on this broad definition:
+    <blockquote>
+      A unit test is an automated test that tests a unit in isolation from its dependencies.
+    </blockquote>
+    Notice the use of the word <em>Isolation</em> in that definition. In order to unit test, you'll have to be able to isolate the unit from its dependencies. This is the requirement that tends to lead to Test-Induced Damage in Object-Oriented Programming. While there's nothing about Encapsulation that explicitly states that it's forbidden to isolate an object from its dependencies, it offers no help on the matter either. Programmers are on their own, because this concern isn't ingrained into Object-Oriented Programming.
+  </p>
+  <p>
+    <img src="/content/binary/encapsulation-isolation-venn.png" alt="Venn diagram showing that while there's an intersection between Encapsulation and Isolation, it's only here that Object-Oriented Programming is also testable.">
+  </p>
+  <p>
+    You can do TDD with Object-Oriented Programming, and as long as you stay within the intersection of Encapsulation and Isolation, you may be able to stay clear of test-induced damage. However, that zone of testability isn't particularly big, so it's easy to stray. You have to be very careful and know what you're doing. Not surprisingly, many books and articles have been written about TDD, including <a href="/tags.html#Unit Testing-ref">quite a few on this blog</a>.
+  </p>
+  <h3 id="05e982d1b87b46e6a4b963ac8280c99b">
+    The best of both worlds <a href="#05e982d1b87b46e6a4b963ac8280c99b" title="permalink">#</a>
+  </h3>
+  <p>
+    In Functional Programming, on the other hand, Isolation is the ideal. An ideal function is already isolated from its dependencies, so no more design work is required to make it testable.
+  </p>
+  <p>
+    <img src="/content/binary/ideal-function-isolation-testability-stacked-venn.png" alt="Stacked Venn diagram that show that an ideal function is a subset of isolated functions, which is again a subset of testable functions.">
+  </p>
+  <p>
+    Ideal Functional design is not only ideal, but also perfectly testable, so there's no conflict. This is the underlying reason that TDD doesn't lead to test-induced damage with Functional Programming.
+  </p>
+  <h3 id="f042d2da84424c76a424b70faea121c9">
+    Summary <a href="#f042d2da84424c76a424b70faea121c9" title="permalink">#</a>
+  </h3>
+  <p>
+    Isolation is an important quality of Functional Programming. An ideal function is Isolated, and that means that it's intrinsically testable. You don't have to tweak any design principles in order to make a function testable - in fact, if a function isn't testable, it's a sign that it's poorly designed. Thus, <strong>TDD doesn't lead to Test-Induced Damage in Functional Programming</strong>.
+  </p>
+  <p>
+    If you want to learn more about this, as well as see lots of code examples, you can watch my <a href="{{ site.production_url }}/tdd-with-fsharp">Test-Driven Development with F#</a> Pluralsight course.
+  </p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	<div class="comment" id="e1992711a2074e068fd3372e65cddbf7">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<blockquote>
+				A Pure function is a function that always returns the same value given the same input, and has no side-effects.
+			</blockquote>
+			<p>
+				What do you mean by "value"?  Can an exception instance be a value?  More specifically, would you say that the C# function <code>int Foo() =&gt; new Exception();</code> is pure?
+			</p>
+			<p>
+				Many of your posts mention pure funcitons and at least a few of them include your own definition.  I decided to comment on this post since it was the oldest post I found that included your own definition of a pure function.
+			</p>
+		</div>
+		<div class="comment-date">2020-03-06 22:50 UTC</div>
+	</div>
+
+  <div class="comment" id="8357b5ab8ada4f44bf17dcacd9b9b079">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Tyson, thank you for writing. I don't think that <code>int Foo() =&gt; new Exception();</code> compiles...
+      </p>
+      <p>
+        Apart from that, how do you find that this is my own definition of a pure function? It seems to me to be a standard and non-controversial definition. I even <a href="https://en.wikipedia.org/wiki/Pure_function">link to the Wikipedia definition</a> in the beginning of the article.
+      </p>
+    </div>
+    <div class="comment-date">2020-03-07 8:49 UTC</div>
+  </div>
+
+	<div class="comment" id="f7819c9f3a304c86a4f14b2833674a34">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<blockquote>
+				Apart from that, how do you find that this is my own definition of a pure function? It seems to me to be a standard and non-controversial definition. I even <a href="https://en.wikipedia.org/wiki/Pure_function">link to the Wikipedia definition</a> in the beginning of the article.
+			</blockquote>
+			<p>
+				I am not trying claim that any particular definition of a pure function is non-standard or is controversial.  I also don't mean that the text I quoted is "your definition" in the sense that it semantically differs from the one on Wikipedia.  I just mean that it is "your definition" in the sense that you have syntactically included in your post the text that I quoted.
+			</p>
+			<p>
+				However, I am unsure about the precise meaning the defintion for a pure function that you have syntactically included in your post and that I quoted.  To help me improve my understanding of that defintion, I tried to ask you if a particular C# function is pure.
+			</p>
+			<blockquote>
+				I don't think that <code>int Foo() =&gt; new Exception();</code> compiles...
+			</blockquote>
+			<p>
+				Ah, yes.  Thanks for alerting me to my mistake.  I meant to include the <code>throws</code> keyword as well.  For clarity, I now repeat that whole paragraph but with the prose "thrown" and the keyword <code>throws</code> added.
+			</p>
+			<p>
+				What do you mean by "value"?  Can a thrown exception instance be a value?  More specifically, would you say that the C# function <code>int Foo() =&gt; throws new Exception();</code> is pure?
+			</p>
+		</div>
+		<div class="comment-date">2020-03-07 12:27 UTC</div>
+	</div>
+
+  <div class="comment" id="97e4ae29436e4828813bf445ee1c37dc">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Tyson, your code still doesn't compile, but I think I understand the question 😜
+      </p>
+      <p>
+        Yes, <code>int Foo() =&gt; throw new Exception();</code> is still a pure function, but it isn't <em>total</em>. Rather, it's a <a href="https://en.wikipedia.org/wiki/Partial_function">partial function</a>. This is an independent quality of functions.
+      </p>
+      <p>
+        Purity relates to determinism and the lack of side effects. A total function, on the other hand, is a function that returns a proper value for every possible value in its <em>domain</em>. What do I mean by <em>proper?</em>
+      </p>
+      <p>
+        There's two ways in which a function can fail to return a value. One is if the function never returns. Due to the <a href="https://en.wikipedia.org/wiki/Halting_problem">halting problem</a> there's no general-purpose way to determine whether or not this is the case for a Turing-complete language.
+      </p>
+      <p>
+        Another way a function can fail to return a value is if it throws an exception. Most languages (even Haskell!) allows exception-throwing. This isn't considered a 'proper' value because, using the type system, you declared that <code>Foo</code> returns an <code>int</code>. It doesn't. It 'returns' an exception.
+      </p>
+      <p>
+        Both non-termination and exceptions are typically considered a special value termed <em>bottom</em>, often written with the symbol <code>⊥</code>.
+      </p>
+      <p>
+        Functions can be pure, but partial. Your <code>Foo</code> function is an example of that. The holy grail in statically typed functional programming is pure and total functions. It's up to the programmer to provide the totality guarantee, though, since the type system can't enforce termination (due to the halting problem). You can, on the other hand, easily program without exceptions once you get the hang of it.
+      </p>
+    </div>
+    <div class="comment-date">2020-03-07 13:21 UTC</div>
+  </div>
+
+	<div class="comment" id="eacb540e91fb47e6bf6296c520522aaa">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				Thanks for seeing pass my second compile error and understanding my question.
+			</p>
+			<p>
+				Ah, yes.  I definitely know about partial and total functions from my experience with mathematics, and I am pretty sure I have previously called a function that throws an exception partial, but I completely forgot about this connection.  (I think that is because I have so focused on purity.)  Thank you for bringing this concept (back) to my attention.
+			</p>
+			<blockquote>
+				[The definition of a pure funciton in question] seems to me to be a standard and non-controversial definition.
+			</blockquote>
+			<p>
+				I was asking about pure functions and exception throwing because I was thinking about the definition for a pure function given by Enrico Buonanno in <a href="https://www.manning.com/books/functional-programming-in-c-sharp">Functional Programming in C#</a>.  He considers throwing an exception a side effect and includes this paragraph about this decision.
+			</p>
+			<blockquote>
+				Some will argue that a function can be considered pure despite throwing exceptions. However, in throwing exceptions it will cause indeterminism to appear in code that makes some decisions based on exception handling, or in the absence of exception handling, in the side effect of the program crashing.
+			</blockquote>
+			<p>
+				What do you think about Enrico's choice to define exception throwing as a side effect?
+			</p>
+			<p>
+				It might be worth considering <code>async void Foo() =&gt; throw new Exception();</code> because it produces an unhandled exception, which crashes the executing process.
+			</p>
+		</div>
+		<div class="comment-date">2020-03-09 03:59 UTC</div>
+	</div>
+
+  <div class="comment" id="7bdf9f1597334a40afe4b8488456d7b2">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        I haven't seen anyone take that position before, so I can only evaluate it based on what you wrote. With that limited context, however, I don't find the argument convincing. First, that throwing exceptions will cause indeterminism to appear in code that handles exceptions says nothing about the function that throws the exception. It says something about the code that handles the exception.
+      </p>
+      <p>
+        Making decisions based on data is itself not non-deterministic. If it was, <code>if/else</code> blocks or pattern matching couldn't be pure. If the exception handler does something impure while handling an exception, then it's just an impure action. The <a href="/2018/11/19/functional-architecture-a-definition">functional interaction law</a> explicitly allows this.
+      </p>
+      <p>
+        Keep in mind that the definition of purity that we're discussing is really only a checklist to figure out whether a function is <a href="https://en.wikipedia.org/wiki/Referential_transparency">referentially transparent</a>. That's the core definition: Can you replace a function call with its result?
+      </p>
+      <p>
+        Yes, if the function is pure. This includes a function that throws an exception. It basically just returns <code>⊥</code>. If you have code that handles the exception, it'll do that based on the exception that was thrown. It doesn't really matter if the function 'actually executed' or not. We can replace the function call with the <em>bottom</em> value.
+      </p>
+      <p>
+        If you don't handle the exception, then yes: the program crashes. It'll do so, however, regardless of whether you 'run' the function, or you just replace it with a thrown exception.
+      </p>
+    </div>
+    <div class="comment-date">2020-03-11 18:50 UTC</div>
+  </div>
+
+	<div class="comment" id="e118a437e8a84a9d95bd117bbe597084">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				Yes, this helps.  I agree with you.  Thanks for your explanation.
+			</p>
+			<blockquote>
+				Due to the <a href="https://en.wikipedia.org/wiki/Halting_problem">halting problem</a> there's no general-purpose way to determine whether or not this is the case for a Turing-complete language.<br>
+				...<br>
+				It's up to the programmer to provide the totality guarantee, though, since the type system can't enforce termination (due to the halting problem).
+			</blockquote>
+			<p>
+				The respective problems of deciding if a given function is total or pure are equally difficult; both are undecidable by <a href="https://en.wikipedia.org/wiki/Rice%27s_theorem">Rice's theorem</a>.  A compiler for Haskell is not a general-purpose algorithm for deciding the purity of a function.  It follows from the syntax of Haskell that all functions in Haskell with a return type different from the IO monad are pure (and technically all the others as well).  Rice's theorem doesn't apply when the property being checked is syntactic.
+			</p>
+			<p>
+				In the same way, it is possible to design a programming language with two contexts: one in which partial functions can be defined and another in which only total functions can be defined.  As before, the partial function context could be expressed by the syntactic requirement that the return type is some monad.
+			</p>
+		</div>
+		<div class="comment-date">2020-03-11 21:08 UTC</div>
+	</div>
+
+  <div class="comment" id="34436c76e8274a0db7d28d70ee1f2321">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        I'm not familiar with Rice's theorem, so I'll have to take your word on that. Haskell, however, seems to be doing a fairly good job of distinguishing between pure and impure, but this could be because the impure actions ultimately aren't implemented in Haskell (IIRC, they're written in C or C++). This might be analogous to the following escape hatch for partiality versus totality.
+      </p>
+      <p>
+        You can't define a <em>Turing-complete</em> language where you generally distinguish between total and partial functions. That's what Turing, Gödel, and Church proved in the 1930's. The escape hatch is that if you define a language that's <em>not</em> Turing-complete, you can distinguish between total and partial functions. If I remember correctly, that's the underlying design philosophy of <a href="https://www.idris-lang.org">Idris</a>. I believe that Edwin Brady once called the concept <em>Pac-Man-complete</em>; while not Turing-complete, he was aiming for a language powerful enough that you could still implement Pac Man in it. I do believe that Idris also comes with an option where you can escape into the wider, Turing-complete part of the language by giving up on the compiler checking of totality versus partiality.
+      </p>
+    </div>
+    <div class="comment-date">2020-03-11 21:47 UTC</div>
+  </div>
+
+	<div class="comment" id="5958a2e4ad61481782da313906bfe81e">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				Ah, great.  Your comment motivated me to read more about Idris, and I have learned some things.
+			</p>
+			<p>
+				First, Idris includes a totality checker for functions.  By default, a function is not checked for totality.  Putting the keyword <code>total</code> above a function defintion enables the checker.  Here are <a href="https://en.wikipedia.org/wiki/Idris_(programming_language)#Dependent_types">some examples</a> of this.  The code then compiles if and only if the checker (which is essentially a theorem prover) is able to prove that the function is total.  So the two contexts are distinguished by the presence or absence of the keyword <code>total</code>.  This is a completely different approach to creating the two contexts than what I was vaguely suggesting.
+			</p>
+			<p>
+				Second, Idris is Turing-complete as <a href="https://cs.stackexchange.com/questions/19577/what-can-idris-not-do-by-giving-up-turing-completeness/23916#23916">confirmed by Edwin Brady himself</a>.  Furthermore, both Edwin and <a href="http://adam.chlipala.net/cpdt/html/Coinductive.html">this page about coinductive</a> that he cites say (paraphrased into my words) that one could also separate the partial and total contexts using a monad.  Though the linked page goes onto say that "this is a heavyweight solution, and so we would like to avoid it whenever possible."
+			</p>
+			<p>
+				I am really glad to have learned those things.  Thanks for the great conversation :)
+			</p>
+		</div>
+		<div class="comment-date">2020-03-12 03:25 UTC</div>
+	</div>
+
+	<div class="comment" id="dd76d156c25b4b8e99b9018f3aa2939e">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				Would you say that <code>int Foo() { if (new Random().Next() % 2 == 0) throw new Exception(); else throw new NotImplementedException(); }</code> is pure?
+			</p>
+		</div>
+		<div class="comment-date">2020-03-17 03:44 UTC</div>
+	</div>
+
+  <div class="comment" id="904c09a013c144e48a7d322e75f70d94">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        No, that variation of <code>Foo</code> is impure because of the non-deterministic behaviour. You can't replace a call to <code>Foo</code> with a corresponding <em>bottom</em> value.
+      </p>
+    </div>
+    <div class="comment-date">2020-03-17 7:27 UTC</div>
+  </div>
+
+  <div class="comment" id="644b577fc60c46b58349d8878c19bbac">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>
+        Idris is very interesting. Have you seen attempts to test totality in other languages? 
+      </p>
+    </div>
+    <div class="comment-date">2022-05-21 00:43 UTC</div>
+  </div>
+
+  <div class="comment" id="aee72ce959654d9388b448023f469cbc">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Spencer, thank you for writing. Usually, the names <a href="https://en.wikipedia.org/wiki/Agda_(programming_language)">Agda</a> and <a href="https://en.wikipedia.org/wiki/Coq">Coq</a> are thrown around when Idris is mentioned. As far as I understand things, however, both Agda and Coq are mostly intended to be additional tools that you use together with another language, whereas the vision for Idris is to be a complete programming language. I could be wrong, though. It's a rabbit hole that I've yet to explore.
+      </p>
+      <p>
+        Another language worth mentioning might be <a href="https://en.wikipedia.org/wiki/F*_(programming_language)">F*</a>, but again, I know little about it, and have never written a line of code in it.
+      </p>
+    </div>
+    <div class="comment-date">2022-05-21 5:58 UTC</div>
+  </div>
+
+  <div class="comment" id="2c0403d1e69d43a496ee04c16bea282c">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>
+        Thank you for the leads! These languages are very interesting. I'd never heard of "proof-oriented programming" or depdendant types before. 
+        It's going to a take a while to unpack these new approaches.
+      </p>
+      <p>
+        I notice all these languages take a proof-based approach to verifying totality. I'm curious about your take on a possible experimental approach.
+      </p>
+      <p>
+        I've been trying to meld ideas from <a href="https://clojure.org/about/spec">Clojure.spec</a>
+        into a type-driven approach in F#, in line with Scott Wlaschin's <a href="https://fsharpforfunandprofit.com/series/designing-with-types/">Designing with Types</a> 
+        and your <a href="https://blog.ploeh.dk/2016/02/10/types-properties-software/">Types + Properties = Software</a>. 
+        Clojure Spec, in case you're unfamiliar, is the Specification pattern as an optional type system. Types are built up through combinations of constraints 
+        (e.g. InventoryCount must be an int of at least 0 and no more than 10000).
+        Spec can then automatically test type-annotated functions to verify that any input that fits constraints produces output that fits constraints. 
+        It's basically property testing with generators automatically created from the in-code type specifications.
+      </p>
+      <p>
+        I think this kind of testing is effectively a measure of totality; a measure of how well a function's actual domain matches its advertized domain. 
+        Clojure does not make that claim, and I haven't found a similar approach from another language or framework yet.
+      </p>
+      <p>
+        While less thorough than proofs, such a technique could be applied to most any system with static typing through meta-programming and conventions to find type constraints (i.e. via factory functions).
+        The proportion of inputs that error or timeout could be a consistent measure for migrating systems to more total, and less surprising, functions.
+      </p>
+      <p>
+        Thoughts?
+      </p>
+    </div>
+    <div class="comment-date">2022-05-23 2:12 UTC</div>
+  </div>
+
+  <div class="comment" id="9e0edebafc604154b4472d0a3d978894">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Spencer, thank you for writing. While I know that Clojure.spec exists, I don't know more about it than what you've described. It's not quite the same, but it sounds not too dissimilar from <a href="http://hackage.haskell.org/package/QuickCheck">QuickCheck</a> <code>Arbitrary</code> instances. They don't describe predicates, but they do implement (pseudo-random) generators of values. Those generators then drive data generation for property-based tests.
+      </p>
+      <p>
+        Parametrised tests (including properties) are essentially predicates. They take input and return a binary result. Granted, the result isn't <em>true</em> or <em>false</em>, but rather <em>pass</em> or <em>fail</em>, but I hope it's evident that these are isomorphic.
+      </p>
+      <p>
+        How does that relate to testing totality? It's better than nothing, but in practice we must suffer the reality of combinatorics. You can easily use brute force to prove total a function that takes a single Boolean value as input. A byte input requires 256 test cases, so that's also within the realm of the possible. Many input types, however, <a href="/2021/11/15/types-as-sets">represent conceptually infinite sets</a>. A string, for example, represents a conceptually infinite set.
+      </p>
+      <p>
+        Imagine an adversarial function that loops forever if the input string is a very particular value. This value might be a one-million-character string generated randomly at compile time. The odds that any random test case generator ever hits that particular value are effectively nil.
+      </p>
+      <p>
+        While I like property-based testing a lot, I don't consider it a measure of totality. If the domain of a function is infinite, it makes little difference if you exercise a hundred or a million test cases - you've still covered practically zero percent of the domain.
+      </p>
+    </div>
+    <div class="comment-date">2022-05-24 6:27 UTC</div>
+  </div>
+  <div class="comment" id="12fc077b72914a93828887a2c17a9ccc">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>
+        You make an excellent point. If I understand correctly, many domains are effectively infinite so coverage of random testing is effectively negligable.
+      </p>
+      <p>
+        My connection to totality came from trying to understand what Clojure spec's instrument function is really testing. 
+        It's a property, but the property only knows the shape of the domain and range. It knows nothing about relationships between specific input and output values.
+        Therefore, it doesn't verify business domain correctness. Rather, it's checking that the range holds true for a sampling of valid input values.
+      </p>
+      <p>
+        In light of your insight, it may be more fair to say this is a coverage "surprise" check. It can run common edge cases and input scenarios to make sure they return 
+        values from the advertized range rather than exceptions (or fail to terminate). As you discerned, it cannot generally detect adversarial implementations that would violate totality.
+      </p>
+      <p>
+        Thank you for taking the time to consider this idea and share your expertise!
+      </p>
+    </div>
+    <div class="comment-date">2022-05-24 14:22 UTC</div>
+  </div>
+
+  <div class="comment" id="50ebefc5e650494fa5401e03dc7f50d9">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Spencer, thank you for writing. If I understand your description of Clojure.spec correctly, this makes sense in a dynamically typed language like Clojure. It's seems reminiscent of <a href="https://en.wikipedia.org/wiki/Fuzzing">fuzz testing</a> in the sense that you throw arbitrary input at a System Under Test and then monitor what happens. This makes sense in a system where input is mostly (or exclusively) checked at run time.
+      </p>
+      <p>
+        In a language like Haskell, on the other hand, that kind of testing is generally impossible. You can't just throw random, unconstrained input at a Haskell function, because if the input doesn't type-check, the code will not even compile. Languages like C# and Java seem to fall more on that side than on the Clojure side, even though <a href="/2019/12/16/zone-of-ceremony">their types systems involve more ceremony</a>.
+      </p>
+      <p>
+        To be clear: You could imagine something akin to a 'totality check' even in Haskell. After all, we know from the papers of Church, Gödel, and Turing that no type system can prove arbitrary Turing-complete code total (i.e. the halting problem). Even with the best-designed Haskell API, one might conceivably want to write a QuickCheck property that throws random (typed) input at a function only to assert that it returns a value. In essence, this would be an assertion-free test. The implicit assertion is that if the function returns without exceptions or timing out, then it may be total.
+      </p>
+      <p>
+        While one could do that, once you've gone through the trouble of writing such a property, you can often think of some sort of explicit assertion to write. If so, why not do that? But if you do, you've now ventured into the territory of genuine property-based testing. There's nothing wrong with that - quite the contrary - but I think it explains why you tend to not see the above kind of totality checking in statically typed languages.
+      </p>
+      <p>
+        Another point to consider is this: With a decent static type system (and I count C# in that category), you can often design APIs so that the types take care of most concerns regarding totality. It helps to realise that in most languages, functions can be partial in two ways:
+      </p>
+      <ul>
+        <li>A function may throw an exception</li>
+        <li>A function may never terminate</li>
+      </ul>
+      <p>
+        You can usually eliminate the first kind of partiality by carefully choosing input and output types. Thus, in a statically typed language, you're often left with the question: Will this function always terminate?
+      </p>
+      <p>
+        While the halting problem says that there's no <em>general</em> algorithm that will answer that question, it's often obvious for specific functions. For instance, if a function has no recursion or looping, it obviously will terminate. This, to be clear, involves 'white-box' analysis. You have to look at the code and convince yourself that the function will terminate.
+      </p>
+      <p>
+        I've possibly strayed off your original agenda, but I found your comments and responses inspiring. I hope you or someone else find these notes useful.
+      </p>
+    </div>
+    <div class="comment-date">2022-05-26 11:15 UTC</div>
+  </div>
+  <div class="comment" id="a90e947d377348a6abb64aa3d3a7e3fa">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>I'm glad you've found this line of thought interesting! I've definitely enjoyed and benefitted from our discourse.</p>
+      <p>I agree this kind of testing bears a strong resemblance to fuzzing and that static types eliminate the majority of invalid inputs up front.</p>
+      <p>I'm going to dig deeper into my journey to see if it can explain why I think these tests are valuable.</p>
+      <p>It may not be clear, but the best thing about Clojure Spec's fuzz-like tests is that they don't have to be written at all. All type information is present in the type annotation, including primitive constraints like bounded integers. An introspective function can generically infer generators and assertions from type annotations to create the tests. All annotated functions get these fuzz tests for free.</p>
+      <p>In static languages, we get the structural component of these tests for free from the compiler. However, we're still missing out on verifying constrained values.</p>
+      <p>Approaches to combat primitive obsession go a long way toward eliminating such errors and defensive programming from our domains by centralizing validation and coupling it to a type.</p>
+      <p>Scott Wlaschin demonstrates constrained types <a href="https://fsharpforfunandprofit.com/posts/designing-with-types-single-case-dus/">using unions</a></p>
+      <pre>
+<code class="language-fsharp">
+type String50 = private String50 of string
+module String50 =
+  let create str = 
+    if String.IsNullOrEmpty(str) then
+        None
+    elif String.length str > 50 then
+        None
+    else
+        Some (String50 str)
+</code>
+      </pre>
+      <p>More traditionally, it'd be a constructor</p>
+      <pre>
+<code class="language-cs">
+class String50
+{
+    private string value;
+    public String50(string str)
+    {
+        if (String.IsNullOrEmpty(str))
+        {
+            throw new ArgumentNullException("str");
+        }
+        else if (str.Length > 50)
+        {
+            throw new ArgumentException("String50 cannot be longer than 50 characters");
+        }
+        else
+        {
+            this.value = str;
+        }
+    }
+}
+</code>
+      </pre>
+      <p>These approaches implement constrained types as a pattern rather than a language construct. A programmer could undermine them by forgetting to keep constructors private, adding new constructors, assigning via reflection, etc.</p>
+      <p>I spent a while trying to figure out how to add constrained values to F#'s types system and understand what it could do for us. It ultimately failed, but you can check out my attempts and my reasoning in the <a href="https://github.com/farlee2121/fsspec">github repo</a>. This was prior to me learning about dependent type systems, which are the more mature realization of my line of thought.</p>
+      <p>I <a href="https://github.com/farlee2121/FsSpec/blob/main/doc/2022-04-20%20Test-only%20approaches.html">later realized</a> that the constraints don't need to be part of the type to be useful. The constraints are represented in the code as factories or constructors. The code itself will enforce the expectations at runtime. At test time it's ok to rely on slow introspective approaches to identify constraints. In that way, we too have all the information we need to mechanically property test a system just like clojure spec does. In fact, we can test every function in the system, intentionally constrained or not, because static languages require typing.</p>
+      <p>What do these tests do? Like with spec, we can derive some confidence that our system handles the values it says it does. Though not total certainty, which requires a white-box approach as you mentioned.</p>
+      <p>If a system is migrating from heavy use of exceptions for defensive programming, or from general lack of defensive programming, then this kind of test can track progress away from exceptions.</p>
+      <p>It can also help consistency of our constrained types. For example, we can always select the most weakly constrained factory or constructor. This prevents accidental public constructors (which, admittedly, could also be accomplished with an annotation and a simple analyzer). We can also pressure towards conventions like naming the factory a certain way, or only using results over exceptions for communicating errors from factories.</p>
+      <p>As a side benefit, we can also leverage the introspected generators to write our own properties. This reduces duplicated knowledge of constraints between the system and tests, keeping them in line automatically.</p>
+      <p>Thanks for reading this far. This is all pretty conceptual at this point. I hope it's fun food for thought.</p>
+    </div>
+    <div class="comment-date">2022-05-26 17:02 UTC</div>
+  </div>
+  <div class="comment" id="572fccaa3486484fa355b47c4cb6bf33">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>
+        A bit more rumination and I realized my thoughts above can be summarized in a few key points
+      </p>
+      <ul>
+        <li>Clojure Spec tests I refer to aren't written, they're programmatically inferred from code</li>
+        <li>Static languages encode all the information needed to programmatically generate and assert constrained value types like Clojure Spec, it's just that part of information lives in functions rather than types.</li>
+        <li>Constrained values are effectively a design pattern in most static languages. 
+          The language can't guarantee a consistent approach or consistent application, so there's value in adding natural pressures to be consistent.
+          It's kind of like how you once explained the <a href="https://blog.ploeh.dk/2012/11/06/WhentouseaDIContainer/">value of DI containers</a>
+        </li>
+        <li>
+          These tests can smoke out defensive programming issues and misadvertized function signatures. 
+          This is only generalizable if we can differentiate expectable failures from unintended issues, thus why these tests mostly measure movement away from exceptions.
+        </li>
+      </ul>
+      Please let me know if you'd like anything clarified. These are far from fully formed ideas.
+    </div>
+    <div class="comment-date">2022-05-26 18:16 UTC</div>
+  </div>
+
+  <div class="comment" id="5c4d67c21b7048f2a423dc67f2d04caa">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Spencer, thank you for writing. I already got the sense that the Clojure.spec tests weren't written, but thank you for confirming that. I don't know the implementation details of how that works, but I may have an inkling.
+      </p>
+      <p>
+        Clojure is, as I'm sure that you're aware, <a href="https://en.wikipedia.org/wiki/Homoiconicity">homoiconic</a>. Thus, I suppose that the specs are written in Clojure as well. A function or macro can extract the details of each spec and generate test data that are likely to fit.
+      </p>
+      <p>
+        Consider, as a though experiement, a type like this:
+      </p>
+      <p>
+        <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Narrows</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:blue;">long</span>&nbsp;value;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:#2b91af;">Narrows</span>(<span style="color:blue;">long</span>&nbsp;<span style="color:#1f377f;">value</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.value&nbsp;=&nbsp;value;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;Maybe&lt;Narrows&gt;&nbsp;<span style="color:#74531f;">TryCreate</span>(<span style="color:blue;">long</span>&nbsp;<span style="color:#1f377f;">candidate</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8f08c4;">if</span>&nbsp;(candidate&nbsp;&lt;&nbsp;2_993_329_992&nbsp;||&nbsp;3_001_322_003&nbsp;&lt;&nbsp;candidate)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8f08c4;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;Maybe&lt;Narrows&gt;();
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#8f08c4;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;Maybe&lt;Narrows&gt;(<span style="color:blue;">new</span>&nbsp;Narrows(candidate));
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+      </p>
+      <p>
+        If this was, instead, Clojure, then from perusing the <a href="https://clojure.org/guides/spec">Clojure.spec documentation</a> it looks as though you'd use a predefined specification called <code>int-in</code>, but even if you'd be using normal less-than and greater-than operators, I suppose it wouldn't be beyond the abilities of a sophisticated function to tease apart such a predicate and compose a useful generator.
+      </p>
+      <p>
+        In languages like C#, F#, Java, or Haskell, however, predicates and types are typically black boxes. For the <code>Narrows</code> class, you have a static factory method. This factory method is total, but if you throw random 64-bit integers at it, the chance of ever getting a populated Maybe value is vanishingly small.
+      </p>
+      <p>
+        If you now have a function that takes that type as input, you can't really exercise it because of the statistics involved. This is why most property-based testing frameworks that I've seen (<a href="https://hackage.haskell.org/package/QuickCheck">QuickCheck</a>, <a href="https://hedgehog.qa/">Hedgehog</a>, <a href="https://fscheck.github.io/FsCheck/">FsCheck</a>, <a href="https://github.com/AnthonyLloyd/CsCheck">CsCheck</a>) are based on a <em>generator</em> API (usually called either <code>Arbitrary</code> or <code>Gen</code>).
+      </p>
+      <p>
+        While you can compose a type-specific generator from other generators, you have to explicitly do that work. The testing framework can't infer the set of valid values to use.
+      </p>
+      <p>
+        I'm not disagreeing with what you wrote. I'm only trying to outline how I see such efforts interact with the capabilities of various languages.
+      </p>
+    </div>
+    <div class="comment-date">2022-05-27 15:10 UTC</div>
+  </div>
+  <div class="comment" id="09b276f0717b445f953b64be22e36790">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>
+        If I interpret this correctly, you're saying languages like C# and similar would have to throw random values at the Narrows TryCreate function to find instances. 
+        However, Clojure could use its macro system to understand the functions symbolically and semantically.
+      </p>
+      <p>
+        I think that languages like C# and F# can also semantically analyze code, but it has to be done through the compiler platforms (i.e. Roslyn, FSharp Compiler Services) or similar meta-programming.
+        These are performance heavy, not every language has one, and only work when we have access to code, but they do make semantic analysis possible for functions.
+      </p>
+      <p>
+        We could use the compiler platform to parse constraints from factories. For example, analyze Narrows.TryCreate to find comparison operators, and that those comparisons lead to a "None" value.
+        The other conditional branch is "Some", thus Narrows requres a long greater than 2_993_329_992 and less than 3_001_322_003.
+        Then we use the inferred constraints to create typical property test generators and arbitraries.
+      </p>
+      <p>
+        However, I think your musing from a few posts back are now clicking better. 
+        You mused that static languages can effectively eliminate exception-based partiality through careful choice of types.
+        I see two main categories of exceptions
+        <ul>
+          <li>
+            <em>Exceptions intentionally used to assert function pre- and post-conditions</em> -> 
+            Shouldn't be needed when using constrained types like Narrows alongside results and options.
+            Limiting unsanctioned use of exceptions for assertions may be easier to solve with a simple static analyzer.
+          </li>
+          <li>
+            <em>Exceptions from mishandled data</em> -> These should be caught by the properties we should already be writing.
+             As you pointed out, the spec-like assumptions are essentially a weaker form of normal property tests.
+             And, unlike dynamic structural languages, we have the compiler to verify functions compose together correctly.
+          </li>
+        </ul>
+      </p>
+      <p>
+        This is really interesting. Thank you for pushing my thinking.
+      </p>
+    </div>
+    <div class="comment-date">2022-05-27 19:07 UTC</div>
+  </div>
+
+  <div class="comment" id="9209b510035645399e2e720228af9271">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Spencer, thank you for writing. I didn't meant to imply that we should make a general-purpose code analyser - this seems to me to move perilously close to the halting problem; that is, I don't think you this is generally possible. (I could be wrong, though, I haven't thought deeply about this.)
+      </p>
+      <p>
+        What I meant was more that since Clojure.spec is written in Clojure, and Clojure code is also data, it's fairly easy to search a spec for easy-to-detect predicates. Something like a specification is fair game for analysis exactly because of the role it plays. I wouldn't contemplate analysing the function <em>body</em> of a Clojure function like that.
+      </p>
+      <p>
+        In .NET a typical approach to these kinds of problems is to use attributes. There's been quite a few attempts at that over the years - <a href="/2011/05/27/DesignSmellRedundantRequiredAttribute">I've previously engaged with that kind of design</a>, but in summary, I'm not a fan. It does, however, provide some metadata that's fair game for analysis.
+      </p>
+      <p>
+        The distinction, then, seems more related to the nature of the languages. With a language like C#, if you need metadata, it seems as though you need to invent a language feature for that purpose: attributes. In Clojure, on the other hand, because it's homoiconic, you don't need a separate language feature for metadata. You just write the metadata in Clojure. This doesn't, however, change the <em>role</em> of the spec. Even though you're writing it in Clojure, it plays the role of metadata. One of the implications of that is that it's fair game for an analyser, whereas I think a Clojure function body is still off limits for the Spec engine.
+      </p>
+    </div>
+    <div class="comment-date">2022-06-02 12:36 UTC</div>
+  </div>
+  <div class="comment" id="3b5ff36ffd9343bbb33d92fc97eac255">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>
+        Ah, I misunderstood. I hadn't thought about the relationship between metadata and analyzers. Clojure certainly has the edge for elegant and powerful metadata.
+      </p>
+      <p>
+        I suppose I feel hope for analyzing function bodies for constraints in this context because type factories tend to contain predicates similar to what we'd use in a spec.
+        Unlike Clojure, this relies on some unenforced expectations on the code and wouldn't always come up with an answer. 
+      </p>
+      <p>
+        Even with that hope, the value proposition seems shaky considering our previous comments.
+      </p>
+    </div>
+    <div class="comment-date">2022-06-03 19:37 UTC</div>
+  </div>
+  <div class="comment" id="3ea6094fc9e3458e840aac7dd7bd87c8">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>
+        Ruminating on our discussion, I decided it was worth creating an experimental constraints-as-data library, <a href="https://github.com/farlee2121/fsspec">FsSpec</a>, that leans into the advantages of a static type system.
+      </p>
+      <p>
+        It doesn't attempt to prove totality or be part of the type system, like is possible in Idris or F*. It normalizes the common activity of constraining primitive values and exposes those constraints as data that can be programmatically accessed. 
+      </p>
+      <p>
+        It'll take use and feedback to determine if this approach really saves complexity, but it was very fun to write. The most fun part was realizing how boolean trees can be normalized to reliably interpret them for data generation.
+      </p>
+      <p>
+        I'd love to hear your thoughts if it interests you.
+      </p>
+    </div>
+    <div class="comment-date">2022-07-06 17:53 UTC</div>
+  </div>
+
+  <div class="comment" id="bb7af790a7d1420d8a2ce30e6eb076d4">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Spencer, thank you for writing. FsSpec looks interesting. It strikes me as one of those things where I'd need to try it out on a real code base before I could pass an informed verdict.
+      </p>
+    </div>
+    <div class="comment-date">2022-07-17 6:41 UTC</div>
+  </div>
+
+  <div class="comment" id="03871093ca904f4e9909433e18319886">
+    <div class="comment-author">Daniel Tartaglia</div>
+    <div class="comment-content">
+      <p>
+	      Very early in the discussion, Tyson Williams asked about Exceptions and purity. In one answer you talked about exceptions being a kind of bottom value. Does that mean that there are multiple values of type Bottom that can potentially be equatable? That doesn't feel right to me...
+      </p>
+    </div>
+    <div class="comment-date">2022-09-17 10:44 UTC</div>
+  </div>
+
+  <div class="comment" id="c0b030d90a57457bab4a02eb2fdc0564">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Daniel, thank you for writing. At this point, I'm basing my incomplete knowledge on all sorts of different sources, not all of which I can readily remember or identify. The <a href="https://wiki.haskell.org/Bottom">Haskell wiki article on bottom</a>, however, also discusses two kinds of bottom. That may have been where I've picked it up.
+      </p>
+      <p>
+        In general, bottom values originating from invalid input are avoidable in statically typed languages. Instead of throwing exceptions, it's possible to return a Maybe or Either value. In practice, we don't always do that. Division (which is not defined by zero) may be the most infamous example.
+      </p>
+      <p>
+        Infinite loops, on the other hand, can't be type-checked away, as already discussed here.
+      </p>
+    </div>
+    <div class="comment-date">2022-09-18 16:13 UTC</div>
+  </div>
+</div>

@@ -1,0 +1,398 @@
+---
+layout: post
+title: "Test data without Builders"
+description: "We don't need no steenkin' Test Data Builders!"
+date: 2017-09-11 7:28 UTC
+tags: [Unit Testing, Haskell, F#]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This is the fifth and final in <a href="/2017/08/14/from-test-data-builders-to-the-identity-functor">a series of articles about the relationship between the Test Data Builder design pattern, and the identity functor</a>. In the <a href="/2017/09/04/builder-as-identity">previous article</a>, you learned why a Builder <a href="/2018/03/22/functors">functor</a> adds little value. In this article, you'll see what to do instead.
+	</p>
+	<h3 id="605d0002b1cc4051a7f5597b82694353">
+		From Identity to naked values <a href="#605d0002b1cc4051a7f5597b82694353" title="permalink">#</a>
+	</h3>
+	<p>
+		While you can define <a href="http://www.natpryce.com/articles/000714.html">Test Data Builders</a> with Haskell's <code>Identity</code> functor, it adds little value:
+	</p>
+	<p>
+		<pre><span style="color:#dd0000;">Identity</span>&nbsp;address&nbsp;<span style="color:#666666;">=</span>&nbsp;fmap&nbsp;(<span style="color:#666666;">\</span>a&nbsp;<span style="color:#666666;">-&gt;</span>&nbsp;a&nbsp;{&nbsp;city&nbsp;<span style="color:#666666;">=</span>&nbsp;<span style="color:#a31515;">&quot;Paris&quot;</span>&nbsp;})&nbsp;addressBuilder
+</pre>
+	</p>
+	<p>
+		That's nothing but an overly complicated way to create a data value from another data value. You can simplify the code from the previous article. First, instead of calling them 'Builders', we should be honest and name them as the default values they are:
+	</p>
+	<p>
+		<pre><span style="color:#600277;">defaultPostCode</span>&nbsp;::&nbsp;<span style="color:blue;">PostCode</span>
+defaultPostCode&nbsp;<span style="color:#666666;">=</span>&nbsp;<span style="color:#dd0000;">PostCode</span>&nbsp;<span style="color:blue;">[]</span>
+ 
+<span style="color:#600277;">defaultAddress</span>&nbsp;::&nbsp;<span style="color:blue;">Address</span>
+defaultAddress&nbsp;&nbsp;<span style="color:#666666;">=</span>&nbsp;<span style="color:#dd0000;">Address</span>&nbsp;{&nbsp;street&nbsp;<span style="color:#666666;">=</span>&nbsp;<span style="color:#a31515;">&quot;&quot;</span>,&nbsp;city&nbsp;<span style="color:#666666;">=</span>&nbsp;<span style="color:#a31515;">&quot;&quot;</span>,&nbsp;postCode&nbsp;<span style="color:#666666;">=</span>&nbsp;defaultPostCode&nbsp;}</pre>
+	</p>
+	<p>
+		<code>defaultPostCode</code> is nothing but an empty <code>PostCode</code> value, and <code>defaultAddress</code> is an <code>Address</code> value with empty constituent values. Notice that <code>defaultAddress</code> uses <code>defaultPostCode</code> for the <code>postCode</code> value.
+	</p>
+	<p>
+		If you need a value in Paris, you can simply write it like this:
+	</p>
+	<p>
+		<pre>address&nbsp;<span style="color:#666666;">=</span>&nbsp;defaultAddress&nbsp;{&nbsp;city&nbsp;<span style="color:#666666;">=</span>&nbsp;<span style="color:#a31515;">&quot;Paris&quot;</span>&nbsp;}
+</pre>
+	</p>
+	<p>
+		Likewise, if you need a more specific address, but you don't care about the post code, you can write it like this:
+	</p>
+	<p>
+		<pre>address&#39;&nbsp;<span style="color:#666666;">=</span>
+&nbsp;&nbsp;<span style="color:#dd0000;">Address</span>&nbsp;{&nbsp;street&nbsp;<span style="color:#666666;">=</span>&nbsp;<span style="color:#a31515;">&quot;Rue&nbsp;Morgue&quot;</span>,&nbsp;city&nbsp;<span style="color:#666666;">=</span>&nbsp;<span style="color:#a31515;">&quot;Paris&quot;</span>,&nbsp;postCode&nbsp;<span style="color:#666666;">=</span>&nbsp;defaultPostCode&nbsp;}</pre>
+	</p>
+	<p>
+		Notice how much simpler this is. There's no need to call <code>fmap</code> in order to pull the 'underlying value' out of the functor, transform it, and put it back in the functor. Haskell's 'copy and update' syntax gives you this ability for free. It's built into the language.
+	</p>
+	<h3 id="42f9a1bfa88649d9a9f1ac610b1e74a8">
+		Building F# values <a href="#42f9a1bfa88649d9a9f1ac610b1e74a8" title="permalink">#</a>
+	</h3>
+	<p>
+		Haskell isn't the only language with 'copy and update' syntax. F# has it as well, and in fact, it's from <a href="https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/copy-and-update-record-expressions">the F# documentation</a> that I've taken the 'copy and update' term.
+	</p>
+	<p>
+		The code corresponding to the above Haskell code looks like this in F#:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;defaultPostCode&nbsp;=&nbsp;<span style="color:navy;">PostCode</span>&nbsp;[]
+<span style="color:blue;">let</span>&nbsp;defaultAddress&nbsp;=&nbsp;{&nbsp;Street&nbsp;=&nbsp;<span style="color:#a31515;">&quot;&quot;</span>;&nbsp;City&nbsp;=&nbsp;<span style="color:#a31515;">&quot;&quot;</span>;&nbsp;PostCode&nbsp;=&nbsp;defaultPostCode&nbsp;}
+ 
+<span style="color:blue;">let</span>&nbsp;address&nbsp;=&nbsp;{&nbsp;defaultAddress&nbsp;<span style="color:blue;">with</span>&nbsp;City&nbsp;=&nbsp;<span style="color:#a31515;">&quot;Paris&quot;</span>&nbsp;}
+<span style="color:blue;">let</span>&nbsp;address&#39;&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;Street&nbsp;=&nbsp;<span style="color:#a31515;">&quot;Rue&nbsp;Morgue&quot;</span>;&nbsp;City&nbsp;=&nbsp;<span style="color:#a31515;">&quot;Paris&quot;</span>;&nbsp;PostCode&nbsp;=&nbsp;defaultPostCode&nbsp;}</pre>
+	</p>
+	<p>
+		The syntax is a little different, but the concepts are the same. F# adds the keyword <code>with</code> to 'copy and update' expressions, which translates easily back to C# <a href="https://en.wikipedia.org/wiki/Fluent_interface">fluent interfaces</a>.
+	</p>
+	<h3 id="346c3baa49734607a336424f16d614a8">
+		Building C# objects <a href="#346c3baa49734607a336424f16d614a8" title="permalink">#</a>
+	</h3>
+	<p>
+		In a <a href="/2017/08/21/generalised-test-data-builder">previous article</a>, you saw how to refactor your domain model to a model of <a href="https://martinfowler.com/bliki/ValueObject.html">Value Objects</a> with fluent interfaces.
+	</p>
+	<p>
+		In your unit tests, you can define natural default values for testing purposes:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Natural</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">PostCode</span>&nbsp;PostCode&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PostCode</span>();
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">Address</span>&nbsp;Address&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Address</span>(<span style="color:#a31515;">&quot;&quot;</span>,&nbsp;<span style="color:#a31515;">&quot;&quot;</span>,&nbsp;PostCode);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">InvoiceLine</span>&nbsp;InvoiceLine&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">InvoiceLine</span>(<span style="color:#a31515;">&quot;&quot;</span>,&nbsp;<span style="color:#2b91af;">PoundsShillingsPence</span>.Zero);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">Recipient</span>&nbsp;Recipient&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Recipient</span>(<span style="color:#a31515;">&quot;&quot;</span>,&nbsp;Address);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">Invoice</span>&nbsp;Invoice&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Invoice</span>(Recipient,&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">InvoiceLine</span>[0]);
+}</pre>
+	</p>
+	<p>
+		This static <code>Natural</code> class is a test-specific container of 'good' default values. Notice how, once more, the <code>Address</code> value uses the <code>PostCode</code> value to fill in the <code>PostCode</code> property of the default <code>Address</code> value.
+	</p>
+	<p>
+		With these default test values, and the fluent interface of your domain model, you can easily build a test address in Paris:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;address&nbsp;=&nbsp;<span style="color:#2b91af;">Natural</span>.Address.WithCity(<span style="color:#a31515;">&quot;Paris&quot;</span>);
+</pre>
+	</p>
+	<p>
+		Because <code>Natural.Address</code> is an <code>Address</code> object, you can use its <code>WithCity</code> method to build a test address in Paris, and where all other constituent values remain the default values.
+	</p>
+	<p>
+		Likewise, you can create an address on Rue Morgue, but with a default post code:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;address&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Address</span>(<span style="color:#a31515;">&quot;Rue&nbsp;Morgue&quot;</span>,&nbsp;<span style="color:#a31515;">&quot;Paris&quot;</span>,&nbsp;<span style="color:#2b91af;">Natural</span>.PostCode);
+</pre>
+	</p>
+	<p>
+		Here, you can simply create a new <code>Address</code> object, but with <code>Natural.PostCode</code> as the post code value.
+	</p>
+	<h3 id="38af881d8cbe4846a348e889e7f8ecd5">
+		Conclusion <a href="#38af881d8cbe4846a348e889e7f8ecd5" title="permalink">#</a>
+	</h3>
+	<p>
+		Using a fluent domain model obviates the need for Test Data Builders. There's a tendency among functional programmers to overbearingly state that design patterns are nothing but recipes to overcome deficiencies in particular programming languages or paradigms. If you believe such a claim, at least it ought to go both ways, but at the conclusion of this article series, I hope I've been able to demonstrate that this is true for the Test Data Builder pattern. You only need it for 'classic', mutable, object-oriented domain models.
+		<ol>
+			<li>For mutable object models, use Test Data Builders.</li>
+			<li>Consider, however, modelling your domain with Value Objects and 'copy and update' instance methods.</li>
+			<li>Even better, consider using a programming language with built-in 'copy and update' expressions.</li>
+		</ol>
+		If you're stuck with a language like C# or Java, you don't get language-level support for 'copy and update' expressions. This means that you'll still need to incur the cost of adding and maintaining all those <code>With[...]</code> methods:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Invoice</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Recipient</span>&nbsp;Recipient&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IReadOnlyCollection</span>&lt;<span style="color:#2b91af;">InvoiceLine</span>&gt;&nbsp;Lines&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;Invoice(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Recipient</span>&nbsp;recipient,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IReadOnlyCollection</span>&lt;<span style="color:#2b91af;">InvoiceLine</span>&gt;&nbsp;lines)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(recipient&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:blue;">nameof</span>(recipient));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(lines&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:blue;">nameof</span>(lines));
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.Recipient&nbsp;=&nbsp;recipient;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.Lines&nbsp;=&nbsp;lines;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Invoice</span>&nbsp;WithRecipient(<span style="color:#2b91af;">Recipient</span>&nbsp;newRecipient)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Invoice</span>(newRecipient,&nbsp;<span style="color:blue;">this</span>.Lines);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Invoice</span>&nbsp;WithLines(<span style="color:#2b91af;">IReadOnlyCollection</span>&lt;<span style="color:#2b91af;">InvoiceLine</span>&gt;&nbsp;newLines)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Invoice</span>(<span style="color:blue;">this</span>.Recipient,&nbsp;newLines);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:blue;">bool</span>&nbsp;Equals(<span style="color:blue;">object</span>&nbsp;obj)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;other&nbsp;=&nbsp;obj&nbsp;<span style="color:blue;">as</span>&nbsp;<span style="color:#2b91af;">Invoice</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(other&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">base</span>.Equals(obj);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">object</span>.Equals(<span style="color:blue;">this</span>.Recipient,&nbsp;other.Recipient)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&amp;&amp;&nbsp;<span style="color:#2b91af;">Enumerable</span>.SequenceEqual(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.Lines.OrderBy(l&nbsp;=&gt;&nbsp;l.Name),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;other.Lines.OrderBy(l&nbsp;=&gt;&nbsp;l.Name));
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:blue;">int</span>&nbsp;GetHashCode()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.Recipient.GetHashCode()&nbsp;^
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.Lines.GetHashCode();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		That may seem like quite a maintenance burden (and it is), but consider that it has the same degree of complexity and overhead as defining a Test Data Builder for each domain object. At least, by putting this extra code in your domain model, you make all of that API (all the <code>With[...]</code> methods, and the structural equality) available to other production code. In my experience, that's a better return of investment than isolating such useful features only to test code.
+	</p>
+	<p>
+		Still, once you've tried using a language like F# or Haskell, where 'copy and update' expressions come with the language, you realise how much redundant code you're writing in C# or Java. The Test Data Builder design pattern truly is a recipe that addresses deficiencies in particular languages.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2017/09/18/the-test-data-generator-functor">The Test Data Generator functor</a>.
+	</p>
+</div>
+
+<div id="comments">
+    <hr>
+    <h2 id="comments-header">Comments</h2>
+
+    <div class="comment" id="284f9c7eb52f499394c834b832897871">
+        <div class="comment-author"><a href="https://www.linkedin.com/in/romainvasseur/">Romain Vasseur</a></div>
+        <div>Hi Marks, thanks for the whole serie. I personally tend to split my class into 2: 'core' feature and syntactic sugar one.<br>Leveraging extension methods to implement 'With' API is relatively straightforward and you have both developper friendly API and a great separation of concern namely definition and usage.<br>If you choose to implement extensions in another assembly you could manage who have access to it: unit test only, another assembly, whole project.<br>You can split API according to context/user too. It can also be useful to enforce some guidelines.</div>
+        <div class="comment-date">2017-09-12 09:20 UTC</div>
+    </div>
+
+    <div class="comment" id="b0d26173257c41eeb31fba25c1ceabd5">
+        <div class="comment-author"><a href="https://github.com/bigdnf">Dominik Jeske</a></div>
+        <div>Hi Marks, what do you think about using Roslyn to generate builders? Using helpers like this <a href="https://github.com/AArnott/CodeGeneration.Roslyn">CodeGeneration.Roslyn</a> you can generate all (With*) in compile time so there is no IL injection magic. <br /> I have some ugly POC code in my branch <a href="https://github.com/bigdnf/HomeCenter/blob/master/Core/HomeCenter.CodeGeneration/TestBuilerGenerator.cs">Roslyn builder generator</a> - it is only a starting point but I think it has some potential.</div>
+        <div class="comment-date">2019-03-19 18:18 UTC</div>
+    </div>
+
+    <div class="comment" id="26e12a445257444cb8ccbcfffb3aee9b">
+        <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+        <div class="comment-content">
+            <p>
+                Dominik, thank you for writing. I admit that I haven't given this much thought, but it strikes me as one of those 'interesting problems' that programmers are keen to solve. It looks to me like a bit of a red herring, as I tend to be sceptical of schemes to generate code. What problem does it address? That one has to type? <a href="/2018/09/17/typing-is-not-a-programming-bottleneck">That's rarely the bottleneck in software development.</a>
+            </p>
+            <p>
+                Granted, it gets tedious to manually add all those <code>With[...]</code> methods, but there's a lot of things about C# that's tedious. There's a reason I prefer F# instead.
+            </p>
+        </div>
+        <div class="comment-date">2019-03-20 7:16 UTC</div>
+    </div>
+
+    <div class="comment" id="af975bc3fba448eab33801449cd63e5a">
+        <div class="comment-author"><a href="https://github.com/bigdnf">Dominik Jeske</a></div>
+        <div>
+            <p>
+                Thanks for respond - I think that for each comment you now have 1+ blog post to respond ;). Despite the fact that I should consider learning new language like F# to open my mind I will focus on c# aspect.
+            </p>
+            <p>
+                I understand your consideration about code generation but I thing that when we repeat some actions over and over we automatically think about some automations - this is the source of computers I think. Currently I'm working in project where we use Test Builder Pattern heavily and every time I think about writing another builder my motivation is decreasing because psychologically is not interesting anymore and I would be happy to give that to someone else or machine.
+            </p>
+            <p>
+                When I started to understand what is Roslyn and what it can do it just open my eyes to new opportunities. Generating some simple but frequently repeating code give me more time on focusing on real domain problems and keep my frustration level on low position :)
+            </p>
+            <p>
+                Of course this is not BIG problem solver but only new approach for simplification of daily tasks - another advantage is that Roslyn I creating normal c# code file that can be navigated from code, can be seen in debugger (in contrast to IL injectors), so there is no magical black boxes. Disadvantage is that currently generating code is very simple - it involves some external nugets and I feel that writing generator in Roslyn could be simplified;
+            </p>
+            <p>
+                ps. Commenting via pull request is interesting experience - feels like pro ;)
+            </p>
+        </div>
+        <div class="comment-date">2019-03-20 08:48 UTC</div>
+    </div>
+
+    <div class="comment" id="f657b7db01d24d6cbc1b358ed6a13a20">
+        <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+        <div class="comment-content">
+            <p>
+            	Dominik, while it isn't based on Roslyn, are you aware of <a href="https://github.com/AutoFixture/AutoFixture">AutoFixture</a>?
+            </p>
+        </div>
+        <div class="comment-date">2019-03-21 7:01 UTC</div>
+	</div>
+	
+	<div class="comment" id="1f2ff161eeb3490eb80ff6547b0fc134">
+        <div class="comment-author"><a href="https://github.com/bigdnf">Dominik Jeske</a></div>
+        <div>
+            <p>
+                Yes, I discovered this tool together with your blog ;) I think it is good enough - Roslyn approach is only alternative not basing on reflection or IL injection.
+            </p>
+            <p>
+                I will try to use AutoFixture in next project so I will see it will survive my requirements.
+            </p>
+        </div>
+        <div class="comment-date">2019-03-26 21:59 UTC</div>
+    </div>
+    
+    <div id="cb79773e74624514a1801af115f52f6b" class="comment">
+        <div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+        <div>
+            <p>
+                If I understand correctly, one of your claims is that a fluent C# syntax for expressing change (i.e. "with" methods for an immutable value object) is equivalent to F#'s copy and update syntax for records in the sense that any code written with one can be written with the other. I agree with that. Then you pointed out some advantages with the F# syntax. Among the advantages of F#'s syntax is that there is less code to write in the first place and less code to maintain.
+            </p>
+            <p>
+                I see an advantage with C#'s syntax. Suppose the only constructor of the value object is internal but all its properties and "with" methods are public.  Then adding a new (public) property and corresponding (public) "with" method is not a breaking change.  As far as I know, this is not possible with F#.*  Either the record consturctor is public or it is not public. If the record's constructor is public, then the copy and update syntax is also public but adding a proprty to the record is a breaking change. Otherwise, the record's constructor is not public, so the copy and update syntax is not available.
+            </p>
+            <p>
+                I have an extremely short list of advantages of C# over F#, and this is one of them.
+            </p>
+            <p>
+                *It is possible to put an access modifier immediately after the equals sign when defining a record.  However, the <a href="https://docs.microsoft.com/en-us/dotnet/fsharp/language-reference/records#syntax">documentation for record syntax</a> is <a href="https://github.com/dotnet/docs/issues/14564">missing this information</a>.  When I try to put an access modifier before a field identifier, I get a compiler error that says
+                <blockquote>
+                    FS0575 Accessibility modifiers are not permitted on record fields. Use 'type R = internal ...' or 'type R = private ...' to give an accessibility to the whole representation.
+                </blockquote>
+            </p>
+            <p>
+                P.S.  For those that want to write functionally in C#, I recommend using <a href="https://github.com/louthy/language-ext">Langage Ext</a>.  in particular, a somewhat recently added feature is <a href="https://github.com/louthy/language-ext#transformation-of-immutable-types">auto-generated "with" methods</a>.
+            </p>
+        </div>
+        <div class="comment-date">2019-09-21 01:08 UTC</div>
+    </div>
+
+    <div class="comment" id="cb5fa591f062499db86d428fe4a02e6c">
+        <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+        <div class="comment-content">
+            <p>
+            	Tyson, thank you for writing. Let's get the uncontroversial part of this discussion out of the way first: F# record types compile to IL that's equivalent to what a properly-written C# <a href="https://en.wikipedia.org/wiki/Value_object">Value Object</a> compiles to. At the IL level, there's no difference.
+            </p>
+            <p>
+            	At the language level, it's true that F# records is a specialised syntax that enables you to succinctly define static types to model data. It's not a general-purpose syntax, so there's definitely things it doesn't allow you to express. F# has normal class syntax for those needs.
+            </p>
+            <p>
+            	That record types aren't refactoring-safe is a known issue. This is true not only for F# records, but for Haskell <code>data</code> types as well. In Haskell public APIs, you sometimes see that combination that you describe. The type has a private constructor, but the library then provides functions to manipulate it (essentially copy-and-update functions). You sometimes see that in F# as well, but here a class would often have been a better choice. Haskell doesn't have object-oriented classes, so it has to resort to that sort of hack to keep APIs backwards compatible.
+            </p>
+            <p>
+            	When you write a public API in F#, choosing between a record and a class as a data carrier is an important choice. When APIs are published (e.g. on <a href="https://www.nuget.org">nuget.org</a>), you'll have little success with your library if you regularly introduce breaking changes.
+            </p>
+            <p>
+            	For internal use, the story is different. You can use F# records to express domain models with a few lines of code. If you later find out that you have to change the model, then you do that, and fix the ensuing compilation errors.
+            </p>
+            <p>
+            	Public APIs represent more work, regardless of the language in which they're written. Yes, you need to carefully and deliberately design a public library's API and data structures. I don't think, however, that that should detract us from using productive language features for application-specific use.
+            </p>
+        </div>
+        <div class="comment-date">2019-09-21 18:28 UTC</div>
+	</div>
+    
+    <div id="b30ddcf557964bf2a7b63c0e247294e1" class="comment">
+        <div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+        <div>
+            <p>
+                <blockquote>
+                    Let's get the uncontroversial part of this discussion out of the way first...
+                </blockquote>
+                I am right with you.  Your entire comment was uncontroversial to me :)
+            </p>
+            <p>
+                <blockquote>
+                    When you write a public API in F#, choosing between a record and a class as a data carrier is an important choice. ... here a class would often have been a better choice.
+                </blockquote>
+               (I quoted you out of order there.  I hope this doesn't misrepresent what you were saying.  I don't think it does.)  I am really interested to learn more about that.
+            </p>
+            <p>
+                I found the series that includes this blog post when I searched on Google for "builder pattern F#".  This series is primarily about the test data builder design pattern.  As I understand it, I would describe this pattern as a special case of the (general case) builder design pattern in which all arguments have reasonable defaults.  
+            </p>
+            <p>
+                Have you ever written a builder that accepted multiple arguments one at a time none of which have reasonable defaults?  Have you ever blogged about this (more general) build design pattern?
+            </p>
+            <p>
+                As a good student of your ;)  I wonder if the builder design pattern corresponds to some universal abstraction.  Among the fluent interfaces that I am most impressed with are <a href="https://www.learnentityframeworkcore.com/configuration/fluent-api">configuration in Entity Framework</a> and <a href="https://fluentassertions.com/introduction">Fluent Assertions</a>.  Of course I could try to make my own fluent interface by copying them, and that would probably work out reasonably well.  At the same time, I would like to learn from you and your frustration (if that description is accurate) that you expressed (at the end of the <a href="https://blog.ploeh.dk/2017/09/18/the-test-data-generator-functor/">next and last post in this series</a>) with the API of your AutoFixture project failing to use a potential universal abstraction (namely functors).
+            </p>
+        </div>
+        <div class="comment-date">2019-09-22 01:50 UTC</div>
+    </div>
+
+    <div class="comment" id="ba26e928d57d4b649942deb1e1ae18f1">
+        <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+        <div class="comment-content">
+            <p>
+            	Tyson, thank you for bringing the Builder pattern to my attention. I haven't written much about it yet, but I believe that it'd be a perfect fit for my <a href="/2018/03/05/some-design-patterns-as-universal-abstractions">article series on how certain design patterns relate to universal abstractions</a>. When I get some time, I'll have to write one or more articles about that topic.
+            </p>
+            <p>
+            	In short, though, I think that the Builder pattern as described in <a href="http://amzn.to/XBYukB">Design Patterns</a> is <a href="/2018/01/08/software-design-isomorphisms">isomorphic</a> to the Fluent Builder pattern, as you also imply. It remains for me to more formally argue that case, but in short, the Builder pattern is described as a set of virtual methods that return <code>void</code>. Since all these methods return <code>void</code>, each method could, instead, return the object to which it belongs, and that's what a Fluent Builder does.
+            </p>
+            <p>
+            	Once you return the Builder object, you could, instead of mutating and returning the instance, return a new object. That new object is a near-copy of the previous Builder, with only one change applied to it. Now you have a function that essentially takes a Builder as input, plus some other input, and returns a Builder. That's just <a href="/2019/01/28/better-abstractions-revisited/#047886dcfa5a4a1398965138669e0ddc">a curried endomorphism</a>.
+            </p>
+            <p>
+            	Once again, every time we run into a composable design pattern, it turns out to be a <a href="/2017/10/06/monoids">monoid</a>. It shouldn't surprise us much, though, since the original Builder pattern as described in <em>Design Patterns</em> has <code>void</code> methods, and <a href="/2018/03/12/composite-as-a-monoid">such methods compose</a>.
+            </p>
+        </div>
+        <div class="comment-date">2019-09-29 20:31 UTC</div>
+	</div>
+    
+    <div id="be62acdf925841e09485f4253ab0c5fe" class="comment">
+        <div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+        <div>
+            <p>
+                The most formal treatment I have seen about fluent APIs was in <a href="https://blog.jooq.org/2012/01/05/the-java-fluent-api-designer-crash-course/">this blog post</a>.  The context is that we are trying to create a word in some language specified by a grammar, and the methods in the fluent API correspond to production rules in the grammar.  The company behind that blog post seems to able to generate a fluent API (in Java) given as input the produciton rules of a grammar.  Their main use case appears to be creating a fluent API for constructing SQL queries against a database (presumably by first converting a database schema into corresponding grammar production rules).  The end result reminds me of <a href="https://fsprojects.github.io/SQLProvider/">F#'s SQL type provider</a>.
+            </p>
+        </div>
+        <div class="comment-date">2019-09-30 13:22 UTC</div>
+    </div>
+
+    <div class="comment" id="042e8f7aeba042659d9cf626f78f8636">
+        <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+        <div class="comment-content">
+            <p>
+            	Tyson, I've now published <a href="/2020/02/17/builder-as-a-monoid">an article</a> that hopefully answers some of your questions. I must admit that I'm still puzzled by this question:
+            	<blockquote>
+            		<p>
+            			"Have you ever written a builder that accepted multiple arguments one at a time none of which have reasonable defaults?"
+            		</p>
+            	</blockquote>
+            	If I left that unanswered, then at least I hope that I've managed to put enough building blocks into position to be able to address it. Can you elaborate?
+            </p>
+        </div>
+        <div class="comment-date">2020-02-17 7:34 UTC</div>
+	</div>
+
+	<div id="2f7d14c6f1194c5e8b6380199e3e8581" class="comment">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div>
+			<p>
+				I have now elaborated in <a href="https://blog.ploeh.dk/2020/03/09/polymorphic-builder/#c1ea86ea39814f278e1a19f82b45622b">this comment</a>.  Thanks for waiting :)
+			</p>
+		</div>
+		<div class="comment-date">2020-03-11 18:31 UTC</div>
+	</div>
+</div>

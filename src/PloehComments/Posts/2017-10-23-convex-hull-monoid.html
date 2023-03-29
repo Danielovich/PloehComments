@@ -1,0 +1,222 @@
+---
+layout: post
+title: "Convex hull monoid"
+description: "The union of convex hulls form a monoid. Yet another non-trivial monoid example, this time in F#."
+date: 2017-10-23 12:32 UTC
+tags: [Software Design, F#, Unit Testing]
+image: "/content/binary/convex-hull-union.png"
+image_alt: "A union of two convex hulls."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is part of a <a href="/2017/10/06/monoids">series about monoids</a>. In short, a <em>monoid</em> is an associative binary operation with a neutral element (also known as <em>identity</em>).
+	</p>
+	<p>
+		If you're reading the series as an object-oriented programmer, I apologise for the digression, but this article exclusively contains F# code. The next article will return with more C# examples.
+	</p>
+	<h3 id="8c0f3785d40942459136636131392671">
+		Convex hull <a href="#8c0f3785d40942459136636131392671" title="permalink">#</a>
+	</h3>
+	<p>
+		In <a href="/2015/10/19/visual-value-verification">a past article</a> I've described my adventures with finding <a href="https://en.wikipedia.org/wiki/Convex_hull">convex hulls</a> in F#. The convex hulls I've been looking at form the external convex boundary of a set of two-dimensional points. While you can generalise the concept of convex hulls to <em>n</em> dimensions, we're going to stick to two-dimensional hulls here.
+	</p>
+	<p>
+		<img src="/content/binary/convex-hull-example-01.png" alt="A 2D convex hull example.">
+	</p>
+	<p>
+		If you have two convex hulls, you can find the convex hull of both:
+	</p>
+	<p>
+		<img src="/content/binary/convex-hull-union.png" alt="A union of two convex hulls.">
+	</p>
+	<p>
+		Here, the dark green outline is the convex hull of the two lighter-coloured hulls.
+	</p>
+	<p>
+		Finding the convex hull of two other hulls is a binary operation. Is it a monoid?
+	</p>
+	<p>
+		In order to examine that, I'm going to make some changes to my <a href="https://github.com/ploeh/Hull">existing code base</a>, the most important of which is that I'm going to introduce a <code>Hull</code> type. The intent is that if points are contained within this type, then only the convex hull remains. It'd be better if it was possible to make the
+    case constructor private, but if one does that, then the <code>hull</code> function can no longer be inlined and generic.
+	</p>
+	<p>
+		<pre><span style="color:blue;">type</span>&nbsp;<span style="color:teal;">Hull</span>&lt;&#39;a&gt;&nbsp;=&nbsp;<span style="color:navy;">Hull</span>&nbsp;<span style="color:blue;">of</span>&nbsp;(&#39;a&nbsp;*&nbsp;&#39;a)&nbsp;<span style="color:teal;">list</span>
+</pre>
+	</p>
+	<p>
+		With the addition of the <code>Hull</code> type, you can now add a binary operation:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;Hull&lt;&#39;a&gt;&nbsp;-&gt;&nbsp;Hull&lt;&#39;a&gt;&nbsp;-&gt;&nbsp;Hull&lt;&#39;a&gt;</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:blue;">inline</span>&nbsp;(+)&nbsp;(<span style="color:navy;">Hull</span>&nbsp;x)&nbsp;(<span style="color:navy;">Hull</span>&nbsp;y)&nbsp;=&nbsp;<span style="color:navy;">hull</span>&nbsp;(x&nbsp;@&nbsp;y)</pre>
+	</p>
+	<p>
+		This operation explicitly uses the <code>+</code> operator, so I'm clearly anticipating the turn of events here. Nothing much is going on, though. The function pattern-matches the points out of two <code>Hull</code> values. <code>x</code> and <code>y</code> are two lists of points. The <code>+</code> function concatenates the two lists with the <code>@</code> operator, and finds the convex hull of this new list of points.
+	</p>
+	<h3 id="e500f30a1a784527be7267d5bb5b0b14">
+		Associativity <a href="#e500f30a1a784527be7267d5bb5b0b14" title="permalink">#</a>
+	</h3>
+	<p>
+		My choice of operator strongly suggests that the <code>+</code> operation is a monoid. If you have three hulls, the order in which you find the hulls doesn't matter. One way to demonstrate that property is with property-based testing. In this article, I'm using <a href="https://github.com/hedgehogqa/fsharp-hedgehog">Hedgehog</a>.
+	</p>
+	<p>
+		<pre>[&lt;<span style="color:teal;">Fact</span>&gt;]
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">``Hull&nbsp;addition&nbsp;is&nbsp;associative``</span>&nbsp;()&nbsp;=&nbsp;<span style="color:teal;">Property</span>.<span style="color:navy;">check</span>&nbsp;&lt;|&nbsp;<span style="color:blue;">property</span>&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let!</span>&nbsp;(x,&nbsp;y,&nbsp;z)&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:teal;">Range</span>.<span style="color:navy;">linear</span>&nbsp;-10000&nbsp;10000
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">int</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">tuple</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">list</span>&nbsp;(<span style="color:teal;">Range</span>.<span style="color:navy;">linear</span>&nbsp;0&nbsp;100)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">tuple3</span>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span style="color:navy;">hull</span>&nbsp;x&nbsp;+&nbsp;<span style="color:navy;">hull</span>&nbsp;y)&nbsp;+&nbsp;<span style="color:navy;">hull</span>&nbsp;z&nbsp;=!&nbsp;<span style="color:navy;">hull</span>&nbsp;x&nbsp;+&nbsp;(<span style="color:navy;">hull</span>&nbsp;y&nbsp;+&nbsp;<span style="color:navy;">hull</span>&nbsp;z)&nbsp;}</pre>		
+	</p>
+	<p>
+		This automated test generates three lists of points, <code>x</code>, <code>y</code>, and <code>z</code>. The <code>hull</code> function uses the <a href="https://en.wikipedia.org/wiki/Graham_scan">Graham Scan</a> algorithm to find the hull, and part of that algorithm includes calculating the cross product of three points. For large enough integers, the cross product will overflow, so the property constrains the point coordinates to stay within -10,000 and 10,000. The implication of that is that although <code>+</code> is associative, it's only associative for a subset of all 32-bit integers. I could probably change the internal implementation so that it calculates the cross product using <a href="https://msdn.microsoft.com/en-us/library/system.numerics.biginteger">bigint</a>, but I'll leave that as an exercise to you.
+	</p>
+	<p>
+		For performance reasons, I also arbitrarily decided to constrain the size of each set of points to between 0 and 100 elements. If I change the maximum count to 1,000, it takes my laptop 9 seconds to run the test.
+	</p>
+	<p>
+		In addition to Hedgehog, this test also uses <a href="https://xunit.net">xUnit.net</a>, and <a href="http://www.swensensoftware.com/unquote">Unquote</a> for assertions. The <code>=!</code> operator is the Unquote way of saying <em>must equal</em>. It's an assertion.
+	</p>
+	<p>
+		This property passes, which demonstrates that the <code>+</code> operator for convex hulls is associative.
+	</p>
+	<h3 id="29277c663b7f48e480bd240353054ebb">
+		Identity <a href="#29277c663b7f48e480bd240353054ebb" title="permalink">#</a>
+	</h3>
+	<p>
+		Likewise, you can write a property-based test that demonstrates that an identity element exists for the <code>+</code> operator:
+	</p>
+	<p>
+		<pre>[&lt;<span style="color:teal;">Fact</span>&gt;]
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">``&nbsp;Hull&nbsp;addition&nbsp;has&nbsp;identity``</span>&nbsp;()&nbsp;=&nbsp;<span style="color:teal;">Property</span>.<span style="color:navy;">check</span>&nbsp;&lt;|&nbsp;<span style="color:blue;">property</span>&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let!</span>&nbsp;x&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:teal;">Range</span>.<span style="color:navy;">linear</span>&nbsp;-10000&nbsp;10000
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">int</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">tuple</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span style="color:teal;">Gen</span>.<span style="color:navy;">list</span>&nbsp;(<span style="color:teal;">Range</span>.<span style="color:navy;">linear</span>&nbsp;0&nbsp;100)
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;hasIdentity&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:teal;">Hull</span>.identity&nbsp;+&nbsp;<span style="color:navy;">hull</span>&nbsp;x&nbsp;=&nbsp;<span style="color:navy;">hull</span>&nbsp;x&nbsp;+&nbsp;<span style="color:teal;">Hull</span>.identity&nbsp;&amp;&amp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">hull</span>&nbsp;x&nbsp;+&nbsp;<span style="color:teal;">Hull</span>.identity&nbsp;=&nbsp;<span style="color:navy;">hull</span>&nbsp;x
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">test</span>&nbsp;<span style="background:yellow;">&lt;@&nbsp;</span><span style="background:yellow;">hasIdentity</span><span style="background:yellow;">&nbsp;@&gt;</span>&nbsp;}</pre>
+	</p>
+	<p>
+		This test generates a list of integer pairs (<code>x</code>) and applies the <code>+</code> operator to <code>x</code> and <code>Hull.identity</code>. The test passes for all <code>x</code> that Hedgehog generates.
+	</p>
+	<p>
+		What's <code>Hull.identity</code>?
+	</p>
+	<p>
+		It's simply the empty hull:
+	</p>
+	<p>
+		<pre><span style="color:blue;">module</span>&nbsp;<span style="color:teal;">Hull</span>&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;identity&nbsp;=&nbsp;<span style="color:navy;">Hull</span>&nbsp;[]</pre>
+	</p>
+	<p>
+		If you have a set of zero 2D points, then the convex hull is empty as well.
+	</p>
+	<p>
+		The <code>+</code> operator for convex hulls is a monoid for the set of coordinates where the cross product doesn't overflow.
+	</p>
+	<h3 id="7ac4918259344f4d8fb9d41875af35d8">
+		Summary <a href="#7ac4918259344f4d8fb9d41875af35d8" title="permalink">#</a>
+	</h3>
+	<p>
+		If you consider that the <code>Hull</code> type is nothing but a container for a list, it should come as no surprise that a monoid exists. After all, <a href="/2017/10/10/strings-lists-and-sequences-as-a-monoid">list concatenation is a monoid</a>, and the <code>+</code> operator shown here is a combination of list concatenation (<code>@</code>) and a Graham Scan.
+	</p>
+	<p>
+		The point of this article was mostly to demonstrate that monoids exist not only for primitive types, but also for (some) more complex types. The <code>+</code> operator shown here is really a <a href="https://en.wikipedia.org/wiki/Union_(set_theory)">set union</a> operation. What about <a href="https://en.wikipedia.org/wiki/Intersection_(set_theory)">intersections</a> of convex hulls? Is that a monoid as well? I'll leave that as an exercise.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2017/10/30/tuple-monoids">Tuple monoids</a>.
+	</p>
+</div>
+<div id="comments">
+	<hr />
+	<h2 id="comments-header">Comments</h2>
+	
+	<div class="comment" id="d81ab108a3b34e2283dba3744d7365d7">
+		<div class="comment-author">
+			<a href="https://mikhail.io/about/">Mikhail Shilkov</a>
+		</div>
+		<div class="comment-content">
+			<p>Is that true that you could replace hull with any other function, and (+) operator would still be a monoid? Since the operator is based on list concatenation, the "monoidness" is probably derived from there, not from function implementation.</p>
+		</div>
+		<div class="comment-date">2017-10-23 15:35 UTC</div>
+	</div>
+
+	<div class="comment" id="a66a18cac7e9421aa29cea1112e3bb1e">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Mikhail, thank you for writing. You can't replace <code>hull</code> with any other function and expect list concatenation to remain a monoid. I'm sorry if my turn of phrase gave that impression. I can see how one could interpret my summary in that way, but it wasn't my intention to imply that this relationship holds in general. It doesn't, and it's not hard to show, because we only need to come up with a single counter-example.
+			</p>
+			<p>
+				One counter example is a function that always removes the first element in a list - unless the list is empty, in which case it simply returns the empty list. In Haskell, we can define a <code>newtype</code> with this behaviour in mind:
+			</p>
+			<p>
+				<pre>Prelude Data.Monoid Data.List&gt; newtype Drop1 a = Drop1 [a] deriving (Show, Eq)</pre>
+			</p>
+			<p>
+				For my own convenience, I wrote the entire counter-example in GHCi (the Haskell REPL), but imagine that the <code>Drop1</code> data constructor is hidden from clients. The normal way to do that is to not export the data constructor from the module. In GHCi, we can't do that, but just pretend that the <code>Drop1</code> data constructor is unavailable to clients. Instead, we'll have to use this function:
+			</p>
+			<p>
+				<pre>Prelude Data.Monoid Data.List&gt; drop1 = Drop1 . drop 1</pre>
+			</p>
+			<p>
+				The <code>drop1</code> function has the type <code>[a] -&gt; Drop1 a</code>; it takes a list, and returns a <code>Drop1</code> value, which contains the input list, apart from its first element.
+			</p>
+			<p>
+				We can attempt to make <code>Drop 1</code> a monoid:
+			</p>
+			<p>
+				<pre>Prelude Data.Monoid Data.List&gt; :{
+Prelude Data.Monoid Data.List| instance Monoid (Drop1 a) where
+Prelude Data.Monoid Data.List|   mempty = drop1 []
+Prelude Data.Monoid Data.List|   mappend (Drop1 xs) (Drop1 ys) = drop1 (xs ++ ys)
+Prelude Data.Monoid Data.List| :}</pre>
+			</p>
+			<p>
+				Hopefully, you can see that the implementation of <code>mappend</code> is similar to the above F# implementation of <code>+</code> for convex hulls. In F#, the list concatenation operator is <code>@</code>, whereas in Haskell, it's <code>++</code>.
+			</p>
+			<p>
+				This compiles, but it's easy to come up with some counter-examples that demonstrate that the monoid laws don't hold. First, associativity:
+			</p>
+			<p>
+				<pre>Prelude Data.Monoid Data.List&gt; (drop1 [1..3] &lt;&gt; drop1 [4..6]) &lt;&gt; drop1 [7..9]
+Drop1 [5,6,8,9]
+Prelude Data.Monoid Data.List&gt; drop1 [1..3] &lt;&gt; (drop1 [4..6] &lt;&gt; drop1 [7..9])
+Drop1 [3,6,8,9]</pre>
+			</p>
+			<p>
+				(The <code>&lt;&gt;</code> operator is an infix alias for <code>mappend</code>.)
+			</p>
+			<p>
+				Clearly, <code>[5,6,8,9]</code> is different from <code>[3,6,8,9]</code>, so the operation isn't associative.
+			</p>
+			<p>
+				Equivalently, identity fails as well:
+			</p>
+			<p>
+				<pre>Prelude Data.Monoid Data.List&gt; mempty &lt;&gt; drop1 [1..3]
+Drop1 [3]
+Prelude Data.Monoid Data.List&gt; drop1 [1..3]
+Drop1 [2,3]</pre>
+			</p>
+			<p>
+				Again, <code>[3]</code> is different from <code>[2,3]</code>, so <code>mempty</code> isn't a proper identity element.
+			</p>
+			<p>
+				It was easy to come up with this counter-example. I haven't attempted to come up with more, but I'd be surprised if I accidentally happened to pick the only counter-example there is. Rather, I conjecture that there are infinitely many counter-examples that each proves that there's no general rule about 'wrapped' lists operations being monoids.
+			</p>
+		</div>
+		<div class="comment-date">2017-10-25 8:04 UTC</div>
+	</div>
+</div>

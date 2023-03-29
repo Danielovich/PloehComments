@@ -1,0 +1,64 @@
+---
+layout: post
+tags: [ASP.NET MVC, Dependency Injection]
+date: 2009-12-07 06:20:27 UTC
+title: "LoggingExceptionFilter"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		In a previous post I described <a href="/2009/12/01/GlobalErrorHandlinginASP.NETMVC">how to enable global error handling in ASP.NET MVC applications</a>. Although I spent some time talking about the importance of DRY, another major motivation for me was to enable Dependency Injection (DI) with exception handling so that I could log stack traces before letting ASP.NET MVC handle the exception.
+	</p>
+	<p>
+		With the ErrorHandlingControllerActionInvoker I described, we can inject any IExceptionFilter implementation. As an example I used HandleErrorAttribute, but obviously that doesn't log anything. Once again, it would be tempting to derive from HandleErrorAttribute and override its OnException method, but staying true to the <a href="http://en.wikipedia.org/wiki/Single_responsibility_principle">Single Responsibility Principle</a> as well as the <a href="http://en.wikipedia.org/wiki/Open/closed_principle">Open/Closed Principle</a> I rather prefer a <a href="http://en.wikipedia.org/wiki/Decorator_pattern">Decorator</a>:
+	</p>
+  	<p>
+  		<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">LoggingExceptionFilter</span> : <span style="color: #2b91af">IExceptionFilter</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">readonly</span> <span style="color: #2b91af">IExceptionFilter</span> filter;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">readonly</span> <span style="color: #2b91af">ILogWriter</span> logWriter;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> LoggingExceptionFilter(<span style="color: #2b91af">IExceptionFilter</span> filter,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ILogWriter</span> logWriter)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">if</span> (filter == <span style="color: blue">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">throw</span> <span style="color: blue">new</span> <span style="color: #2b91af">ArgumentNullException</span>(<span style="color: #a31515">"filter"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">if</span> (logWriter == <span style="color: blue">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">throw</span> <span style="color: blue">new</span> <span style="color: #2b91af">ArgumentNullException</span>(<span style="color: #a31515">"logWriter"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.filter = filter;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.logWriter = logWriter;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #region</span> IExceptionFilter Members
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">void</span> OnException(<span style="color: #2b91af">ExceptionContext</span> filterContext)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.logWriter.WriteError(filterContext.Exception);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.filter.OnException(filterContext);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+<span style="color: blue">&nbsp;&nbsp;&nbsp; #endregion</span>
+}</pre>
+	</p>
+	<p>
+		The LoggingExceptionFilter shown above is unabridged production code. This is all it takes to bridge the gap between IExceptionFilter and some ILogWriter interface (replace with the logging framework of your choice). Notice how it simply logs the error and then passes on exception handling to the decorated IExceptionFilter.
+	</p>
+	<p>
+		Currently we use HandleErrorAttribute as the decorated filter so that behavior stays as expected.</p>
+	<p>
+		<pre style="margin: 0px">c.ActionInvoker = 
+&nbsp;&nbsp;&nbsp; <span style="color: blue">new</span> <span style="color: #2b91af">ErrorHandlingControllerActionInvoker</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">new</span> <span style="color: #2b91af">LoggingExceptionFilter</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">new</span> <span style="color: #2b91af">HandleErrorAttribute</span>(), logWriter));</pre>
+	</p>
+	<p>
+		This is not too different from before, except that a LoggingExceptionFilter now decorates the HandleErrorAttribute instance.
+	</p>
+</div>
+	

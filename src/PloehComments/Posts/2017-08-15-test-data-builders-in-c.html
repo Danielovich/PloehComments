@@ -1,0 +1,375 @@
+---
+layout: post
+title: "Test Data Builders in C#"
+description: "A brief recap of the Test Data Builder design pattern with examples in C#."
+date: 2017-08-15 6:20 UTC
+tags: [Unit Testing, Design Patterns]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This is the first in <a href="/2017/08/14/from-test-data-builders-to-the-identity-functor">a series of articles about the relationship between the Test Data Builder design pattern, and the identity functor</a>.
+	</p>
+	<p>
+		In 2007 <a href="http://www.natpryce.com">Nat Pryce</a> described the <a href="http://www.natpryce.com/articles/000714.html">Test Data Builder</a> design pattern. The original article is easy to read, but in case you don't want to read it, here's a quick summary, with some of Nat Pryce's examples translated to C#.
+	</p>
+	<p>
+		The purpose of a Test Data Builder is to make it easy to create input data (or objects) for unit tests. Imagine, for example, that for a particular test case, you need an address in Paris; no other values matter. With a Test Data Builder, you can write an expression that gives you such a value:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;address&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">AddressBuilder</span>().WithCity(<span style="color:#a31515;">&quot;Paris&quot;</span>).Build();
+</pre>
+	</p>
+	<p>
+		The <code>address</code> object explicity has a <code>City</code> value of <code>"Paris"</code>. Any other values are default values defined by <code>AddressBuilder</code>. The values are there, but when they're unimportant to a particular test case, you don't have to specify them. To <a href="http://amzn.to/19W4JHk">paraphrase Robert C. Martin</a>, this eliminates the irrelevant, and amplifies the essentials of the test.
+	</p>
+	<h3 id="aae3468437314471b7eb750dd6f50960">
+		Address Builder <a href="#aae3468437314471b7eb750dd6f50960" title="permalink">#</a>
+	</h3>
+	<p>
+		An <code>AddressBuilder</code> could look like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">AddressBuilder</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">string</span>&nbsp;street;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">string</span>&nbsp;city;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:#2b91af;">PostCode</span>&nbsp;postCode;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;AddressBuilder()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.street&nbsp;=&nbsp;<span style="color:#a31515;">&quot;&quot;</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.city&nbsp;=&nbsp;<span style="color:#a31515;">&quot;&quot;</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.postCode&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PostCodeBuilder</span>().Build();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">AddressBuilder</span>&nbsp;WithStreet(<span style="color:blue;">string</span>&nbsp;newStreet)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.street&nbsp;=&nbsp;newStreet;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">AddressBuilder</span>&nbsp;WithCity(<span style="color:blue;">string</span>&nbsp;newCity)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.city&nbsp;=&nbsp;newCity;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">AddressBuilder</span>&nbsp;WithPostCode(<span style="color:#2b91af;">PostCode</span>&nbsp;newPostCode)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.postCode&nbsp;=&nbsp;newPostCode;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">AddressBuilder</span>&nbsp;WithNoPostcode()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.postCode&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PostCode</span>();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Address</span>&nbsp;Build()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Address</span>(<span style="color:blue;">this</span>.street,&nbsp;<span style="color:blue;">this</span>.city,&nbsp;<span style="color:blue;">this</span>.postCode);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		The <code>Address</code> class is simpler than the Builder:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Address</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">string</span>&nbsp;Street&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">string</span>&nbsp;City&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">PostCode</span>&nbsp;PostCode&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;Address(<span style="color:blue;">string</span>&nbsp;street,&nbsp;<span style="color:blue;">string</span>&nbsp;city,&nbsp;<span style="color:#2b91af;">PostCode</span>&nbsp;postCode)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.Street&nbsp;=&nbsp;street;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.City&nbsp;=&nbsp;city;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.PostCode&nbsp;=&nbsp;postCode;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		Clearly, this class could contain some behaviour, but in order to keep the example as simple as possible, it's only a simple Data Transfer Object.
+	</p>
+	<h3 id="de2e6fb74f6f4319a0fef86dcd9b839e">
+		Composition <a href="#de2e6fb74f6f4319a0fef86dcd9b839e" title="permalink">#</a>
+	</h3>
+	<p>
+		Given that <code>AddressBuilder</code> is more complicated than <code>Address</code> itself, the benefit of the pattern may seem obscure, but one of the benefits is that Test Data Builders easily compose:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;invoice&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">InvoiceBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;.WithRecipient(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">RecipientBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.WithAddress(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">AddressBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.WithNoPostcode()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.Build())
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.Build())
+&nbsp;&nbsp;&nbsp;&nbsp;.Build();</pre>
+	</p>
+	<p>
+		Perhaps that looks verbose, but in general, the alternative is worse. If you didn't have a <a href="http://xunitpatterns.com/Test%20Utility%20Method.html">Test Utility Method</a>, you'd have to fill in <em>all</em> the required data for the object:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;invoice&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Invoice</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Recipient</span>(<span style="color:#a31515;">&quot;Sherlock&nbsp;Holmes&quot;</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Address</span>(<span style="color:#a31515;">&quot;221b&nbsp;Baker&nbsp;Street&quot;</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#a31515;">&quot;London&quot;</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PostCode</span>())),
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">List</span>&lt;<span style="color:#2b91af;">InvoiceLine</span>&gt;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">InvoiceLine</span>(<span style="color:#a31515;">&quot;Deerstalker&nbsp;Hat&quot;</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PoundsShillingsPence</span>(0,&nbsp;3,&nbsp;10)),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">InvoiceLine</span>(<span style="color:#a31515;">&quot;Tweed&nbsp;Cape&quot;</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PoundsShillingsPence</span>(0,&nbsp;4,&nbsp;12))});</pre>
+	</p>
+	<p>
+		Here, the important detail drowns in data. The post code is empty because the <code>PostCode</code> constructor is called without arguments. This hardly jumps out when you see it. Such code neither eliminates the irrelevant, nor amplifies the essential.
+	</p>
+	<h3 id="79fc8bb1d06b4d9fb90bd48b678ead93">
+		Summary <a href="#79fc8bb1d06b4d9fb90bd48b678ead93" title="permalink">#</a>
+	</h3>
+	<p>
+		Test Data Builders are useful because they are good abstractions. They enable you to write <a href="/2013/04/02/why-trust-tests">unit tests that you can trust</a>.
+	</p>
+	<p>
+		The disadvantage, as you shall see, is that in languages like C# and Java, much boilerplate code is required.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2017/08/21/generalised-test-data-builder">Generalised Test Data Builder</a>.
+	</p>
+</div>
+
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="f6799440202b4936b76c69e01e56d963">
+	<div class="comment-author"><a href="http://blog.developers.win">Mike-EEE</a></div>
+	<div class="comment-content">You got me to finally figure out how to post comments. :)  Hope everything looks alright.<br><br>
+		So first off, great article as always.  You totally hit a subject which has been driving me nuts, personally and lately.  I have been developing my first FluentAPI and have been running up against both aspects of immutability and query/command separation that you have done an excellent job of presenting here on your blog.  It does seem that FluentAPI design and the builder pattern you present above deviate from these principles, so it would be great to hear a little more context and valuable insight from you on how you reconcile this.  Is this perhaps a C# issue that is easily remedied in F#?  Thank you in advance for any assistance and for providing such a valuable technical resource here.  It's been my favorite for many years now.
+	</div>
+	<div class="comment-date">2017-08-15 06:52 UTC</div>
+</div>
+
+	<div class="comment" id="1e99b816d35e4c03a827bd8255121a7d">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Mike, thank you for writing. The <a href="https://martinfowler.com/bliki/FluentInterface.html">fluent interface</a> that I show in this article is the most common form you see in C#. While it's not my preferred variation, I use it in this article because it's a direct translation of the style used in Nat Pryce's Java code.
+			</p>
+			<p>
+				Ordinarily, I prefer an immutable variant, but in C# this leads to even more boilerplate code, and I didn't want to sidetrack the topic by making this recap article more complicated than absolutely necessary.
+			</p>
+			<p>
+				You may be pleased to learn that future articles in this very article series will show alternatives in both C#, F#, and Haskell.
+			</p>
+		</div>
+		<div class="comment-date">2017-08-15 07:30 UTC</div>
+	</div>
+	
+	<div class="comment" id="ccc8783967b84e898ace816222a93a87">
+		<div class="comment-author"><a href="https://gist.github.com/jand187">JanD</a></div>
+		<div class="comment-content">
+			<p>Hi Mark, A while ago I made a generic builder for this exact purpose. I also made som helper extension methods, that could act as sort of an Object Mother. I quite like how it work and I have used it quite a few times. So, reading this post, I thought I'd put in a link to it, as it might be usefull to other readers.</p>
+			<p><a href="https://gist.github.com/jand187/cabd16971097b5beb4c3">Generic Builder with Object Mother Gist</a></p>
+			<p>It's all in one big gist and probably not very weel structured, but if you look at the class GenericBuilder it should be quite easily understood. The examples of extensionmethods can be seen towards the end of the file.</p>
+		</div>
+		<div class="comment-date">2017-08-15 07:42 UTC</div>
+	</div>
+	
+	<div class="comment" id="56dff1c822274ed69065c8a84579a2a9">
+		<div class="comment-author"><a href="https://github.com/mrmorcs">James Morcom</a></div>
+		<div class="comment-content">
+			<p>I've used test data builders in C# just like this in the past, and couldn't decide whether I liked them or not, due to all the boilerplate.</p>
+			<p>I'm looking forward to the next few posts, thanks for doing this.</p>
+		</div>
+		<div class="comment-date">2017-08-18 11:43 UTC</div>
+	</div>
+	
+	<div class="comment" id="3469b9d363f145e39211f02f569ff5b2">
+		<div class="comment-author"><a href="https://www.linkedin.com/in/rpajak/">Robert Pajak</a></div>
+		<div class="comment-content">
+			<p>Hi, Mark</p>
+			<p>In C# I starated to prefer to use a "parameterized object mother". Please take a look and tell me what out think about it: <a href="https://gist.github.com/Pellared/a31b6955af5c61a56a277a50606c3410">Address Object Mother Gist</a>.</p>
+			<p>From my experience it is less and simplier code. It is also a bid easier to debug. Personally, the Object Mother is the first pattern when refactoring test data creationg and I use Fluent Test Data Builder only in more complex scenarios.</p>
+			<p>@JanD: Unfortunately, your solution would not work for immutable data structures (which I prefer).</p>
+		</div>
+		<div class="comment-date">2017-08-19 19:25 UTC</div>
+	</div>
+
+	<div class="comment" id="fce82904cf6b4e07b8275559b7f8768b">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Robert, thank you for writing. I haven't seen that particular C# variation before, but it looks useful. I hope that as this article series progresses, it should become increasingly clear to the reader that the Test Data Builder pattern addresses various language deficiencies. (It has, by the way, for some time been a common criticism of design patterns in general that they are nothing but patches on language deficiencies. I don't think that I agree with that 100 percent, but I certainly understand the argument.)
+			</p>
+			<p>
+				Nat Pryce's original article about the Test Data Builder pattern is from 2007 with example code in Java. I don't know that much about Java, but back then, I don't think C# had optional arguments (as far as I can tell, that language feature was added in 2010). My point is that the pattern described a good way to model code given the language features that were available at the time.
+			</p>
+			<p>
+				As a general rule, I'm not a fan of C#'s optional argument feature (because I'm concerned what it does to forwards and backwards compatibility of my APIs), but used in the way you suggest it does look useful. Perhaps it does, indeed, address all the concerns that the Test Data Builder pattern addresses. I haven't tried it, so I can't really evaluate it (yet), but it looks like it'd be worth trying out.
+			</p>
+			<p>
+				My overall goal with this article series is, however, slightly different. In fact, I'm not trying to sell the Test Data Builder pattern to anyone. Rather, the point is that with better API design, and with better languages, it'd be largely redundant.
+			</p>
+		</div>
+		<div class="comment-date">2017-08-21 06:33 UTC</div>
+	</div>
+
+	<div class="comment" id="a8f1d2c0b5704ff4a79ae941d1fb567b">
+		<div class="comment-author"><a href="https://www.linkedin.com/in/romainvasseur/">Romain Vasseur</a></div>
+		<div class="comment-content">
+			<p>Hi, Mark<br>Thank you for this post</p>
+			<p>I personally leverage <a href="https://github.com/ekonbenefits/impromptu-interface">Impromptu Interface</a>.
+			It could be also verbose but as you only provide meaningful data it fits to Robert C. Martin credo.
+			And it avoids creating a lot of one-shot boilerplate code and/or noising existing classes with UT specific stuff.</p>
+		</div>
+		<div class="comment-date">2017-08-21 09:12 UTC</div>
+	</div>
+
+	<div class="comment" id="29cac3d7dc9a4777bc5dc49ad59ae353">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Romain, do you have an example of that, that you could share?
+			</p>
+		</div>
+		<div class="comment-date">2017-08-21 09:49 UTC</div>
+	</div>
+
+	<div class="comment" id="78d9a0ceced94ae699cb6e39d67cd8c7">
+		<div class="comment-author"><a href="https://www.linkedin.com/in/romainvasseur/">Romain Vasseur</a></div>
+		<div class="comment-content">
+
+			<p>Partial <code>IAddress</code> with <code>City</code> value only:</p>
+			<pre><span style="color:blue;">var</span>&nbsp;address&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;{
+		&nbsp;&nbsp;&nbsp;&nbsp;City = <span style="color:#a31515;">&quot;Paris&quot;</span>
+		&nbsp;&nbsp;}.ActLike&lt;<span style="color:#2b91af;">IAddress&gt;</span>();
+			</pre>
+
+			<p>Partial <code>IAddress</code> with <code>City</code> value and partial <code>IPostCode</code> with <code>ISO</code> value only:</p>
+			<pre><span style="color:blue;">var</span>&nbsp;address&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;{
+		&nbsp;&nbsp;&nbsp;&nbsp;City = <span style="color:#a31515;">&quot;Paris&quot;</span>, 
+		&nbsp;&nbsp;&nbsp;&nbsp;PostCode = <span style="color:blue;">new</span>&nbsp;{
+				&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ISO = <span style="color:#a31515;">&quot;FR&quot;</span>
+				&nbsp;&nbsp;&nbsp;}.ActLike&lt;<span style="color:#2b91af;">IPostCode&gt;</span>()
+		&nbsp;&nbsp;}.ActLike&lt;<span style="color:#2b91af;">IAddress&gt;</span>();
+			</pre>
+
+			<p>Main drawback is verbosity but intent is pretty clear.<br>We could reduce nested code by splitting <code>IAddress</code> and <code>IPostCode</code> declarations but it also reduces intent: we do not care about <code>IPostCode</code>, we care about <code>IAddress</code> and <code>IPostCode</code> is only an implementation detail.</p>
+			<p>I heavily leverage <code>region</code> to cope with C# verbosity and to highlight common pattern - AAA in this case - so all this code is usually hidden in one <code>ARRANGE</code> region.<br>When I need multiple declaration I used <code>sut</code> (System Under Test) marker to highlight main actor.</p>
+		</div>
+		<div class="comment-date">2017-08-21 21:09 UTC</div>
+	</div>
+
+	<div class="comment" id="49af3727e143427d994d563467ada3a7">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Do I understand it correctly that you'd have an interface like the following, then?
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IAddress</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">string</span>&nbsp;City&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+}</pre>
+			</p>
+			<p>
+				I'm not sure that I quite follow...
+			</p>
+		</div>
+		<div class="comment-date">2017-08-22 11:43 UTC</div>
+	</div>
+
+	<div class="comment" id="f15f2c94df744f2bb0eca2995aef0d58">
+		<div class="comment-author"><a href="https://www.linkedin.com/in/romainvasseur/">Romain Vasseur</a></div>
+		<div class="comment-content">
+			<p>
+				Mark, I tend to avoid <code>setter</code> in my interfaces so my domain objects usually are immutable and only expose <code>getter</code>.<br>
+				My implementation are mainly internal which prevent them to be used directly from within UT assembly (without using InternalsVisibleTo attribute).<br> I have factories - which implementation are also internal - to build my objects.<br>I then use an IoC container to access factories and create my objects.
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IAddress</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">string</span>&nbsp;City&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">string</span>&nbsp;Street&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IPostCode</span>&nbsp;PostCode&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+}</pre>
+			</p>
+			<p>
+				<code>AddressBuilder</code> lives in UT world so must be in another assembly to avoid noising my model.
+				<br>To cope with my internal visibility constraint I have at least 2 options I can live with:
+				<ol><li>Using InternalsVisibleTo attribute for my UT assembly to be able to seamlessly use my types
+				<li>Leveraging a test container to resolve my factory and then create my objects. 
+				</ol>
+				To deal with the immutable constraint I can create new ones within <code>With</code> methods. I can live with this too.
+				<br><br>The main drawback remains the verbosity/burden of those methods.
+				<br>Using <a href="https://github.com/ekonbenefits/impromptu-interface">Impromptu Interface</a> to generate partial test data spares builder classes creation while keeping verbosity acceptable and intent clear.
+				<br>Does it make sense?
+			</p>
+		</div>
+		<div class="comment-date">2017-08-22 13:24 UTC</div>
+	</div>
+
+	<div class="comment" id="234e0beada294425aa5303a2c5dd3ae2">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				That helps clarify things, thank you.
+			</p>
+			<p>
+				I know that obviously, I could try for myself, but when you write
+			</p>
+			<p>
+				<pre><span style="color:blue;">var</span>&nbsp;address&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;{
+		&nbsp;&nbsp;&nbsp;&nbsp;City = <span style="color:#a31515;">&quot;Paris&quot;</span>
+		&nbsp;&nbsp;}.ActLike&lt;<span style="color:#2b91af;">IAddress&gt;</span>();</pre>
+			</p>
+			<p>
+				then what will be the value of <code>address.PostCode</code>?
+			</p>
+		</div>
+		<div class="comment-date">2017-08-22 13:40 UTC</div>
+	</div>
+
+	<div class="comment" id="cd35dc42188b4388a22d84f1df3fa39c">
+		<div class="comment-author"><a href="https://www.linkedin.com/in/romainvasseur/">Romain Vasseur</a></div>
+		<div class="comment-content">
+			<u>It throws an exception if accessed but live peacefully otherwise</u>. It is why I talked about <span style="color:#a31515;">partial</span> data.<br>
+			You have to be aware of this. When your test focus on a single aspect of your class you can safely use it.<br>
+			Imagine you are testing a <code>City</code> centric algorithm: you do not care about Street, Street number, Floor, and so on.<br>
+			No need to create heavy/costly objects you can safely use a partial object which is only compliant with a part of the original interface.<br>
+			The way you would have deal with if you had split <span style="color:#2b91af;">IAddress</span> interface into several parts namely <span style="color:#2b91af;">IHaveACity</span>, <span style="color:#2b91af;">IHaveAStreet</span>, ...<br>			
+			As it only declares what it needs to work the UT intent is pretty clear. As test builder it removes noisy stuff.
+		</div>
+		<div class="comment-date">2017-08-22 14:22 UTC</div>
+	</div>
+
+	<div class="comment" id="4a9cb187b36147f8b3a9fd439385c4e0">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Now I think I get it! Thank you for taking the time to explain.
+			</p>
+		</div>
+		<div class="comment-date">2017-08-22 14:50 UTC</div>
+	</div>
+
+	<div class="comment" id="647593cbc5ca4f339c1c3cbd665933f3">
+		<div class="comment-author"><a href="https://stackoverflow.com/users/129073/gebb">Otto Gebb</a></div>
+		<div class="comment-content">
+			<p>A slight variation on Robert Pajak's approach that allows writing <code>an.Address()</code> instead of
+			unwieldy <code>AddressObjectMother.Create()</code>: 
+			<a href="https://softwareengineering.stackexchange.com/a/286403/105014">Mother Factory</a>.</p>
+			<p>Another usage sample: <a href="https://gist.github.com/M0ns1gn0r/72dc43187418118c68d413d0eedb881d">gist</a>.
+		</div>
+		<div class="comment-date">2017-09-12 9:16 UTC</div>
+	</div>
+</div>

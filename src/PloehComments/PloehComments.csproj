@@ -11,7 +11,2008 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Posts\2009-01-28-LivingInInterestingTimes.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-01-28-Zero-FrictionTDD.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-02-13-SUTFactory.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-02-22-UpdatingDetachedEntitiesWithLINQToEntities.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-03-03-DerivedValuesEnsureExecutableSpecification.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-03-05-ConstrainedNon-Determinism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-03-10-Specification-DrivenDevelopment.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-03-11-ExplicitExpectations.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-03-16-FixtureObject.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-03-22-AnnouncingAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-03-23-JoiningSafewhere.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-03-24-HowAutoFixtureCreatesObjects.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-04-02-CreatingStringsWithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-04-03-CreatingNumbersWithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-04-19-CreatingBooleansWithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-04-23-DealingWithTypesWithoutPublicConstructors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-04-27-ReplacingAutoFixturesDefaultAlgorithms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-04-28-Speakingat7NITConference2009.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-05-01-DealingWithConstrainedInput.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-05-05-ManagingLooselyCoupledProjects.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-05-11-AnonymousSequencesWithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-05-15-AutoFixtureAsFixtureObject.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-05-17-AutoFixture.8.1Released.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-05-21-SyncOrchestrator.Synchronize%28%29ThrowsCOMExceptionWhenUnitTesting.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-05-26-TheAutoFixtureBuilder.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-05-28-DelegatesAreAnonymousInterfaces.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-06-01-SettingPropertyValuesWhileBuildingAnonymousVariablesWithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-06-04-AutoFixtureCheatSheet.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-06-05-TestabilityIsReallyTheOpenClosedPrinciple.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-06-05-Tweet.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-06-09-CallingMethodsWhileBuildingAnonymousVariablesWithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-06-18-AutoFixture.8.2Released.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-06-20-AutoFixture.8.3Released.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-06-22-CustomTokensOverNon-HTTPTransports.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-07-01-AutoFixtureAsTestDataBuilder.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-07-11-AutoFixture.8.4AndRoadmap.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-07-16-DataTemplatingInASP.NETMVC.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-07-23-DisablingAutoPropertiesInAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-08-06-AFluentInterfaceForTestingINotifyPropertyChanged.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-08-17-OmittingOnlyCertainPropertiesWithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-08-25-DoRedux.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-09-02-AutoFixture.8.5Released.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-09-07-Self-updatingAJAXlinkswithASP.NETMVC.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-09-21-AutoFixture.8.6Released.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-09-22-CustomizingAType%27sBuilderWithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-09-29-SOLIDorCOLDS.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-10-05-Writingabook.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-10-24-WCFPodcastwithme.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-10-26-AnonymousWith.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-10-31-AutoFixturebeta1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-11-07-Creatinglength-constrainedstringswithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-11-17-DependencyInjectionPodcastwithme.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-11-17-UsingCastleWindsor%27sPerWebRequestlifestylewithASP.NETMVConIIS7.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-11-26-AnonymousDo.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-12-01-GlobalErrorHandlinginASP.NETMVC.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-12-05-BuildingandassigningarrayswithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-12-07-LoggingExceptionFilter.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-12-14-WiringASP.NETMVCErrorHandlingwithCastleWindsor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2009-12-20-MEFTechTalkwithme.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-01-04-AnonymousGet.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-01-13-AutoFixture1.0RC1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-01-20-AutoFixture1.0RC2.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-01-20-EnablingDIforLazyComponents.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-01-20-RebuttalConstructorover-injectionanti-pattern.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-01-25-DependencyInjectionInversionin.NET.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-01-26-IWindsorInstaller.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-01-27-AutoFixture1.0.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-01-27-What%27ssodangerousaboutaDIattribute.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-02-02-RefactoringtoAggregateServices.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-02-03-ServiceLocatorisanAnti-Pattern.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-02-08-CNUGTDDtalk.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-03-17-AutoFixtureFreeze.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-03-26-Moreaboutfrozenpizza.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-03-27-Freezingmocks.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-04-02-AutoFixture1.1RC1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-04-06-MappingtypeswithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-04-07-DependencyInjectionisLooseCoupling.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-04-10-AutoFixture1.1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-04-26-ChangingWindsorlifestylesafterthefact.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-04-26-WhyImmigratingfromMSTesttoxUnit.net.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-04-27-FunwithliteralextensionsandAmbientContext.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-05-17-ServiceHostFactorylifetime.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-05-18-SneakviewatCastlesWCFFacility.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-05-23-Upcomingtalksspring2010.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-06-29-IntroducingAutoFixtureLikeness.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-07-12-DomainObjectsandIDataErrorInfo.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-07-20-StructureMapPerRequestvs.Uniquelifetimes.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-08-09-AutoFixture2.0beta1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-08-19-AutoFixtureasanauto-mockingcontainer.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-08-25-ChangingthebehaviorofAutoFixtureauto-mockingwithMoq.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-08-30-Dontcallthecontainer%3bitllcallyou.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-09-13-MyfutureisAzure.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-09-20-InstrumentationwithDecoratorsandInterceptors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-09-29-TheRegisterResolveReleasepattern.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-10-08-AutoDataTheorieswithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-10-10-AutoFixture2.0Released.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-10-14-WindowsAzureMigrationSanityCheck.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-10-19-Convention-basedCustomizationswithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-11-01-PatternRecognitionAbstractFactoryorServiceLocator.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-11-01-RefactoringfromAbstractFactorytoDecorator.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-11-01-RefactoringfromServiceLocatortoAbstractFactory.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-11-13-RhinoMocks-basedauto-mockingwithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-11-22-IntegratingAutoFixturewithObjectHydrator.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-12-02-Interfacesarenotabstractions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-12-03-Towardsbetterabstractions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-12-18-OnRoleInterfaces,theReusedAbstractionsPrincipleandServiceLocators.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-12-22-TheTDDApostate.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2010-12-24-ChallengeResolveclosedtypeswithMEF.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-01-01-MyChristmaschallengehasawinner.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-01-24-Scalabledoesntmeanfast.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-02-04-TheBCLalreadyhasaMaybemonad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-02-07-CreatingspecificpopulatedlistswithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-02-08-CreatinggeneralpopulatedlistswithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-02-28-Interfacesareaccessmodifiers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-03-03-InjectionConstructorsshouldbesimple.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-03-04-Composeobjectgraphswithconfidence.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-03-14-ResolvingclosedtypeswithMEF.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-03-18-EncapsulatingAutoFixtureCustomizations.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-03-22-CommandsareComposable.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-04-05-MSDNMagazinearticleaboutCQRSonWindowsAzure.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-04-18-EnumerablesaredynamicalsoinAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-04-19-AutoFixture2.1beta1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-04-19-ConstructorstrategiesforAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-04-27-Providerisnotapattern.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-04-29-Feedbackmechanismsandtradeoffs.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-02-AutoFixture2.1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-02-WindowsAzuremigrationsmellSQLServerover-utilization.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-09-GenericunittestingwithxUnit.net.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-16-TennisKatawithimmutabletypesandacyclomaticcomplexityof1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-24-DesignSmellTemporalCoupling.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-24-Poka-yokeDesignFromSmelltoFragrance.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-25-DesignSmellPrimitiveObsession.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-26-CodeSmellAutomaticProperty.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-27-DesignSmellRedundantRequiredAttribute.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-30-DesignSmellDefaultConstructor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-05-31-AttheBoundaries,ApplicationsareNotObject-Oriented.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-06-07-SOLIDCodeisnt.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-07-28-CompositionRoot.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-08-01-JoiningAppHarbor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-08-25-ServiceLocatorrolesvs.mechanics.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-09-06-AutoFixturegoesContinuousDeliverywithSemanticVersioning.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-09-19-MessageDispatchingwithoutServiceLocation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-09-23-Weakly-typedversusStrongly-typedMessageChannels.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-10-11-CheckingforexactlyoneiteminasequenceusingC#andF#.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-10-25-SOLIDconcrete.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Posts\2011-11-08-Independency.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-11-10-TDDimprovesreusability.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-12-07-PolymorphicConsistency.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-12-19-FactoryOverload.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2011-12-21-TestingContainerConfigurations.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-01-03-SOLIDisAppend-only.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-02-02-LooseCouplingandtheBigPicture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-02-09-IsLayeringWorththeMapping.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-03-15-ImplementinganAbstractFactory.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-03-19-MigratingfromWCFWebAPItoASP.NETWebAPI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-03-20-RobustDIWiththeASP.NETWebAPI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-03-26-IQueryableTisTightCoupling.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-04-17-HyperlinkingWiththeASP.NETWebAPI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-04-17-InjectingHttpControllerContextWiththeASP.NETWebAPI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-04-19-WiringHttpControllerContextWithCastleWindsor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-04-24-VendorMediaTypesWiththeASP.NETWebAPI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-05-24-TDDtestsuitesshouldrunin10secondsorless.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-05-25-Designpatternsacrossparadigms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-05-29-BankOCRkatainF#userstory1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-06-01-BankOCRkatainF#userstory2.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-06-04-BankOCRkatainF#userstories3and4.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-06-21-TheResemblanceidiom.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-06-22-ResemblanceandLikeness.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-06-22-Test-specificEqualityversusDomainEquality.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-06-27-FacadeTest.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-07-02-PrimitiveDependencies.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-07-18-Hyprlinkr.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-07-20-FizzBuzzkatainF#stage1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-07-25-FizzBuzzkatainF#stage2.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-07-31-TheorderofAutoFixtureCustomizationsmatter.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-08-31-ConcreteDependencies.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-09-28-DependencyInjectionandLifetimeManagementwithASP.NETWebAPI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-10-03-DependencyInjectioninASP.NETWebAPIwithCastleWindsor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-11-06-WhentouseaDIContainer.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-11-07-AppSettingsconventionforCastleWindsor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-11-27-Encapsulationofproperties.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-12-18-RangersandZookeepers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2012-12-18-ZookeepersmustbecomeRangers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-01-07-RoleHints.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-01-07-TypeNameRoleHints.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-01-08-ArgumentNameRoleHint.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-01-09-MetadataRoleHint.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-01-09-NSubstituteAuto-mockingwithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-01-10-RoleInterfaceRoleHint.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-01-11-PartialTypeNameRoleHint.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-01-16-Outside-InTest-DrivenDevelopmentPluralsightcourse.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-04-BewareofProductivityTools.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-06-StringCalculatorkatawithAutoFixture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-06-StringCalculatorkatawithAutoFixtureexercise1.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-07-StringCalculatorkatawithAutofixtureexercise2.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-11-StringCalculatorkatawithAutofixtureexercise3.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-12-StringCalculatorkatawithAutofixtureexercise4.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-13-StringCalculatorkatawithAutofixtureexercise5.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-14-StringCalculatorkatawithAutofixtureexercise6.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-15-StringCalculatorkatawithAutofixtureexercise7.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-02-18-StringCalculatorkatawithAutofixtureexercise8.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-03-01-AutoFixture3.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-03-03-moving-the-blog-to-jekyll.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-03-04-code-readability-hypotheses.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-03-04-outside-in-tdd-versus-ddd.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-03-08-test-trivial-code.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-03-11-auto-mocking-container.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-03-11-listen-to-trivial-tests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-02-why-trust-tests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-04-structural-inspection.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-05-how-to-configure-automoq-to-set-up-all-properties.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-08-how-to-automatically-populate-properties-with-automoq.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-09-ploeh-blog-syndication-feed-addresses.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-11-fizzbuzz-kata-in-clojure.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-15-advanced-unit-testing-pluralsight-course.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-23-how-to-change-the-generate-property-stub-refactoring-code-snippet-in-visual-studio-2012.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-29-rest-lesson-learned-avoid-user-supplied-data-in-uri-segments.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-29-rest-lessons-learned.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-04-30-rest-lesson-learned-avoid-204-responses.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-05-01-herding-code-podcast.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-05-01-rest-lesson-learned-avoid-hackable-urls.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-05-02-rest-lesson-learned-consider-a-home-link-on-all-resources.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-05-03-rest-lesson-learned-consider-a-self-link-on-all-resources.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-06-17-where-to-put-unit-tests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-06-24-a-heuristic-for-formatting-code-according-to-the-aaa-pattern.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-06-27-ndc-2013-session-recordings.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-07-08-defensive-coding.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-07-20-linq-versus-the-lsp.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-08-21-checking-math-homework-with-f.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-08-23-how-to-create-a-pure-f-aspnet-web-api-project.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-08-26-running-a-pure-f-web-api-on-azure-web-sites.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-09-06-dependency-injection-and-events.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-09-06-di-and-events-constructor-subscription.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-09-09-di-and-events-third-party-connect.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-09-11-di-and-events-reactive-extensions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-09-12-di-and-events-composition.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-09-13-karma-from-bash-on-windows.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-10-02-di-in-net-receives-a-jolt-productivity-award.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-10-07-verifying-every-single-commit-in-a-git-branch.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-10-15-easy-aspnet-web-api-dtos-with-f-climutable-records.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-10-21-replace-overloading-with-discriminated-unions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-10-23-mocks-for-commands-stubs-for-queries.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-11-15-albedo.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-11-19-not-going-to-ndc-london-after-all.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-12-03-layers-onions-ports-adapters-its-all-the-same.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-12-10-semantic-versioning-with-continuous-deployment.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2013-12-11-zerotonine.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-01-17-hyprlinkr-100.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-01-20-rest-efficiency.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-01-22-a-functional-architecture-with-f.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-01-29-nuget-package-restore-considered-harmful.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-01-30-how-to-use-fsharpcore-430-when-all-you-have-is-431.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-02-03-using-nuget-with-autonomous-repositories.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-03-10-solid-the-next-step-is-functional.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-03-11-arbitrary-version-instances-with-fscheck.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-03-14-exude.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-03-21-composed-assertions-with-unquote.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-04-30-single-writer-web-jobs-on-azure.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-05-01-autofixture-conventions-with-albedo.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-05-15-service-locator-violates-solid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-05-16-configuring-azure-web-jobs.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-05-19-conforming-container.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-05-19-di-friendly-framework.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-05-19-di-friendly-library.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-05-26-feedback-on-aspnet-vnext-dependency-injection.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-06-02-captive-dependency.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-06-03-compile-time-lifetime-matching.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-06-10-pure-di.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-06-12-web-api-raygun-error-handler.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-06-13-passive-attributes.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-07-22-hire-me.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-07-23-drain.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-08-06-encapsulation-and-solid-pluralsight-course.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-08-07-why-dry.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-08-11-cqs-versus-server-generated-ids.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-08-24-decoraptor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-08-25-decommissioning-decoraptors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-09-25-faking-a-continuously-polling-consumer-with-scheduled-tasks.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-10-07-atomeventstore.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-10-09-unit-testing-methods-with-the-same-implemenation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-11-18-the-isnullorwhitespace-trap.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-12-16-name-this-operation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-12-17-good-times-with-f.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-12-23-exception-messages-are-for-programmers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2014-12-24-placement-of-abstract-factories.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-01-06-composition-root-reuse.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-01-10-diamond-kata-with-fscheck.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-01-15-10-tips-for-better-pull-requests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-01-19-from-primitive-obsession-to-domain-modelling.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-01-21-library-bundle-facade.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-02-23-a-simpler-arbitrary-for-the-diamond-kata.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-02-23-property-based-testing-without-a-property-based-testing-framework.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-03-19-posting-json-to-an-f-web-api.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-04-02-unit-testing-with-f-pluralsight-course.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-04-13-less-is-more-language-features.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-04-15-c-will-eventually-get-all-f-features-right.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-04-17-introduction-to-property-based-testing-with-f-pluralsight-course.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-05-06-test-driven-development-with-f-pluralsight-course.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-05-07-functional-design-is-intrinsically-testable.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-05-08-stringf.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-06-22-rest-implies-content-negotiation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-07-17-type-driven-development-with-f-pluralsight-course.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-08-03-idiomatic-or-idiosyncratic.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-08-10-type-driven-development.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-08-11-type-driven-development-implementing-shouldidle.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-08-12-type-driven-development-composition.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-08-17-when-x-y-and-z-are-great-variable-names.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-09-08-ad-hoc-arbitraries-with-fscheckxunit.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-09-18-temporary-field-code-smell.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-09-21-public-types-hidden-in-plain-sight.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-09-22-unit-testing-internals.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-09-23-applications-and-their-side-effects.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-10-08-command-query-separation-when-queries-should-have-side-effects.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-10-19-visual-value-verification.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-10-26-service-locator-violates-encapsulation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-11-13-null-has-no-type-but-maybe-has.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-11-16-code-coverage-is-a-useless-target-measure.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-11-30-to-log-or-not-to-log.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-12-01-recurse.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-12-03-the-rules-of-attraction-language.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-12-04-the-rules-of-attraction-location.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-12-21-integration-testing-composed-functions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2015-12-22-tail-recurse.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-01-18-make-pre-conditions-explicit-in-property-based-tests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-06-are-shuffled-plays-random.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-10-types--properties--software-designing-with-types.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-10-types--properties--software.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-11-types--properties--software-state-transition-properties.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-12-types--properties--software-properties-for-the-advantage-state.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-15-types--properties--software-properties-for-the-forties.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-16-types--properties--software-composition.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-17-types--properties--software-initial-state.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-18-types--properties--software-finite-state-machine.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-02-19-types--properties--software-other-properties.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-03-01-ad-hoc-arbitraries---now-with-pipes.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-03-18-functional-architecture-is-ports-and-adapters.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-03-21-composition-with-an-either-computation-expression.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-04-11-async-as-surrogate-io.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-05-06-cqs-and-server-generated-entity-ids.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-05-17-tie-fighter-fscheck-properties.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-06-15-sut-double.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-06-28-roman-numerals-via-property-based-tdd.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-07-04-conditional-composition-of-functions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-08-09-untyped-f-http-route-defaults-for-aspnet-web-api.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-09-26-decoupling-decisions-from-effects.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-10-25-when-variable-names-are-in-the-way.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-11-28-easy-domain-modelling-with-types.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-12-07-domain-modelling-with-rest.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2016-12-16-from-rest-to-algebraic-data.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-01-03-decoupling-application-errors-from-domain-models.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-01-27-dependency-injection-is-passing-an-argument.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-01-27-from-dependency-injection-to-dependency-rejection.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-01-30-partial-application-is-dependency-injection.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-02-02-dependency-rejection.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-03-30-a-reusable-apicontroller-adapter.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-04-24-simple-holidays.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-05-30-using-polly-with-f-async-workflows.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-06-06-fractal-trees-with-purescript.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-06-27-pure-times.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-06-28-pure-times-in-haskell.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-07-04-pure-times-in-f.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-07-10-pure-interactions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-07-11-hello-pure-command-line-interaction.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-07-17-a-pure-command-line-wizard.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-07-24-combining-free-monads-in-haskell.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-07-31-combining-free-monads-in-f.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-08-07-f-free-monad-recipe.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-08-14-from-test-data-builders-to-the-identity-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-08-15-test-data-builders-in-c.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-08-21-generalised-test-data-builder.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-08-28-the-builder-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-09-04-builder-as-identity.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-09-11-test-data-without-builders.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-09-18-the-test-data-generator-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-09-25-interception-vis-a-vis-pure-di.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-10-05-monoids-semigroups-and-friends.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-10-06-monoids.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-10-10-strings-lists-and-sequences-as-a-monoid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-10-16-money-monoid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-10-23-convex-hull-monoid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-10-30-tuple-monoids.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-10-4-from-design-patterns-to-category-theory.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-11-06-function-monoids.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-11-13-endomorphism-monoid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-11-20-monoids-accumulate.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-11-27-semigroups.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-12-04-bounding-box-semigroup.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-12-11-semigroups-accumulate.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-12-18-quasigroups.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-12-27-magmas.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2017-12-28-rock-paper-scissors-magma.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-01-02-colour-mixing-magma.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-01-08-software-design-isomorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-01-15-unit-isomorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-01-22-function-isomorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-01-29-argument-list-isomorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-02-05-uncurry-isomorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-02-12-object-isomorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-02-19-abstract-class-isomorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-02-26-inheritance-composition-isomorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-03-05-some-design-patterns-as-universal-abstractions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-03-12-composite-as-a-monoid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-03-19-functors-applicatives-and-friends.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-03-22-functors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-03-26-the-maybe-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-04-03-maybe-monoids.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-04-08-a-pure-test-spy.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-04-09-coalescing-composite-as-a-monoid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-04-16-endomorphic-composite-as-a-monoid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-04-23-null-object-as-identity.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-04-30-parametrised-unit-tests-in-haskell.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-05-07-inlined-hunit-test-lists.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-05-14-project-arbitraries-with-view-patterns.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-05-17-composite-as-a-monoid---a-business-rules-example.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-05-22-church-encoding.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-05-24-church-encoded-boolean-values.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-05-28-church-encoded-natural-numbers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-06-04-church-encoded-maybe.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-06-11-church-encoded-either.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-06-18-church-encoded-payment-types.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-06-25-visitor-as-a-sum-type.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-07-02-terse-operators-make-business-code-more-readable.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-07-09-typing-and-testing-problem-23.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-07-16-angular-addition-monoid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-07-24-dependency-injection-revisited.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-07-30-flattening-arrow-code-using-a-stack-of-monads.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-08-06-a-tree-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-08-13-a-visitor-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-08-20-reactive-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-08-27-on-constructor-over-injection.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-09-03-the-identity-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-09-10-the-lazy-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-09-17-typing-is-not-a-programming-bottleneck.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-09-24-asynchronous-functors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-10-01-applicative-functors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-10-08-full-deck.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-10-15-an-applicative-password-list.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-10-22-applicative-combinations-of-functions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-10-29-the-maybe-applicative-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-11-05-applicative-validation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-11-12-what-to-test-and-not-to-test.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-11-19-functional-architecture-a-definition.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-11-26-the-test-data-generator-applicative-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-12-03-set-is-not-a-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-12-10-danish-cpr-numbers-in-f.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-12-17-the-lazy-applicative-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-12-24-bifunctors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2018-12-31-tuple-bifunctor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-01-07-either-bifunctor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-01-14-an-either-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-01-21-some-thoughts-on-anti-patterns.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-01-28-better-abstractions-revisited.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-02-04-how-to-get-the-value-out-of-the-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-02-11-asynchronous-injection.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-02-18-from-interaction-based-to-state-based-testing.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-02-25-an-example-of-interaction-based-testing-in-c.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-03-04-code-quality-is-not-software-quality.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-03-11-an-example-of-state-based-testing-in-haskell.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-03-18-the-programmer-as-decision-maker.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-03-25-an-example-of-state-based-testing-in-f.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-04-01-an-example-of-state-based-testing-in-c.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-04-15-lazy-monoids.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-04-22-applicative-monoids.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-04-29-catamorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-05-06-boolean-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-05-13-peano-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-05-20-maybe-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-05-27-list-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-06-03-either-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-06-10-tree-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-06-17-composition-root-location.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-06-24-full-binary-tree-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-07-01-yes-silver-bullet.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-07-08-payment-types-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-07-15-tester-doer-isomorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-07-22-chain-of-responsibility-as-catamorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-07-29-church-encoded-rose-tree.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-08-05-rose-tree-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-08-12-rose-tree-bifunctor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-08-19-a-rose-tree-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-08-26-functional-file-system.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-09-02-naming-newtypes-for-quickcheck-arbitraries.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-09-09-picture-archivist-in-haskell.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-09-16-picture-archivist-in-f.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-09-23-unit-testing-wai-applications.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-09-30-10x-developers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-10-07-devils-advocate.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-10-14-tautological-assertion.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-10-21-a-red-green-refactor-checklist.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-10-28-a-basic-haskell-solution-to-the-robot-journeys-coding-exercise.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-11-04-the-80-24-rule.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-11-11-diamond-rock.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-11-18-small-methods-are-easy-to-troubleshoot.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-11-25-timespan-configuration-values-in-net-core.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-12-02-refactoring-registration-flow-to-functional-architecture.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-12-09-put-cyclomatic-complexity-to-good-use.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-12-16-zone-of-ceremony.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-12-23-the-case-of-the-mysterious-curly-bracket.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2019-12-30-semigroup-resonance-fizzbuzz.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-01-06-the-case-of-the-unbalanced-brackets.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-01-13-on-doing-katas.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-01-20-algebraic-data-types-arent-numbers-on-steroids.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-01-27-the-maitre-d-kata.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-02-03-non-exceptional-averages.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-02-10-builder-isomorphisms.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-02-17-builder-as-a-monoid.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-02-24-discerning-and-maintaining-purity.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-03-02-impureim-sandwich.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-03-09-polymorphic-builder.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-03-16-conways-law-latency-versus-throughput.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-03-23-repeatable-execution.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-03-30-repeatable-execution-in-haskell.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-04-06-repeatable-execution-in-c.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-04-13-curb-code-rot-with-thresholds.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-04-20-unit-bias-against-collections.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-04-27-an-f-implementation-of-the-maitre-d-kata.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-05-04-significant-whitespace-is-dry.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-05-11-afk.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-05-18-modelling-versus-shaping-reality.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-05-25-wheres-the-science.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-06-01-retiring-old-service-versions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-06-08-the-io-container.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-06-15-io-container-in-a-parallel-c-universe.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-06-22-the-io-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-06-29-syntactic-sugar-for-io.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-07-06-referential-transparency-of-io.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-07-13-implementation-of-the-c-io-container.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-07-20-closing-database-connections-during-test-teardown.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-07-27-task-asynchronous-programming-as-an-io-surrogate.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-08-03-using-the-nameof-c-keyword-with-aspnet-3-iurlhelper.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-08-10-an-aspnet-core-url-builder.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-08-17-unit-testing-is-fine.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-08-24-adding-rest-links-as-a-cross-cutting-concern.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-08-31-properties-for-all.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-09-07-add-null-check-without-brackets-in-visual-studio.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-09-14-we-need-young-programmers-we-need-old-programmers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-09-21-an-xpath-query-for-long-methods.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-09-28-ensuresuccessstatuscode-as-an-assertion.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-10-05-fortunately-i-dont-squash-my-commits.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-10-12-subjectivity.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-10-19-monomorphic-functors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-10-26-fit-urls.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-11-02-signing-urls-with-aspnet.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-11-09-checking-signed-urls-with-aspnet.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-11-16-redirect-legacy-urls.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-11-23-good-names-are-skin-deep.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-11-30-name-by-role.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-12-07-branching-tests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-12-14-validation-a-solved-problem.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-12-21-a-haskell-proof-of-concept-of-validation-with-partial-data-round-trip.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2020-12-28-an-f-demo-of-validation-with-partial-data-round-trip.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-01-04-dynamic-test-oracles-for-rho-problems.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-01-11-waiting-to-happen.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-01-18-parametrised-test-primitive-obsession-code-smell.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-01-25-self-hosted-integration-tests-in-aspnet.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-02-01-aspnet-poco-controllers-an-experience-report.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-02-09-accountability-and-free-speech.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-02-15-when-properties-are-easier-than-examples.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-02-22-pendulum-swings.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-03-01-pendulum-swing-internal-by-default.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-03-08-pendulum-swing-sealed-by-default.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-03-15-pendulum-swing-pure-by-default.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-03-22-the-dispassionate-developer.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-03-29-table-driven-tennis-scoring.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-04-05-mazes-on-voronoi-tesselations.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-04-12-threading-context-through-a-catamorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-04-19-consider-including-identity-in-urls.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-04-26-leaky-abstraction-by-omission.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-05-03-structural-equality-for-better-tests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-05-10-simplifying-code-with-decorated-commands.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-05-17-against-consistency.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-05-24-tennis-kata-using-the-state-pattern.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-05-31-from-state-tennis-to-endomorphism.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-06-07-abstruse-nomenclature.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-06-14-new-book-code-that-fits-in-your-head.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-06-21-agile-pull-requests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-06-28-property-based-testing-is-not-the-same-as-partition-testing.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-07-05-fractal-hex-flowers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-07-12-a-reading-of-extensibility-for-the-masses.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-07-19-the-state-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-07-28-referential-transparency-fits-in-your-head.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-08-03-the-tennis-kata-revisited.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-08-09-am-i-stuck-in-a-local-maximum.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-08-30-the-reader-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-09-02-contravariant-functors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-09-06-the-command-handler-contravariant-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-09-09-the-specification-contravariant-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-09-13-unit-testing-private-helper-methods.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-09-20-keep-ids-internal-with-rest.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-09-27-the-equivalence-contravariant-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-10-04-reader-as-a-contravariant-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-10-11-serendipity-driven-development.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-10-18-readability-verification.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-10-25-functor-variance-compared-to-cs-notion-of-variance.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-11-01-profunctors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-11-08-reader-as-a-profunctor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-11-15-types-as-sets.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-11-22-functions-as-pipes.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-11-29-postels-law-as-a-profunctor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-12-06-the-liskov-substitution-principle-as-a-profunctor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-12-13-backwards-compatibility-as-a-profunctor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-12-20-changing-your-organisation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2021-12-27-label-persistent-test-data-with-deletion-dates.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-01-03-to-id-or-not-to-id.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-01-10-type-safe-di-composition.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-01-17-enumerate-wordle-combinations-with-an-applicative-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-01-24-type-level-di-container-prototype.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-01-31-a-type-safe-di-container-c-example.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-02-07-nested-type-safe-di-containers.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-02-14-a-conditional-sandwich-example.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-02-21-a-type-safe-di-container-as-a-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-02-28-can-one-flatten-a-statically-typed-list.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-03-07-a-type-safe-di-container-as-a-tuple.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-03-14-type-safe-di-containers-are-redundant.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-03-21-contravariant-dependency-injection.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-03-28-monads.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-04-04-kleisli-composition.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-04-11-monad-laws.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-04-19-the-list-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-04-25-the-maybe-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-05-02-at-the-boundaries-applications-arent-functional.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-05-09-an-either-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-05-16-the-identity-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-05-23-waiting-to-never-happen.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-05-30-the-lazy-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-06-06-asynchronous-monads.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-06-13-some-thoughts-on-naming-tests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-06-20-the-state-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-06-27-test-double-clocks.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-07-04-get-and-put-state.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-07-11-functor-relationships.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-07-18-natural-transformations.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-07-25-an-applicative-reservation-validation-example-in-c.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-08-01-invariant-functors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-08-08-endomorphism-as-an-invariant-functor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-08-15-aspnet-validation-revisited.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-08-22-can-types-replace-validation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-08-29-natural-transformations-as-invariant-functors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-09-05-the-state-pattern-and-the-state-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-09-12-coalescing-dtos.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-09-19-when-to-refactor.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-09-26-refactoring-the-tcp-state-pattern-example-to-pure-functions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-10-03-some-thoughts-on-the-economics-of-programming.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-10-10-refactoring-a-saga-from-the-state-pattern-to-the-state-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-10-17-stubs-and-mocks-break-encapsulation.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-10-24-encapsulation-in-functional-programming.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-10-31-a-regular-grid-emerges.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-11-07-applicative-assertions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-11-14-the-reader-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-11-21-decouple-to-delete.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-11-28-an-initial-proof-of-concept-of-applicative-assertions-in-c.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-12-05-github-copilot-preliminary-experience-report.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-12-12-when-do-tests-fail.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-12-19-error-accumulating-composable-assertions-in-c.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2022-12-26-functors-as-invariant-functors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-01-02-adding-nuget-packages-when-offline.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-01-09-the-io-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-01-16-in-the-long-run.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-01-23-agilean.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-01-30-built-in-alternatives-to-applicative-assertions.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-02-06-contravariant-functors-as-invariant-functors.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-02-13-epistemology-of-interaction-testing.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-02-20-a-thought-on-workplace-flexibility-and-asynchrony.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-02-27-test-data-generator-monad.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-03-06-warnings-as-errors-friction.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-03-13-confidence-from-facade-tests.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-03-20-on-trust-in-software-development.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Posts\2023-03-27-more-functional-pits-of-success.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

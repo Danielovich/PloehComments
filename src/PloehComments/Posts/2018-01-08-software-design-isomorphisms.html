@@ -1,0 +1,197 @@
+---
+layout: post
+title: "Software design isomorphisms"
+description: "When programming, you can often express the same concept in multiple ways. If you can losslessly translate between two alternatives, it's an isomorphism. An introduction for object-oriented programmers."
+date: 2018-01-08 8:35 UTC
+tags: [Software Design]
+image: "/content/binary/isomorphism.png"
+image_alt: "Isomorphism diagram."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>	
+	<p>
+		This article series is part of <a href="/2017/10/04/from-design-patterns-to-category-theory">an even larger series of articles about the relationship between design patterns and category theory.</a>
+	</p>
+	<p>
+		There's a school of functional programming that looks to <a href="https://en.wikipedia.org/wiki/Category_theory">category theory</a> for inspiration, verification, abstraction, and cross-pollination of ideas. Perhaps you're put off by terms like <a href="https://twitter.com/jamesiry/status/598547781515485184">zygohistomorphic prepromorphism</a> (a joke), but you shouldn't be. There are often <a href="/2015/08/17/when-x-y-and-z-are-great-variable-names">good reasons for using abstract naming</a>. In any case, one term from category theory that occasionally makes the rounds is <em>isomorphism</em>.
+	</p>
+	<h3 id="656b60e2fac7490f833dd2fde9709173">
+		Equivalence <a href="#656b60e2fac7490f833dd2fde9709173" title="permalink">#</a>
+	</h3>
+	<p>
+		Don't let the terminology daunt you. An <em>isomorphism</em> is an easy enough concept to grasp. In essence, two things are isomorphic if you can translate losslessly back and forth between them. It's a formalisation of <em>equivalence</em>.
+	</p>
+	<p>
+		Many programming languages, like C# and Java, offer a multitude of alternative ways to do things. Just consider this C# example from <a href="https://cleancoders.com/episode/humane-code-real-episode-1/show">my Humane Code video</a>:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">bool</span>&nbsp;IsSatisfiedBy(<span style="color:#2b91af;">Customer</span>&nbsp;candidate)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">bool</span>&nbsp;retVal;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(candidate.TotalPurchases&nbsp;&gt;=&nbsp;10000)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;retVal&nbsp;=&nbsp;<span style="color:blue;">true</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;retVal&nbsp;=&nbsp;<span style="color:blue;">false</span>;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;retVal;
+}</pre>
+	</p>
+	<p>
+		which is equivalent to this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">bool</span>&nbsp;IsSatisfiedBy(<span style="color:#2b91af;">Customer</span>&nbsp;candidate)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;candidate.TotalPurchases&nbsp;&gt;=&nbsp;10000;
+}</pre>
+	</p>
+	<p>
+		An outside observer can't tell the difference between these two implementations, because they have exactly the same externally visible behaviour. You can always refactor from one implementation to the other without loss of information. Thus, we could claim that they're isomorphic.
+	</p>
+	<h3 id="44e9ca73a4374c188991f292d6c59f0a">
+		Terminology <a href="#44e9ca73a4374c188991f292d6c59f0a" title="permalink">#</a>
+	</h3>
+	<p>
+		If you're an object-oriented programmer, then you already know the word <a href="https://en.wikipedia.org/wiki/Polymorphism_(computer_science)">polymorphism</a>, which sounds similar to <em>isomorphism</em>. Perhaps you've also heard the word <a href="https://en.wikipedia.org/wiki/Xenomorph">xenomorph</a>. It's all Greek. <em>Morph</em> means <em>form</em> or <em>shape</em>, and while <em>poly</em> means <em>many</em>, <em>iso</em> means <em>equal</em>. So <em>isomorphism</em> means 'being of equal shape'.
+	</p>
+	<p>
+		This is most likely the explanation for the term <a href="https://en.wikipedia.org/wiki/Isomorphic_JavaScript">Isomorphic JavaScript</a>. The people who came up with that term knew (enough) Greek, but apparently not mathematics. In mathematics, and particularly category theory, an isomorphism is a translation with an inverse. That's still not a formal definition, but just my attempt at presenting it without too much jargon.
+	</p>
+	<p>
+		Category theory uses the word <em>object</em> to describe a member of a category. I'm going to use that terminology here as well, but you should be aware that <em>object</em> doesn't imply object-oriented programming. It just means 'thing', 'item', 'element', 'entity', etcetera.
+	</p>
+	<p>
+		In category theory, a <em>morphism</em> is a mapping or translation of an object to another object. If, for all objects, there's an inverse morphism that leads back to the origin, then it's an isomorphism.
+	</p>
+	<p>
+		<img src="/content/binary/isomorphism.png" alt="Isomorphism diagram.">
+	</p>
+	<p>
+		In this illustration, the blue arrows going from left to right indicate a single morphism. It's a mapping of objects on the blue left side to objects on the green right side. The green arrows going from right to left is another morphism. In this case, the green right-to-left morphism is an inverse of the blue left-to-right morphism, because by applying both morphisms, you end where you started. It doesn't matter if you start at the blue left side or the green right side.
+	</p>
+	<p>
+		Another way to view this is to say that a lossless translation exists. When a translation is lossless, it means that you don't lose information by performing the translation. Since all information is still present after a translation, you can go back to the original representation.
+	</p>
+	<h3 id="ccf56c166177427785d71baf7cb7158f">
+		Software design isomorphisms <a href="#ccf56c166177427785d71baf7cb7158f" title="permalink">#</a>
+	</h3>
+	<p>
+		When programming, you can often solve the same problem in different ways. Sometimes, the alternatives are isomorphic: you can go back and forth between two alternatives without loss of information.
+	</p>
+	<p>
+		<a href="https://martinfowler.com">Martin Fowler</a>'s book <a href="http://amzn.to/YPdQDf">Refactoring</a> contains several examples. For instance, you can apply <em>Extract Method</em> followed by <em>Inline Method</em> and be back where you started.
+	</p>
+	<p>
+		There are many other isomorphisms in programming. Some are morphisms in the same language, as is the case with the above C# example. This is also the case with the isomorphisms in <em>Refactoring</em>, because a refactoring, by definition, is a change applied to a particular code base, be it C#, Java, Ruby, or Python.
+	</p>
+	<p>
+		Other programming isomorphisms go between languages, where a concept can be modelled in one way in, say, C++, but in another way in Clojure. The <a href="">present blog</a>, for instance, contains several examples of translating between C# and <a href="http://fsharp.org">F#</a>, and between F# and <a href="https://www.haskell.org">Haskell</a>.
+	</p>
+	<p>
+		Being aware of software design isomorphisms can make you a better programmer. It'll enable you to select the best alternative for solving a particular problem. Identifying programming isomorphisms is also important because it'll enable us to formally think about code structure by reducing many alternative representations to a canonical representation. For these reasons, this article presents a catalogue of software design isomorphisms:
+		<ul>
+			<li><a href="/2018/01/15/unit-isomorphisms">Unit isomorphisms</a></li>
+			<li><a href="/2018/01/22/function-isomorphisms">Function isomorphisms</a></li>
+			<li><a href="/2018/01/29/argument-list-isomorphisms">Argument list isomorphisms</a></li>
+			<li><a href="/2018/02/05/uncurry-isomorphisms">Uncurry isomorphisms</a></li>
+			<li><a href="/2018/02/12/object-isomorphisms">Object isomorphisms</a></li>
+			<li><a href="/2018/02/19/abstract-class-isomorphism">Abstract class isomorphism</a></li>
+			<li><a href="/2018/02/26/inheritance-composition-isomorphism">Inheritance-composition isomorphism</a></li>
+			<li><a href="/2019/07/15/tester-doer-isomorphisms">Tester-Doer isomorphisms</a></li>
+			<li><a href="/2020/02/10/builder-isomorphisms">Builder isomorphisms</a></li>
+		</ul>
+		In general, I've tried to name each isomorphism after its canonical representation. For instance, by <em>unit isomorphisms</em>, I mean isomorphisms to the unit value. It is, however, not an entirely consistent naming strategy.
+	</p>
+	<p>
+		Many more software design isomorphisms exist, so if you revisit this article in the future, I may have added more items to this catalogue. In no way should you consider this catalogue exhaustive.
+	</p>
+	<h3 id="d23d37f6eea548c7b7873b19e7d79fe4">
+		Summary <a href="#d23d37f6eea548c7b7873b19e7d79fe4" title="permalink">#</a>
+	</h3>
+	<p>
+		An isomorphism is a mapping for which an inverse mapping also exists. It's a way to describe equivalence.
+	</p>
+	<p>
+		In programming, you often have the choice to implement a particular feature in more than one way. These alternatives may be equivalent, in which case they're isomorphic. That's one of the reasons that many code bases come with a style guide.
+	</p>
+	<p>
+		Understanding how code is isomorphic to other code enables us to reduce many alternatives to a canonical representation. This makes analysis easier, because we can narrow our analysis to the canonical form, and generalise from there.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2018/01/15/unit-isomorphisms">Unit isomorphisms</a>.
+	</p>
+</div>
+
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+<div class="comment" id="b8af8786402b4fcab0ffffa883304ba2">
+	<div class="comment-author"><a href="https://github.com/srogovtsev">Sergey Rogovtsev</a></div>
+	<div class="comment-content">
+Funny thing, I had a discussion about refactoring as an isomorphism a bit ago. While I like the idea of using isomorphisms to reason about code, I still stand by the point that refactoring is an isomorphism <em>limited to functionality</em>; i.e. refactoring the code may change its other aspects (readability is the first one to come to mind, performance is the second), so two different representations are no longer totally equal. Or, as another argument, using Inline Method in fact loses some information (the descriptive method name, limited variable scopes), so the translation is not (sorry) lossless.		
+	</div>
+	<div class="comment-date">2018-01-13 08:39 UTC</div>
+</div>
+
+	<div class="comment" id="d32e657ba46c48c4a5df7664d24b5321">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Sergey, thank you for writing. Good point, you're right that viewed as a general-purpose translation, <em>Inline Method</em> is indeed lossy. When you look at the purpose of refactoring code, the motivation is mostly (if not always) to make the code better in some way. Particularly when the purpose is make the code more readable, a refactoring introduces clarity. Thus, going the opposite way would remove that clarity, so I think it's fair to argue that such a change would be lossy.
+			</p>
+			<p>
+				It's perfectly reasonable to view a refactoring like <em>Inline Method</em> as a general-purpose algorithm, in which case you're right that it's lossy. I don't dispute that.
+			</p>
+			<p>
+				My agenda with this article series, however, is different. I'm not trying to make multiple angels dance on a pinhead; it's not my intent to try to redefine the word <em>refactoring</em>. The purpose with this series of articles is to describe how the same behaviour can be implemented in many different ways. The book <em>Refactoring</em> is one source of such equivalent representations.
+			</p>
+			<p>
+				One quality of morphisms is that there can be several translations between two objects. One such translation could be the general-purpose refactoring that you so rightly point out is lossy. Another translation could be one that 'remembers' the name of the original method.
+			</p>
+			<p>
+				Take, as an example, the isomorphism described under the heading <em>Roster isomorphism</em> in my article <a href="/2017/10/30/tuple-monoids">Tuple monoids</a>. When you consider the method <code>ToTriple</code>, you could, indeed, argue that it's lossy, because it 'forgets' that the label associated with the first integer is <em>Girls</em>, that the label associated with the second integer is <em>Boys</em>, and so on. The reverse translation, however, 'remembers' that information, as you can see in the implementation of <code>FromTriple</code>.
+			</p>
+			<p>
+				This isn't necessarily a 'safe' translation. You could easily write a method like this:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">Roster</span>&nbsp;FromTriple(<span style="color:#2b91af;">Tuple</span>&lt;<span style="color:blue;">int</span>,&nbsp;<span style="color:blue;">int</span>,&nbsp;<span style="color:blue;">string</span>[]&gt;&nbsp;triple)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Roster</span>(triple.Item2,&nbsp;triple.Item1,&nbsp;triple.Item3);
+}</pre>
+			</p>
+			<p>
+				This compiles, but it translates triples created by <code>ToTriple</code> the wrong way.
+			</p>
+			<p>
+				On the other hand, the pair of translations that I do show in the article <em>is</em> an isomorphism. The point is that an isomorphism exists; not that it's the only possible set of morphisms.
+			</p>
+			<p>
+				The same argument can be applied to specific pairs of <em>Extract Method</em> and <em>Inline Method</em>. As a general-purpose algorithm, I still agree that <em>Inline Method</em> is lossy. That doesn't preclude that specific pairs of translations exist. For instance, in <a href="/2014/08/07/why-dry">an article</a>, I discuss how some people refactor Guard Clauses like this:
+			</p>
+			<p>
+				<pre><span style="color:blue;">if</span>&nbsp;(subject&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;subject&quot;</span>);</pre>
+			</p>
+			<p>
+				to something like this:
+			</p>
+			<p>
+				<pre><span style="color:#2b91af;">Guard</span>.AgainstNull(subject,&nbsp;<span style="color:#a31515;">&quot;subject&quot;</span>);</pre>
+			</p>
+			<p>
+				Again, an isomorphism exists: a translation from a Null Guard to <code>Guard.AgainstNull</code>, and another from <code>Guard.AgainstNull</code> to a Null Guard. Those are specific incarnations of <em>Extract Method</em> and <em>Inline Method</em>.
+			</p>
+			<p>
+				This may not be particularly useful as a refactoring, I admit, but that's also not the agenda of these articles. The programme is to show how particular software behaviour can be expressed in various different ways that are equivalent to each other.
+			</p>
+		</div>
+		<div class="comment-date">2018-01-14 14:26 UTC</div>
+	</div>
+</div>

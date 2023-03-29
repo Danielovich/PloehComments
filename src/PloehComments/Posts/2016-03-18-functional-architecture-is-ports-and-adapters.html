@@ -1,0 +1,759 @@
+---
+layout: post
+title: "Functional architecture is Ports and Adapters"
+description: "Functional architecture tends to fall into a pit of success that looks a lot like Ports and Adapters."
+date: 2016-03-18 08:53 UTC
+tags: [Software Design, Architecture, F#, Haskell, Functional Programming]
+image: "/content/binary/ports-and-adapters-conceptual-diagram.png"
+image_alt: "A conceptual diagram of Ports and Adapters architecture: coloured boxes in concentric circles."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		In object-oriented architecture, we often struggle towards the ideal of the Ports and Adapters architecture, although we often <a href="/2013/12/03/layers-onions-ports-adapters-its-all-the-same">call it something else: layered architecture, onion architecture, hexagonal architecture, and so on</a>. The goal is to decouple the business logic from technical implementation details, so that we can vary each independently.
+	</p>
+	<p>
+		This creates value because it enables us to manoeuvre nimbly, responding to changes in business or technology.
+	</p>
+	<h3 id="fdb379c02efd4cf6b193ed193e514e04">
+		Ports and Adapters <a href="#fdb379c02efd4cf6b193ed193e514e04" title="permalink">#</a>
+	</h3>
+	<p>
+		The idea behind the Ports and Adapters architecture is that <em>ports</em> make up the boundaries of an application. A <em>port</em> is something that interacts with the outside world: user interfaces, message queues, databases, files, command-line prompts, etcetera. While the ports constitute the interface to the rest of the world, <em>adapters</em> translate between the ports and the application model.
+	</p>
+	<p>
+		<img src="/content/binary/ports-and-adapters-conceptual-diagram.png" alt="A conceptual diagram of Ports and Adapters architecture: coloured boxes in concentric circles.">
+	</p>
+	<p>
+		The word <em>adapter</em> is aptly chosen, because the role of the <a href="https://en.wikipedia.org/wiki/Adapter_pattern">Adapter design pattern</a> is exactly to translate between two different interfaces.
+	</p>
+	<p>
+		You ought to arrive at some sort of variation of Ports and Adapters if you apply Dependency Injection, as <a href="/2013/12/03/layers-onions-ports-adapters-its-all-the-same">I've previously attempted to explain</a>.
+	</p>
+	<p>
+		The problem with this architecture, however, is that it seems to take a lot of explaining:
+		<ul>
+			<li><a href="http://amzn.to/12p90MG">My book about Dependency Injection</a> is 500 pages long.</li>
+			<li>Robert C. Martin's <a href="http://amzn.to/19W4JHk">book about the SOLID principles, package and component design, and so on</a> is 700 pages long.</li>
+			<li><a href="http://amzn.to/WBCwx7">Domain-Driven Design</a> is 500 pages long.</li>
+			<li>and so on...</li>
+		</ul>
+		In my experience, implementing a Ports and Adapters architecture is a <a href="https://en.wikipedia.org/wiki/Sisyphus">Sisyphean task</a>. It requires much diligence, and if you look away for a moment, the boulder rolls downhill again.
+	</p>
+	<p>
+		<img src="/content/binary/sisyphos-boulder-rolling-downhill.png" alt="A schematic showing a ball rolling down a slope.">
+	</p>
+	<p>
+		It's possible to implement a Ports and Adapters architecture with object-oriented programming, but it takes <em>so much effort</em>. Does it have to be that difficult?
+	</p>
+	<h3 id="9025e957aeff4989ac840edaed80f11d">
+		Haskell as a learning aid <a href="#9025e957aeff4989ac840edaed80f11d" title="permalink">#</a>
+	</h3>
+	<p>
+		Someone recently asked me: <em>how do I know I'm being sufficiently Functional?</em>
+	</p>
+	<p>
+		I was wondering that myself, so I decided to learn Haskell. Not that Haskell is the only Functional language out there, but it enforces <a href="https://en.wikipedia.org/wiki/Pure_function">purity</a> in a way that neither F#, Clojure, nor Scala does. In Haskell, a function <em>must</em> be pure, unless its type indicates otherwise. This forces you to be deliberate in your design, and to separate pure functions from functions with (side) effects.
+	</p>
+	<p>
+		If you don't know Haskell, code with side effects can only happen inside of a particular 'context' called <code>IO</code>. It's a monadic type, but that's not the most important point. The point is that you can tell by a function's type whether or not it's pure. A function with the type <code>ReservationRendition -&gt; Either Error Reservation</code> is pure, because <code>IO</code> appears nowhere in the type. On the other hand, a function with the type <code>ConnectionString -&gt; ZonedTime -&gt; IO Int</code> is impure because its return type is <code>IO Int</code>. This means that the return value is an integer, but that this integer originates from a context where it could change between function calls.
+	</p>
+	<p>
+		There's a fundamental distinction between a function that returns <code>Int</code>, and one that returns <code>IO Int</code>. Any function that returns <code>Int</code> is, in Haskell, <a href="https://en.wikipedia.org/wiki/Referential_transparency">referentially transparent</a>. This means that you're guaranteed that the function will always return the same value given the same input. On the other hand, a function returning <code>IO Int</code> doesn't provide such a guarantee.
+	</p>
+	<p>
+		In Haskell programming, you should strive towards maximising the amount of pure functions you write, pushing the impure code to the edges of the system. A good Haskell program has a big core of pure functions, and a shell of <code>IO</code> code. Does that sound familiar?
+	</p>
+	<p>
+		It basically means that Haskell's type system <em>enforces</em> the Ports and Adapters architecture. The <em>ports</em> are all your <code>IO</code> code. The application's core is all your pure functions. The type system automatically creates a <em>pit of success</em>.
+	</p>
+	<p>
+		<img src="/content/binary/pit-of-success.png" alt="A 'boulder' lying in the bottom of a schematised pit of success.">
+	</p>
+	<p>
+		Haskell is a great learning aid, because it forces you to explicitly make the distinction between pure and impure functions. You can even use it as a verification step to figure out whether your F# code is 'sufficiently Functional'. F# is a <em>Functional first</em> language, but it also allows you to write object-oriented or imperative code. If you write your F# code in a Functional manner, though, it's easy to translate to Haskell. If your F# code is difficult to translate to Haskell, it's probably because it isn't Functional.
+	</p>
+	<p>
+		Here's an example.
+	</p>
+	<h3 id="f3f51ca71ba94729abc0f39fc0c44af8">
+		Accepting reservations in F#, first attempt <a href="#f3f51ca71ba94729abc0f39fc0c44af8" title="permalink">#</a>
+	</h3>
+	<p>
+		In my <a href="{{ site.production_url }}/tdd-with-fsharp">Test-Driven Development with F#</a>	Pluralsight course (a <a href="http://www.infoq.com/presentations/mock-fsharp-tdd">free, condensed version is also available</a>), I demonstrate how to implement an HTTP API that accepts reservation requests for an on-line restaurant booking system. One of the steps when handling the reservation request is to check whether the restaurant has enough remaining capacity to accept the reservation. The function looks like this:
+	</p>
+	<p>
+		<pre><span style="color:green;">//&nbsp;int</span>
+<span style="color:green;">//&nbsp;-&gt;&nbsp;(DateTimeOffset&nbsp;-&gt;&nbsp;int)</span>
+<span style="color:green;">//&nbsp;-&gt;&nbsp;Reservation</span>
+<span style="color:green;">//&nbsp;-&gt;&nbsp;Result&lt;Reservation,Error&gt;</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">check</span>&nbsp;capacity&nbsp;<span style="color:navy;">getReservedSeats</span>&nbsp;reservation&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;reservedSeats&nbsp;=&nbsp;<span style="color:navy;">getReservedSeats</span>&nbsp;reservation.Date
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;capacity&nbsp;&lt;&nbsp;reservation.Quantity&nbsp;+&nbsp;reservedSeats
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">then</span>&nbsp;<span style="color:navy;">Failure</span>&nbsp;<span style="color:navy;">CapacityExceeded</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>&nbsp;<span style="color:navy;">Success</span>&nbsp;reservation</pre>
+	</p>
+	<p>
+		As the comment suggests, the second argument, <code>getReservedSeats</code>, is a function of the type <code>DateTimeOffset -&gt; int</code>. The <code>check</code> function calls this function to retrieve the number of already reserved seats on the requested date.
+	</p>
+	<p>
+		When unit testing, you can supply a pure function as a Stub; for example:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">getReservedSeats</span>&nbsp;_&nbsp;=&nbsp;0
+ 
+<span style="color:blue;">let</span>&nbsp;actual&nbsp;=&nbsp;<span style="color:#4ec9b0;">Capacity</span>.<span style="color:navy;">check</span>&nbsp;capacity&nbsp;<span style="color:navy;">getReservedSeats</span>&nbsp;reservation</pre>
+	</p>
+	<p>
+		When finally composing the application, instead of using a pure function with a hard-coded return value, you can compose with an impure function that queries a database for the desired information:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">imp</span>&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#4ec9b0;">Validate</span>.<span style="color:navy;">reservation</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&nbsp;<span style="color:navy;">bind</span>&nbsp;(<span style="color:#4ec9b0;">Capacity</span>.<span style="color:navy;">check</span>&nbsp;10&nbsp;(<span style="color:#4ec9b0;">SqlGateway</span>.<span style="color:navy;">getReservedSeats</span>&nbsp;connectionString))
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&nbsp;<span style="color:navy;">map</span>&nbsp;(<span style="color:#4ec9b0;">SqlGateway</span>.<span style="color:navy;">saveReservation</span>&nbsp;connectionString)</pre>
+	</p>
+	<p>
+		Here, <code>SqlGateway.getReservedSeats connectionString</code> is a partially applied function, the type of which is <code>DateTimeOffset -&gt; int</code>. In F#, you can't tell by its type that it's impure, but I know that this is the case because I wrote it. It queries a database, so isn't referentially transparent.
+	</p>
+	<p>
+		This works well in F#, where it's up to you whether a particular function is pure or impure. Since that <code>imp</code> function is composed in the application's <a href="/2011/07/28/CompositionRoot">Composition Root</a>, the impure functions SqlGateway.getReservedSeats and SqlGateway.saveReservation are only pulled in at the edge of the system. The rest of the system is nicely protected against side-effects.
+	</p>
+	<p>
+		It feels Functional, but is it?
+	</p>
+	<h3 id="0b86e95c4d7348249967e1f1e2dcf126">
+		Feedback from Haskell <a href="#0b86e95c4d7348249967e1f1e2dcf126" title="permalink">#</a>
+	</h3>
+	<p>
+		In order to answer that question, I decided to re-implement the central parts of this application in Haskell. My first attempt to check the capacity was this direct translation:
+	</p>
+	<p>
+		<pre>checkCapacity :: Int
+              -&gt; (ZonedTime -&gt; Int)
+              -&gt; Reservation
+              -&gt; Either Error Reservation
+checkCapacity capacity getReservedSeats reservation =
+  let reservedSeats = getReservedSeats $ date reservation
+  in if capacity &lt; quantity reservation + reservedSeats
+      then Left CapacityExceeded
+      else Right reservation</pre>
+	</p>
+	<p>
+		This compiles, and at first glance seems promising. The type of the <code>getReservedSeats</code> function is <code>ZonedTime -&gt; Int</code>. Since <code>IO</code> appears nowhere in this type, Haskell guarantees that it's pure.
+	</p>
+	<p>
+		On the other hand, when you need to implement the function to retrieve the number of reserved seats from a database, this function must, by its very nature, be impure, because the return value could change between two function calls. In order to enable that in Haskell, the function must have this type:
+	</p>
+	<p>
+		<pre>getReservedSeatsFromDB :: ConnectionString -&gt; ZonedTime -&gt; IO Int</pre>
+	</p>
+	<p>
+		While you can partially apply the first ConnectionString argument, the return value is <code>IO Int</code>, not <code>Int</code>.
+	</p>
+	<p>
+		A function with the type <code>ZonedTime -&gt; IO Int</code> isn't the same as <code>ZonedTime -&gt; Int</code>. Even when executing inside of an IO context, you can't convert <code>ZonedTime -&gt; IO Int</code> to <code>ZonedTime -&gt; Int</code>.
+	</p>
+	<p>
+		You can, on the other hand, <em>call</em> the impure function inside of an IO context, and extract the <code>Int</code> from the <code>IO Int</code>. That doesn't quite fit with the above checkCapacity function, so you'll need to reconsider the design. While it was 'Functional enough' for F#, it turns out that this design isn't <em>really</em> Functional.
+	</p>
+	<p>
+		If you consider the above checkCapacity function, though, you may wonder why it's necessary to pass in a function in order to determine the number of reserved seats. Why not simply pass in this number instead?
+	</p>
+	<p>
+		<pre>checkCapacity :: Int -&gt; Int -&gt; Reservation -&gt; Either Error Reservation
+checkCapacity capacity reservedSeats reservation =
+    if capacity &lt; quantity reservation + reservedSeats
+    then Left CapacityExceeded
+    else Right reservation</pre>
+	</p>
+	<p>
+		That's much simpler. At the edge of the system, the application executes in an IO context, and that enables you to compose the pure and impure functions:
+	</p>
+	<p>
+		<pre>import Control.Monad.Trans (liftIO)
+import Control.Monad.Trans.Either (EitherT(..), hoistEither)
+
+postReservation :: ReservationRendition -&gt; IO (HttpResult ())
+postReservation candidate = fmap toHttpResult $ runEitherT $ do
+  r &lt;- hoistEither $ validateReservation candidate
+  i &lt;- liftIO $ getReservedSeatsFromDB connStr $ date r
+  hoistEither $ checkCapacity 10 i r
+  &gt;&gt;= liftIO . saveReservation connStr</pre>
+	</p>
+	<p>
+		(Complete source code is available <a href="https://gist.github.com/ploeh/c999e2ae2248bd44d775">here</a>.)
+	</p>
+	<p>
+		Don't worry if you don't understand all the details of this composition. The highlights are these:
+	</p>
+	<p>
+		The postReservation function takes a ReservationRendition (think of it as a JSON document) as input, and returns an <code>IO (HttpResult ())</code> as output. The use of <code>IO</code> informs you that this entire function is executing within the IO monad. In other words: it's impure. This shouldn't be surprising, since this is the edge of the system.
+	</p>
+	<p>
+		Furthermore, notice that the function <code>liftIO</code> is called twice. You don't have to understand exactly what it does, but it's necessary to use in order to 'pull out' a value from an <code>IO</code> type; for example pulling out the <code>Int</code> from an <code>IO Int</code>. This makes it clear where the pure code is, and where the impure code is: the liftIO function is applied to the functions getReservedSeatsFromDB and saveReservation. This tells you that these two functions are impure. By exclusion, the rest of the functions (validateReservation, checkCapacity, and toHttpResult) are pure.
+	</p>
+	<p>
+		It's interesting to observe how you can interleave pure and impure functions. If you squint, you can almost see how the data flows from the pure validateReservation function, to the impure getReservedSeatsFromDB function, and then both output values (<code>r</code> and <code>i</code>) are passed to the pure checkCapacity function, and finally to the impure saveReservation function. All of this happens within an <code>(EitherT Error IO) () do</code> block, so if any of these functions return <code>Left</code>, the function short-circuits right there and returns the resulting error. See e.g. Scott Wlaschin's excellent article on <a href="http://fsharpforfunandprofit.com/posts/recipe-part2">railway-oriented programming</a> for an exceptional, lucid, clear, and visual introduction to the Either monad.
+	</p>
+	<p>
+		The value from this expression is composed with the built-in runEitherT function, and again with this pure function:
+	</p>
+	<p>
+		<pre>toHttpResult :: Either Error () -&gt; HttpResult ()
+toHttpResult (Left (ValidationError msg)) = BadRequest msg
+toHttpResult (Left CapacityExceeded) = StatusCode Forbidden
+toHttpResult (Right ()) = OK ()</pre>
+	</p>
+	<p>
+		The entire postReservation function is impure, and sits at the edge of the system, since it handles IO. The same is the case of the getReservedSeatsFromDB and saveReservation functions. I deliberately put the two database functions in the bottom of the below diagram, in order to make it look more familiar to readers used to looking at layered architecture diagrams. You can imagine that there's a cylinder-shaped figure below the circles, representing a database.
+	</p>
+	<p>
+		<img src="/content/binary/haskell-post-reservation-ports-adapters.png" alt="Haskell solution with functions placed in a Ports and Adapters diagram.">
+	</p>
+	<p>
+		You can think of the validateReservation and toHttpResult functions as belonging to the <em>application model</em>. While pure functions, they translate between the external and internal representation of data. Finally, the checkCapacity function is part of the application's Domain Model, if you will.
+	</p>
+	<p>
+		Most of the design from my first F# attempt survived, apart from the Capacity.check function. Re-implementing the design in Haskell has taught me an important lesson that I can now go back and apply to my F# code.
+	</p>
+	<h3 id="6737c15f02dd4ab49362c6e491ea5bab">
+		Accepting reservations in F#, even more Functionally <a href="#6737c15f02dd4ab49362c6e491ea5bab" title="permalink">#</a>
+	</h3>
+	<p>
+		Since the required change is so little, it's easy to apply the lesson learned from Haskell to the F# code base. The culprit was the Capacity.check function, which ought to instead be implemented like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">check</span>&nbsp;capacity&nbsp;reservedSeats&nbsp;reservation&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;capacity&nbsp;&lt;&nbsp;reservation.Quantity&nbsp;+&nbsp;reservedSeats
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">then</span>&nbsp;<span style="color:navy;">Failure</span>&nbsp;<span style="color:navy;">CapacityExceeded</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>&nbsp;<span style="color:navy;">Success</span>&nbsp;reservation</pre>
+	</p>
+	<p>
+		This simplifies the implementation, but makes the composition slightly more involved:
+	</p>
+	<p>
+		<pre><span style="color:blue;">let</span>&nbsp;<span style="color:navy;">imp</span>&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#4ec9b0;">Validate</span>.<span style="color:navy;">reservation</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&nbsp;<span style="color:navy;">map</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;r&nbsp;<span style="color:blue;">-&gt;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#4ec9b0;">SqlGateway</span>.<span style="color:navy;">getReservedSeats</span>&nbsp;connectionString&nbsp;r.Date,&nbsp;r)
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&nbsp;<span style="color:navy;">bind</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;(i,&nbsp;r)&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:#4ec9b0;">Capacity</span>.<span style="color:navy;">check</span>&nbsp;10&nbsp;i&nbsp;r)
+&nbsp;&nbsp;&nbsp;&nbsp;&gt;&gt;&nbsp;<span style="color:navy;">map</span>&nbsp;(<span style="color:#4ec9b0;">SqlGateway</span>.<span style="color:navy;">saveReservation</span>&nbsp;connectionString)</pre>
+	</p>
+	<p>
+		This almost looks more complicated than the Haskell function. Haskell has the advantage that you can automatically use any type that implements the <code>Monad</code> typeclass inside of a <code>do</code> block, and since <code>(EitherT Error IO) ()</code> is a Monad instance, the <code>do</code> syntax is available for free.
+	</p>
+	<p>
+		You could do something similar in F#, but then you'd have to implement a custom computation expression builder for the Result type. Perhaps I'll do this in <a href="/2016/03/21/composition-with-an-either-computation-expression">a later blog post</a>...
+	</p>
+	<h3 id="622b9d08938f49d389bab5763118f6e3">
+		Summary <a href="#622b9d08938f49d389bab5763118f6e3" title="permalink">#</a>
+	</h3>
+	<p>
+		Good Functional design is equivalent to the Ports and Adapters architecture. If you use Haskell as a yardstick for 'ideal' Functional architecture, you'll see how its explicit distinction between pure and impure functions creates a pit of success. Unless you write your entire application to execute <em>within</em> the <code>IO</code> monad, Haskell will automatically enforce the distinction, and push all communication with the external world to the edges of the system.
+	</p>
+	<p>
+		Some Functional languages, like F#, don't explicitly enforce this distinction. Still, in F#, it's easy to <em>informally</em> make the distinction and compose applications with impure functions pushed to the edges of the system. While this isn't enforced by the type system, it still feels natural.
+	</p>
+</div>
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">Comments</h2>
+	<div class="comment" id="8f4046a5c74f42e29daf500e295872c0">
+		<div class="comment-author"><a href="https://baks.github.io">Arkadiusz K</a></div>
+		<div class="comment-content">
+			<p>Great post as always. However, I saw that you are using <em>IO monad</em>. I wonder if you shouldn't use <em>IO action</em> instead? To be honest, I'm not proficient in Haskell. But according to that <a href="http://blog.jle.im/entry/io-monad-considered-harmful.html">post</a> they are encouraging to use <em>IO action</em> rather than <em>IO monad</em> if we are not talking about monadic properties.</p>
+		</div>
+		<div class="comment-date">2016-03-18 23:00 UTC</div>
+	</div>
+	<div class="comment" id="266ab9f7cbe84d11a2045b92c5b370d5">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Arkadiusz, thank you for writing. It's the first time I see <a href="http://blog.jle.im/entry/io-monad-considered-harmful.html">that post</a>, but if I understand the argument correctly, it argues against the (over)use of the monad <em>terminology</em> when talking about IO actions that aren't intrinsically monadic in nature. As far as I can tell, it doesn't argue against the use of the <code>IO</code> <em>type</em> in Haskell.
+			</p>
+			<p>
+				It seems a reasonable point that it's unhelpful to newcomers to throw them straight into a discussion about monads, when all they want to see is a <em>hello world</em> example.
+			</p>
+			<p>
+				As some of the comments to that post point out, however, you'll soon need to compose IO actions in Haskell, and it's the monadic nature of the <code>IO</code> type that enables the use of <code>do</code> blocks. (..or, if you want to be more specific, it seems that sometimes, all you need is a Functor. It hardly helps to talk about the <em>IO functor</em> instead of the <em>IO monad</em>, though...)
+			</p>
+			<p>
+				I don't claim to be a Haskell expert, so there may be more subtle nuances in that article that simply went over my head. Still, within my current understanding, the discussion in this particular post of mine does relate to the IO <em>monad</em>.
+			</p>
+			<p>
+				When I wrote the article, I chose my words with some caution. Notice that when I introduce the <code>IO</code> type my article, I mostly talk about it as a 'context'.
+			</p>
+			<p>
+				When it comes to the discussion about the postReservation function, however, I pull out the stops and increasingly use the word <em>monad</em>. The reason is that this composition wouldn't be possible without the monadic properties of <code>IO</code>. Most of this function executes within a monadic 'stack': <code>EitherT Error IO</code>. EitherT is a monad transformer, and in order to be useful (e.g. composable in <code>do</code> blocks), the type it transforms must be a monad as well (or perhaps, as hinted above, a functor would be sufficient).
+			</p>
+			<p>
+				I agree with Justin Le's article that overuse of <em>monad</em> is likely counterproductive. On the other hand, one can also fall into the opposite side. There are some educators who seem to avoid the word at any cost. That's not my policy. I try to use as precise language as possible. That means that I'll use <em>monad</em> when I talk about monads, and I'll avoid it when it isn't necessary. That's my goal, but I may not have achieved it. Do you think I used it incorrectly here?
+			</p>
+		</div>
+		<div class="comment-date">2016-03-19 08:06 UTC</div>
+	</div>
+	<div class="comment" id="eafbee138fdd406c8ac580584f6b7f03">
+		<div class="comment-author"><a href="https://baks.github.io">Arkadiusz K</a></div>
+		<div class="comment-content">
+			<p>Mark, thank you for your comprehensive explanation. I was rather just asking you about opinion on this topic. I didn't try to claim that you had used it incorrectly. Now, I see that as you wrote you are first talking about IO context and then about IO monad when it comes to use monadic properties.</p>
+		</div>
+		<div class="comment-date">2016-03-19 10:30 UTC</div>
+	</div>
+    <div class="comment" id="a311a5928e7b460fb8b804b0ff576dbc">
+        <div class="comment-author">John Dailey</div>
+        <div class="comment-content">
+            <p>
+                Hello, thanks so much for your website and pluralsight library -- it's been a tremendous help to me getting started with F# and functional programming (and TDD to a degree).  I'm having some problems with the big picture question of how to structure applications, and this post is leaving me even more confused.
+            </p>
+            <p>
+                I can't understand how some of the original code, and especially the changes made in this post could possibly scale to a larger or more complicated application.  Many real-life domain operations are going to need to query some data, make decisions based on that data, map that data into different domain objects, persist something, and so on.
+            </p>
+            <p>
+                It seems like the end result is that we end up copying much of the meaningful internal logic of the domain out to this boundary area in the Web API project.  In this code we've extracted:
+                <ul>
+                    <li>The logic of only checking existing reservations on the same day as the day on the request</li>
+                    <li>The logic of not saving a new reservation if the request failed the capacity check</li>
+                </ul>
+            </p>
+            <p>
+                Does that logic not properly belong 'behind the wall' inside the domain?  I would have expected to see a simple 'makeReserveration r' function as the public face to the domain.  
+                Suppose the restaurant also had a desktop/kiosk application in their building to manage their reservation system.  
+                Wouldn't we now be forced to duplicate this internal logic in the Composition Root of that application?
+            </p>
+            <p>
+                What I instinctively want to gravitate towards is something like this:
+            </p>
+            <p>
+                <pre><span style="color:blue;">let internal</span>&nbsp;<span style="color:navy;">makeReservation' getReservedSeats saveReservation check r</span>&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:navy;">(getReservedSeats</span>&nbsp;r.Date,&nbsp;r)
+&nbsp;&nbsp;&nbsp;&nbsp;|>&nbsp;<span style="color:navy;">bind</span>&nbsp;(<span style="color:blue;">fun</span>&nbsp;(i,&nbsp;r)&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;<span style="color:navy;">check</span>&nbsp;10&nbsp;i&nbsp;r)
+&nbsp;&nbsp;&nbsp;&nbsp;|>&nbsp;<span style="color:navy;">map</span>&nbsp;<span style="color:navy;">saveReservation</span>
+
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">makeReservation</span>&nbsp;= makeReservation' SqlGateway.getReservedSeats SqlGateway.saveReservation Capacity.check
+</pre>
+            </p>
+
+            <p>
+                With this, the SqlGateway code needs be visible to the reservation code, putting it at the center of the app not on the edges.  However, are there any practical disadvantages to
+                this if the code is disciplined to only use it within this sort of dependency injection?  What problems would I be likely to run into?
+            </p>
+            <p>
+                At least as a beginner, this seems to me to have a couple advantages:
+                <ul>
+                    <li>From the perspective of the unit tests (which test makeReservation') it is a pure function, as you noted above.  Testability is no problem here.</li>
+                    <li>Code at the UI/Presentation level is nice and tight -- just make sure you can successfully transform the JSON request into a domain request, then process the command result.</li>
+                </ul>
+            </p>
+            <p>
+                But most notable to me, dependencies are 'injected' right where they were needed.  Imagine a much more complicated aggregate operation like 'performOvernightCloseout' that needs to do many things like read cash register
+                totals and send them to accounting, send timeclock info to HR, write order statistics to a reporting database, check inventory and create new orders for the following day.  Of course we'd break this down into a 
+                hierarchy of functions, with top level orchestration calling down into increasingly specific functions, no function individually being too complicated.
+            </p>
+            <p>
+                The original demo application would have to approach this scenario by passing in a huge number of functions to the operation root, which then parcels them out level by level where they
+                are needed.  This would seem very brittle since any change in a low level function would require changes to the parameter list all the way up.
+            </p>
+            <p>
+                With newer code shown in this post, it would seem impossible.  There might be a handful of small functions that can be in the central library, but the bulk of the logic is going to need 
+                to be extracted into a now-500-line imp method in the Web API project, or whatever service is launching this operation.
+            </p>
+        </div>
+        <div class="comment-date">2016-03-24 23:30 UTC</div>
+    </div>
+  <div class="comment" id="b689745f9234491a8bb667742d67b44e">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				John, thank you for writing. I'm not sure I can answer everything to your satisfaction in single response, but we can always view this as a beginning of longer interchange. Some of the doubts you express are ambiguous, so I'm not sure how to interpret them, but I'll do my best to be as explicit as possible.
+			</p>
+			<p>
+				In the beginning of your comment, you write:
+				<blockquote>
+					"Many real-life domain operations are going to need to query some data, make decisions based on that data, map that data into different domain objects, persist something, and so on."
+				</blockquote>
+				This is exactly the reason why I like the reservation request example so much, because it does all of that. It queries data, because it reads the number of already reserved seats from a database. It makes decisions based on that data, because it decides whether or not it can accept the reservation based on the number of remaining seats. It maps from an external JSON (or XML) data format to a Reservation record type (belonging to the Domain Model, if you will); it also maps back to an HTTP response. Finally, the example also saves the reservation to the database, if it was accepted.
+			</p>
+			<p>
+				When you say that we've extracted the logic, it's true, but I'm not sure what you mean by "behind the wall", but let's look at each of your bullet points in turn.
+			</p>
+			<p>
+				<strong>Querying existing reservations</strong>
+			</p>
+			<p>
+				You write that I've extracted the "logic of only checking existing reservations on the same day as the day on the request". It's a simple database query. In F#, one implementation may look like this:
+			</p>
+			<p>
+				<pre><span style="color:green;">//&nbsp;In&nbsp;module&nbsp;SqlGateway:</span>
+<span style="color:blue;">let</span>&nbsp;<span style="color:navy;">getReservedSeats</span>&nbsp;connectionString&nbsp;(date&nbsp;:&nbsp;<span style="color:#4ec9b0;">DateTimeOffset</span>)&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;min&nbsp;=&nbsp;<span style="color:#4ec9b0;">DateTimeOffset</span>(date.Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;,&nbsp;date.Offset)
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;max&nbsp;=&nbsp;<span style="color:#4ec9b0;">DateTimeOffset</span>(date.Date.<span style="color:navy;">AddDays</span>&nbsp;1.,&nbsp;date.Offset)
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;sql&nbsp;=&nbsp;<span style="color:#a31515;">&quot;</span>
+<span style="color:#a31515;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;SELECT&nbsp;ISNULL(SUM(Quantity),&nbsp;0)</span>
+<span style="color:#a31515;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FROM&nbsp;[dbo].[Reservations]</span>
+<span style="color:#a31515;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;WHERE&nbsp;@min&nbsp;&lt;=&nbsp;Date&nbsp;AND&nbsp;Date&nbsp;&lt;&nbsp;@max&quot;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">use</span>&nbsp;conn&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#4ec9b0;">SqlConnection</span>(connectionString)
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">use</span>&nbsp;cmd&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#4ec9b0;">SqlCommand</span>(sql,&nbsp;conn)
+&nbsp;&nbsp;&nbsp;&nbsp;cmd.Parameters.<span style="color:navy;">AddWithValue</span>(<span style="color:#a31515;">&quot;@min&quot;</span>,&nbsp;min)&nbsp;|&gt;&nbsp;<span style="color:navy;">ignore</span>
+&nbsp;&nbsp;&nbsp;&nbsp;cmd.Parameters.<span style="color:navy;">AddWithValue</span>(<span style="color:#a31515;">&quot;@max&quot;</span>,&nbsp;max)&nbsp;|&gt;&nbsp;<span style="color:navy;">ignore</span>
+&nbsp;&nbsp;&nbsp;&nbsp;conn.<span style="color:navy;">Open</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;cmd.<span style="color:navy;">ExecuteScalar</span>()&nbsp;:?&gt;&nbsp;<span style="color:#4ec9b0;">int</span></pre>
+			</p>
+			<p>
+				In my opinion, there's no <em>logic</em> in this function, but this is an example where terminology can be ambiguous. To me, however, <em>logic</em> implies that decisions are being made. That's not the case here. This getReservedSeats function has a cyclomatic complexity of 1.
+			</p>
+			<p>
+				This function is an Adapter: it adapts the ADO.NET SDK (the <em>port</em> to SQL Server) to something the Domain Model can use. In this case, the answer is a simple integer.
+			</p>
+			<p>
+				<strong>To save, or not to save</strong>
+			</p>
+			<p>
+				You also write that I've extracted out the "logic of not saving a new reservation if the request failed the capacity check". Yes, that logic is extracted out to the <code>check</code> function above. Since that's a pure function, it's part of the Domain Model.
+			</p>
+			<p>
+				The function that saves the reservation in the database, again, contains no logic (as I interpret the word <em>logic</em>):
+			</p>
+			<p>
+				<pre><span style="color:green;">//&nbsp;In&nbsp;module&nbsp;SqlGateway:</span>
+<span style="color:blue;">let</span>&nbsp;saveReservation&nbsp;connectionString&nbsp;(reservation&nbsp;:&nbsp;Reservation)&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;sql&nbsp;=&nbsp;<span style="color:#a31515;">&quot;</span>
+<span style="color:#a31515;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;INSERT&nbsp;INTO&nbsp;Reservations(Date,&nbsp;Name,&nbsp;Email,&nbsp;Quantity)</span>
+<span style="color:#a31515;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;VALUES(@Date,&nbsp;@Name,&nbsp;@Email,&nbsp;@Quantity)&quot;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">use</span>&nbsp;conn&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;SqlConnection(connectionString)
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">use</span>&nbsp;cmd&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;SqlCommand(sql,&nbsp;conn)
+&nbsp;&nbsp;&nbsp;&nbsp;cmd.Parameters.AddWithValue(<span style="color:#a31515;">&quot;@Date&quot;</span>,&nbsp;reservation.Date)&nbsp;|&gt;&nbsp;ignore
+&nbsp;&nbsp;&nbsp;&nbsp;cmd.Parameters.AddWithValue(<span style="color:#a31515;">&quot;@Name&quot;</span>,&nbsp;reservation.Name)&nbsp;|&gt;&nbsp;ignore
+&nbsp;&nbsp;&nbsp;&nbsp;cmd.Parameters.AddWithValue(<span style="color:#a31515;">&quot;@Email&quot;</span>,&nbsp;reservation.Email)&nbsp;|&gt;&nbsp;ignore
+&nbsp;&nbsp;&nbsp;&nbsp;cmd.Parameters.AddWithValue(<span style="color:#a31515;">&quot;@Quantity&quot;</span>,&nbsp;reservation.Quantity)&nbsp;|&gt;&nbsp;ignore
+&nbsp;&nbsp;&nbsp;&nbsp;conn.Open()
+&nbsp;&nbsp;&nbsp;&nbsp;cmd.ExecuteNonQuery()&nbsp;|&gt;&nbsp;ignore</pre>
+			</p>
+			<p>
+				Due to the way the Either monad works, however, this function is only going to be called if all previous functions returned Success (or Right in Haskell). That logic is an entirely reusable abstraction. It's also part of the glue that composes functions together.
+			</p>
+			<p>
+				<strong>Reuse of composition</strong>
+			</p>
+			<p>
+				Further down, you ask:
+				<blockquote>
+					"Suppose the restaurant also had a desktop/kiosk application in their building to manage their reservation system. Wouldn't we now be forced to duplicate this internal logic in the Composition Root of that application?"
+				</blockquote>
+				That's an excellent question! I'm glad you asked.
+			</p>
+			<p>
+				A desktop or kiosk application is noticeably different from a web application. It may have a different application flow, and it certainly exposes a different interface to the outside world. Instead of handling incoming HTTP requests, and translating results to HTTP responses, it'll need to respond to click events and transform results to on-screen UI events. This means that validation may be different, and that you don't need to map results back to HTTP response values. Again, this may be clearer in the Haskell implementation, where the <code>toHttpResult</code> function would obviously be superfluous. Additionally, a UI may present a native date and time picker control, which can directly produce strongly typed date and time values, negating the need for validation.
+			</p>
+			<p>
+				Additionally, a kiosk may need to be able to work in off-line, or occasionally connected, mode, so perhaps you'd prefer a different data store implementation. Instead of connecting directly to a database, such an application would need to write to a message queue, and read from an off-line snapshot of reservations.
+			</p>
+			<p>
+				That's a sufficiently different application that it warrants creating applications from <a href="/2011/06/07/SOLIDCodeisnt">fine-grained building blocks instead of course-grained building blocks</a>. Perhaps the only part you'll end up reusing is the core business logic contained in the check[Capacity] function. <a href="/2015/01/06/composition-root-reuse">Composition Roots aren't reusable</a>.
+			</p>
+			<p>
+				(As an aside, you may think that if the check[Capacity] function is the only reusable part, then what's the point? This function is only a couple of lines long, so why even bother? That'd be a fair concern, if it wasn't for the context that all of this is only example code. Think of this example as a stand-in for much more complex business logic. Perhaps the restaurant will allow a certain percentage of over-booking, because some people never show up. Perhaps it will allow different over-booking percentages on different (week) days. Perhaps it'll need to handle reservations on per-table basis, instead of per-seat. Perhaps it'll need to handle multiple seatings on the same day. There are lots of variations you can throw into this business domain that will make it much more complex, and worthy of reuse.)
+			</p>
+			<p>
+				<strong>Brittleness of composition</strong>
+			</p>
+			<p>
+				Finally, you refer to a more realistic scenario, called <em>performOvernightCloseout</em>, and ask if a fine-grained composition wouldn't be brittle? In my experience, it wouldn't be <em>more</em> brittle than any alternatives I've identified. Whether you 'inject' functions into other functions, or you compose them in the Composition Root, doesn't change the underlying forces that act on your code. If you make substantial changes to the dependencies involved, it will break your code, and you'll need to address that. This is true for any manual composition, including <a href="/2014/06/10/pure-di">Pure DI</a>. The only way to avoid compilation errors when you redefine your dependency graphs is to use a DI Container, but that only <a href="/2011/04/29/Feedbackmechanismsandtradeoffs">makes the feedback loop worse, because it'd change a compile-time error into a run-time error</a>.
+			</p>
+			<p>
+				This is a long answer, and even so, I'm not sure I've sufficiently addressed all of your concerns. If not, please write again for clarifications.
+			</p>
+		</div>
+		<div class="comment-date">2016-03-30 13:46 UTC</div>
+
+
+
+	</div>
+    <div class="comment" id="a34d8ef976e44caeb83de6bd69b3814b">
+        <div class="comment-author">John Dailey</div>
+        <div class="comment-content">
+			<p>I believe there was a bit of miscommunication.  When I talked about the 'logic of only checking existing reservations on the same day', I wasn't talking about the implementation of the SqlGateway.  
+	I was talking about the 'imp' function:
+			</p>
+			<pre>let imp =
+	Validate.reservation
+	>> map (fun r ->
+		SqlGateway.getReservedSeats connectionString r.Date, r)
+	>> bind (fun (i, r) -> Capacity.check 10 i r)
+	>> map (SqlGateway.saveReservation connectionString)</pre>
+		
+			<p>
+				This implements the logic of 'Validation comes first.  If that checks out, then get the number of reserved seats from the data store.  Use the date on the request
+				for that.  Feed this into the capacity check routine and only if everything checks out should we persist the reservation.
+			</p>
+
+			<p>
+				That's all internal logic that in my mind ought to be encapsulated within the domain.  That's what I meant by 'behind the wall'.  
+				There should simply be a function 'makeReservation' with the signature ReservationRequest -> ReservationResponse.  That's it.  Clients should 
+				not be worrying themselves with these extra details.  That 'imp' function just seems deeply inappropriate as something that lives externally to
+				the reservations module, and that must be supplied individually by each client accessing the module.
+			</p>
+
+			<p>
+				I guess I'm rejecting the idea of Onion/Hexagonal architecture, or at least the idea that all I/O always belongs at the outside.
+				To me, a reservations module must depend on a reservations data store, because if you don't persist information to the db, <em>you haven't actually made the reservation</em>.
+				Of course, I still want to depend on interfaces, not implementations (perhaps naming the reference ReservationDataStore.saveReservation).  The
+				data store IS a separate layer and should have a well defined interface. 
+			</p>
+			<p>
+				I just don't understand why anyone would find this design more desirable than the straightforward UI -> Logic -> Storage chain of dependencies.  Clearly there's some sort
+				of appeal -- lots of smart people show excitement for it.  But it's a bit mystifying to me.
+			</p>
+		
+		</div>
+		<div class="comment-date">2016-04-06 01:45 UTC</div>
+	</div>
+
+  <div class="comment" id="6715f343503f4b3e8f528bd75487b47b">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				John, thank you for writing. It's OK to reject the concept of <em>ports and adapters</em>; it's not a one-size-fits-all architecture. While I <em>often</em> use it, I don't <em>always</em> use it. One of my most successful customer engagements involved building a set of REST APIs on top of an existing IT infrastructure. All the business logic was already implemented elsewhere, so I deliberately chose a simpler, more coupled architecture, because there'd be no benefit from a full <em>ports and adapters</em> architecture. The code bases involved still run in production four years later, even though they're constantly being changed and enhanced.
+			</p>
+			<p>
+				If, on the other hand, you choose to adopt the ports and adapters architecture, you'll need to do it right so that you can harvest the benefits.
+			</p>
+			<p>
+				A Façade function with the type <code>ReservationRequest -&gt; ReservationResponse</code> only makes sense in an HTTP request/response scenario, because both the ReservationRequest and ReservationResponse types are specific to the web context. You can't reuse such a function in a different setting.
+			</p>
+			<p>
+				You still have such a function, because that's the function that handles the web request, but you'll need to <em>compose</em> it from smaller components, unless you want to write a <a href="http://martinfowler.com/eaaCatalog/transactionScript.html">Transaction Script</a> within that function (which is also sometimes OK).
+			</p>
+			<p>
+				Granted, there's some 'logic' involved in this composition, in the sense that it might be possible to create a faulty composition, but that logic has to go <em>somewhere</em>.
+			</p>
+		</div>
+		<div class="comment-date">2016-04-08 9:57 UTC</div>
+	</div>
+  <div class="comment" id="7f7fc08635bb471f95d314e999f14164">
+    <div class="comment-author"><a href="https://github.com/MartinRykfors">Martin Rykfors</a></div>
+    <div class="comment-content">
+      <p>
+        Hi Mark, thanks for this post and the discussion.
+      </p>
+      <p>
+        I feel that I share some of the concerns that John is bringing up. The <code>postReservation</code> function is pretty simple now, but eventually we might want to make external calls based on some conditional logic from the domain model.
+      </p>
+      <p>
+        Let's say there is a new feature request. The restaurant has struck a deal with the local caravan dealership, allowing them to rent a caravan to park outside the restaurant in order to increase the seating capacity for one evening. Of course, sometimes there are no caravans available, so we'll need to query the caravan database to see if there is a big enough caravan available that evening:
+      </p>
+      <p>
+        <pre>
+findCaravan :: Int -> ZoneTime -> IO (Maybe Caravan)
+findCaravan minimumCapacity date = ... -- database stuff
+        </pre>
+      </p>
+      <p>
+        How would we integrate this? We could put a call to <code>findCaravan</code> inside the IO context of <code>postReservation</code>, but since we only want to query the caravan database if the first capacity check failed, we'll need to add branching logic to <code>postReservation</code>. We want to have tests for this logic, but since we are coupled to the IO context, we are in trouble.
+      </p>
+      <p>
+        The original issue was that the F# version of <code>checkCapacity</code> could be made impure by injecting the impure <code>getReservedSeats</code> function to it, which is something that Haskell disallows. What if we changed the Haskell version of <code>checkCapacity</code> to the following instead?
+      </p>
+      <p>
+        <pre>
+checkCapacity :: Monad m => Int
+                            -> (ZonedTime -> m Int)
+                            -> Reservation
+                            -> EitherT Error m Reservation
+checkCapacity capacity getReservedSeats reservation = EitherT $ do
+    reservedSeats <- getReservedSeats $ date reservation
+    if capacity < quantity reservation + reservedSeats
+    then return $ Left CapacityExceeded
+    else return $ Right reservation
+                </pre>
+      </p>
+      <p>
+        Since we know that <code>getReservedSeats</code> will be effectful, we declare it so in its type signature. We change <code>postReservation</code> to become:
+      </p>
+      <p>
+<pre>
+postReservation :: ReservationRendition -> IO (HttpResult ())
+postReservation candidate = fmap toHttpResult $ runEitherT $
+  hoistEither $ validateReservation candidate
+  >>= checkCapacity 10 (getReservedSeatsFromDB connStr)
+  >>= liftIO . saveReservation connStr
+</pre>
+      </p>
+      <p>
+        (Or something like that. Monad transformers are the current step on my Haskell learning journey, so I'm not sure this will typecheck.)
+      </p>
+      <p>
+        This way, we can once more inject an IO typed function as the <code>getReservedSeats</code> argument of <code>checkCapacity</code> like we did in F#. If we want to test it, we can create a stub database call by using the monad instance of <code>Identity</code>, for example:
+      </p>
+      <p>
+        <pre>
+stubGetReservedSeats :: ZonedTime -> Identity Int
+stubGetReservedSeats date = return 8
+        </pre>
+      </p>
+      <p>
+        The new feature request also becomes easy to implement. Just pass <code>findCaravan</code> as a new argument to <code>checkCapacity</code>, and make the type of that argument to be <code>ZonedTime -> m (Maybe Caravan)</code>. The <code>checkCapacity</code> function can now do the initial capacity check, and if that fails, call <code>findCaravan</code> to see if it is still possible to allow the booking by renting a suitable caravan. The branching logic that is needed is now inside <code>checkCapacity</code> and can be tested outside of the IO context.
+      </p>
+      <p>
+        I don't know if this would work well in practice, or if it would cause more trouble than what it's worth. What do you think?
+      </p>
+    </div>
+    <div class="comment-date">2016-06-09 10:56 UTC</div>
+  </div>
+  <div class="comment" id="b5d099f9327a4449a5775f6819a335a4">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Martin, thank you for writing. Your question prompted me to write a <a href="/2016/07/04/conditional-composition-of-functions">new article</a>. It takes a slightly different approach to the one you suggest.
+			</p>
+			<p>
+				I haven't tried defining <code>checkCapacity</code> in the way you suggest, but that may be an exercise for another day. In general, though, I'm hesitant to introduce constraints not <em>required</em> by the implementation. In this case, I think it'd be a fair question to ask why the <code>getReservedSeats</code> argument has to have the type <code>ZonedTime -&gt; m Int</code>? Nothing in its implementation seems to indicate the need for that, so it looks like a leaky abstraction to me.
+			</p>
+		</div>
+		<div class="comment-date">2016-07-04 7:06 UTC</div>
+	</div>
+<div class="comment" id="30363520336e4fd4bd3e2948d82a2e9a">
+	<div class="comment-author"><a href="https://giuliohome.wordpress.com/">Giulio</a></div>
+	<div class="comment-content">
+		<p>
+		I'd like to follow up my <a href="https://twitter.com/giuliohome/status/822373175983935488">twitter comments</a> here
+</p><p>
+Very interesting article! I'm sorry that some Haskell details are quite difficult for me at the moment and the F# code looks a bit too simplified or maybe just incomplete
+		</p><p>
+		So I'd prefer your <a href="/2016/04/11/async-as-surrogate-io/">approach here</a> : it better translates Haskell to F# but I still have to study its implications. Anyway the concrete benefits of Async are evident, like the ones of F# computation expressions (to wrap exceptions etc...)
+		</p><p>
+		On the other hand I fail to see the benefit of purity vs other IoC patterns. Besides async and exceptions wrapping, purity seems an unnecessarily strict enforcement of Haskell (isn't it?): original F# was testable in isolation
+</p><p>
+What's missing if I only mock/stub/inject the dependency? When you say <blockquote>"ability to reason is eroded"</blockquote> and <blockquote>"it breaks encapsulation"</blockquote> about DI, do you mean something related to <a href="http://stackoverflow.com/questions/1005473/must-dependency-injection-come-at-the-expense-of-encapsulation">this topic</a>?	
+		</p><p>
+Thank you so much for your interesting insights!</p></div>
+	<div class="comment-date">2017-01-20 10:45 UTC</div>
+</div>
+	<div class="comment" id="ef3ccfcfcc6d415ca9209cb0b10992ba">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			Giulio, thank you for writing. Why do you think that the only goal of pure functions is testability?
+		</div>
+		<div class="comment-date">2017-01-20 18:23 UTC</div>
+	</div>
+	<div class="comment" id="834c19c46a454740ab96d40af397fa71">
+		<div class="comment-author"><a href="https://giuliohome.wordpress.com/">Giulio</a></div>
+		<div class="comment-content">
+					<p>
+			<blockquote>Why do you think that the only goal of pure functions is testability?</blockquote>
+				My bad, actually I don't know. I assume that purity's goal is to avoid side effects. 
+				It is very clear that this can be useful when I have a <em>hidden</em> side effect in the function, but it is <em>less obvious</em> (to me) what it does mean when the <i>side effect</i> is as evident as an argument (?).
+					</p>
+					<p>
+				Anyway, I'll follow your implicit suggestion that with a pure function I can reach a more important goal than testability.
+				Ok, practical example. Today I spent one hour to fix a bug that I introduced with a previous enhancement. 
+				My goal is to avoid this next time, by learning a better programming style from your article, but first I need to understand what went wrong.
+				I can spot 3 problems: 
+						
+						                <ul>
+                    <li>1) I didn't see the bug when I wrote the code changes</li>
+                    <li>2) I didn't go through that part of my app when I tested the upgrade</li>
+                    <li>3) I needed a whole hour to fix that stupid bug, because I could not immediately find the point where it was</li>
+                </ul>
+				When I think that testability is important, it's because I hope it saves me from the issues 2 and 3, 
+				but let's take for granted that with a pure function I can avoid even point 1.
+
+					</p>
+					<p>
+				Now unfortunately I struggle to interpret Haskell's details and I can't find enough F# to recover the whole meaning,
+				but the main point I get is that a part of code (that could be bugged because <i>the ability to reason is eroded</i> there)
+				has been moved from a finally 'pure' function to a new 'impure' one, that is introduced by a special 'liftIO' keyword (sorry for my poor recap)
+					</p>
+					<p>
+				Finally my question is, but what about that all the possible bugs (often at the interface between persistence and model layers) that have simply been migrated around this critical IO land?
+				are they going to counterbalance the above said benefits? where is exactly the net, overall improvement?
+					</p>
+		</div>
+		<div class="comment-date">2017-01-20 20:02:00 UTC</div>
+	</div>
+	<div class="comment" id="0f59ad9b036e49459123344326158a11">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				First, I should make it specific that when I discuss object-oriented code in general, and encapsulation specifically, I tend to draw heavily on the work of Bertrand Meyer in <a href="http://amzn.to/1claOin">Object-Oriented Software Construction</a>. Some people may regard Alan Kay as the original inventor of object-orientation, but C# and Java's interpretation of object-oriented programming seems closer to Meyer's than to Kay's.
+			</p>
+			<p>
+				To Meyer, the most important motivation for object-orientation was reuse. He wanted to be able to reuse software that other people had written, instead of, as had been the norm until then, importing other people's source code into new code bases. I'm sure you can see how that goal was important.
+			</p>
+			<p>
+				In order to make binary libraries reusable, Meyer wanted to establish some techniques that would enable developers to (re)use the code without having access to the source code. His vision was that every object should come with a set of invariants, pre-, and post-conditions. He even invented a programming language, Eiffel, that included the ability to define such rules as programmable and enforceable checks. Furthermore, such rules could be exported as automatic documentation. This concept, which Meyer called <em>contracts</em>, is what we now know as <em>encapsulation</em> (I have <a href="{{ site.production_url }}/encapsulation-and-solid">a Pluralsight course that explains this in more details</a>).
+			</p>
+			<p>
+				While the idea of formal contracts seemed like a good idea, neither Java nor C# have them. In C# and Java, you can still implement invariants with guard clauses, assertions, and so on, but there's no formal, externally visible way to communicate such invariants.
+			</p>
+			<p>
+				In other words, in modern object-oriented languages, you can't reason about the code from its API alone. Meyer's goal was that you should be able to reuse an object that someone else had written, <em>without reading the source code</em>. In a nutshell: if you have to read the source code, it means that encapsulation is broken.
+			</p>
+			<p>
+				One of the other concepts that Meyer introduced was <a href="http://en.wikipedia.org/wiki/Command-query_separation">Command-Query Separation</a> (CQS). To Meyer, it was important to be able to distinguish between operations that had side-effects, and operations that didn't.
+			</p>
+			<p>
+				In my experience, a big category of defects are caused by unintended side-effects. One developer doesn't realise that the method call (s)he invokes has a side-effect that another developer put there. Languages like C# and Java have few constraints, so any method could potentially hide a side-effect. The only way you can know is by reading the code.
+			</p>
+			<p>
+				What if, then, there was a programming language where you could tell, at a glance, whether an operation had a side-effect? Such programming languages exist. Haskell is one of them. In Haskell, all functions are pure by default. This means that they are deterministic and have no side-effects. If you want to write an impure function, you must explicitly declare that in the function's type (which is done with the <code>IO</code> type).
+			</p>
+			<p>
+				In Haskell, you don't have to read the source code in order to know whether a function is impure or not. You can simply look at the type!
+			</p>
+			<p>
+				This is one of the many benefits of pure functions: we know, by definition, that they have no side-effects. This property holds not only for the function itself, but for all functions that that pure function calls. This follows from the definition of purity. A pure function can call other pure functions, but it can't call impure functions, because, if it did, it would become impure itself. Haskell enforces this rule, so when you're looking at a pure function, you know that that entire subgraph of your code is pure. Otherwise, it wouldn't compile.
+			</p>
+			<p>
+				Not only does that relationship force us to push impure functions to the boundary of applications, as described in the present article. It also makes <a href="/2015/05/07/functional-design-is-intrinsically-testable">functions intrinsically testable</a>. There are other advantages of pure functions besides these, such as easy composability, but in general, pure functions are attractive because it becomes easier to figure out what a function does without having to understand all the details. In other words, pure functions are better abstractions.
+			</p>
+			<p>
+				To be clear: functional programming doesn't protect you from defects, but in my experience, it helps you to avoid entire classes of bugs. I still write automated tests of my F# code, but I write fewer tests than when I wrote C# code. Despite that, I also seem to be producing fewer defects, and I rarely need to debug the functions.
+			</p>
+			<p>
+				What's the overall net improvement? I don't know. How would you measure that?
+			</p>
+		</div>
+		<div class="comment-date">2017-01-20 21:53 UTC</div>
+	</div>
+    <div class="comment" id="ec8e27cca5984e2c82647b79f1e0df35">
+        <div class="comment-author">Abel Quiros</div>
+        <div class="comment-content">
+            <p>Consider a logic that, depending on a condition, performs one IO operation or another. In Java (I don’t know F# or Haskell):</p>
+            <pre>int foo(boolean condition, IntSupplier io1, IntSupplier io2) {
+    if (condition) {
+        return io1.getAsInt();
+    } else {
+        return io2.getAsInt();
+    }
+}</pre>
+            <p>Would you recommend pre-fetching the two values prior to calling the <code>foo</code> function even though only one would ultimately be required?</p>
+        </div>
+      <div class="comment-date">2017-03-12 20:47 UTC</div>
+    </div>
+  <div class="comment" id="f555a56f148f4598bc885a467867fe4a">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Abel, thank you for writing. There's a discussion closely related to that question in the <em>remarks</em> sections of my <a href="/2017/02/02/dependency-rejection">dependency rejection</a> article. It's the remark from 2017-02-18 19:54 UTC (I really ought to get around to <a href="https://github.com/ploeh/ploeh.github.com/issues/267">add permalinks to comments</a>...).
+			</p>
+			<p>
+				Additionally, there's a discussion on this page that lead to <a href="/2016/07/04/conditional-composition-of-functions">a new article</a> that goes into some further details.
+			</p>
+		</div>
+		<div class="comment-date">2017-03-13 06:42 UTC</div>
+	</div>
+  <div class="comment" id="1d53d15fb2b04405935252c551b16419">
+    <div class="comment-author"><a href="https://github.com/Porges">George Pollard</a></div>
+    <div class="comment-content">
+      <p>(This is rather a delayed reply, but...) @Martin Rykfors, you mentioned monad transformers as an option. A few months before your comment I recorded <a href="https://www.youtube.com/watch?v=9Af2ZUK3Z4U">a livecoded session of applying MTL-style monad transformers to this code</a>.</p>
+      <p>I'm not sure if you're interested (it's nearly an hour of me talking to myself), but just in case... 🙂</p>
+    </div>
+    <div class="comment-date">2017-07-10 21:54 UTC</div>
+  </div>
+</div>

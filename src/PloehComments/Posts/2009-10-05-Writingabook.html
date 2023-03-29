@@ -1,0 +1,84 @@
+---
+layout: post
+tags: [Dependency Injection]
+date: 2009-10-05 18:13:50 UTC
+title: "Writing a book"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		For the last few months I've been writing a book for Manning tentatively titled <em>Dependency Injection in .NET</em>. The <a href="http://www.manning.com/seemann/">page about the book</a> is now live at the <a href="http://www.manning.com/">Manning</a> web site where you can read more about it and, if you would like, purchase an Early Access edition and read the chapters as they are being written.
+	</p>
+	<p>
+		If you have ever wanted to learn about Dependency Injection (DI) related to .NET, here's your chance!
+	</p>
+	<p>
+		At the moment I'm about a third of the way into the book, so there's still some way to go, but I hope to be done with it in 2010.
+	</p>
+	<p>
+		If you decide to purchase an Early Access edition, I'd love to receive your feedback in the online forum.
+	</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="6b81b9772c6f47edb7cadec244432a96">
+	<div class="comment-author"><a href="http://grantpalin.com">Grant Palin</a></div>
+	<div class="comment-content">Ohh, I could have used this book weeks ago! I've been trying to wrap my head around DI/IoC for some time, and in fact am working on a blog post on the subject. It seems complex on the surface, but is less so once you really get into it!<br>
+<br>
+Purchased the MEAP, looking forward to the results!</div>
+	<div class="comment-date">2009-10-07 03:01 UTC</div>
+</div>
+<div class="comment" id="cec6c496cc40461e87518a59ac44d5bd">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">I hope that you get a lot out of it! If parts of the contents strike you as odd or you think that something is missing, please let me know. The <a href="http://www.manning-sandbox.com/forum.jspa?forumID=607">Author Online</a> forum is the preferred place, but you can drop me a line in any way you prefer.</div>
+	<div class="comment-date">2009-10-13 11:00 UTC</div>
+</div>
+<div class="comment" id="4624db46c6ce425688bf06fc5a361cf6">
+	<div class="comment-author">Bill Campbell</div>
+	<div class="comment-content">Hey Mark,<br>
+<br>
+Got the MEAP of your book and am enjoying it. I was wondering if you are going to make any of the sample code from the book available? That would be awesome.<br>
+<br>
+thanks,<br>
+Bill</div>
+	<div class="comment-date">2009-10-21 12:32 UTC</div>
+</div>
+<div class="comment" id="d49e6bed8db94a0ca7983fe11284589b">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Yes, that is definitely the plan. Manning does have the code, but I don't know when they plan on making it available. It's still a little rough around the edges, but if you would like to get it now, send me an email (use the small envelope icon in the Contact section area) and I'll zip it up for you.</div>
+	<div class="comment-date">2009-10-21 12:55 UTC</div>
+</div>
+<div class="comment" id="f467d58dc1fb492783bcc0a3c8b7c954">
+	<div class="comment-author">Scott Peterson</div>
+	<div class="comment-content">Hello Mark,<br>
+		<br>
+		While your book is now a couple of years old, I purchased an e-version of it and got a lot out of it.  I saw immediate uses for interceptors in an application I am evaluating (for a re-write) at a new company, but I ran into some trouble.<br>
+		In a copy of your ProductManagementClient code, in a MenuItem_Click event, I added code to purposefully throw an InvalidOperationException, one of the exception types listed in the ErrorHandlingInterceptor, just to see the interceptor in action.  I then tried to step through the code, but I never got to the Interceptor; I always just see the standard Visual Studio exception dialog in Debug mode.<br>
+		Am I approaching this incorrectly?
+		<br><br>
+		Thanks for all that you do for the .NET community; it has really been a big help to me.<br><br>
+		Scott
+	</div>
+	<div class="comment-date">2013-05-23 18:31 UTC</div>
+</div>
+	<div class="comment" id="5d5bce5259ed4dd59e4a0924ef04d191">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Scott, thanks for writing. The Visual Studio behaviour you describe fits my own experience: stepping <em>into</em> something Decorated with a dynamic interceptor doesn't really work. While I'm no expert in how the Visual Studio debugger works, I think it's because there's some auto-generated code (the dynamic interceptor(s)) between the call site and your code on the other side. Visual Studio doesn't have the source code for the dynamic interceptor, so it generally gives up when you try to do that.
+			</p>
+			<p>
+				However, if you set a breakpoint on the other side (behind the interceptors), you will still hit that breakpoint when you press F5. This should enable you to still 'see' the interceptor(s) in action, using the debugger. IIRC, you can also set breakpoints in your own interceptor code, and those should be hit as well.
+			</p>
+			<p>
+				As I wrote, I'm no expert in the Visual Studio debugger, but I do know that it has lots of options you can tweak. I wouldn't be surprised if there was an option that would enable you to skip over the interceptor code and into the code Decorated by the interceptor, but I don't know how to do that.
+			</p>
+		</div>
+		<div class="comment-date">2013-05-23 19:07 UTC</div>
+	</div>
+</div>

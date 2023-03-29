@@ -1,0 +1,99 @@
+---
+layout: post
+tags: [AutoFixture]
+date: 2009-03-24 20:22:49 UTC
+title: "How AutoFixture Creates Objects"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<a href="http://autofixture.codeplex.com/">AutoFixture</a> creates <a href="http://blogs.msdn.com/ploeh/archive/2008/11/17/anonymous-variables.aspx">Anonymous Variables</a>, but you'd probably like to know <em>how</em> it does it. This post explains how.
+	</p>
+	<p>
+		As we <a href="/2009/03/22/AnnouncingAutoFixture">previously saw</a>, the CreateAnonymous method can create a new instance of a type known to it only from its type parameter:
+	</p>
+	<p>
+		<pre><span style="color: #2b91af">MyClass</span> sut = fixture.CreateAnonymous&lt;<span style="color: #2b91af">MyClass</span>&gt;();</pre>
+	</p>
+	<p>
+		AutoFixture was never compiled with any knowledge of the MyClass type, so it obviously uses Reflection to create the instance. That's hardly surprising in itself.
+	</p>
+	<p>
+		In the case of MyClass, it has a default constructor, so creating an instance is as simple as it can be, but what happens if we instead ask for a more complex instance?
+	</p>
+	<p>
+		As an example, the ComplexParent type has this constructor:
+	</p>
+	<p>
+		<pre><span style="color: blue">public</span> ComplexParent(<span style="color: #2b91af">ComplexChild</span> child)</pre>
+	</p>
+	<p>
+		ComplexChild, however, has two constructors:
+	</p>
+	<p>
+		<pre><span style="color: blue">public</span> ComplexChild(<span style="color: blue">string</span> name)</pre>
+	</p>
+	<p>
+		and
+	</p>
+	<p>
+		<pre><span style="color: blue">public</span> ComplexChild(<span style="color: blue">string</span> name, <span style="color: blue">int</span> number)</pre>
+	</p>
+	<p>
+		So what happens when we ask AutoFixture to create an instance of ComplexParent?
+	</p>
+	<p>
+		ComplexParent only has a single public constructor, so AutoFixture doesn't have any other choice than picking that. This means that it must now create an anonymous instance of ComplexChild.
+	</p>
+	<p>
+		Fortunately, AutoFixture's raison d'être is creating objects, so creating an instance of ComplexChild isn't a big deal; the only thing it needs to figure out is which constructor to pick. When multiple public constructors are available, it always picks the one with the fewest number of arguments  -  in this case ComplexChild(string).
+	</p>
+	<p>
+		Obviously, it then needs to create an anonymous string value. For primitive types like strings, numbers and booleans, AutoFixture has custom algorithms for value creation. Since I'll cover those mechanisms later, suffice it to say that <a href="/2009/03/05/ConstrainedNon-Determinism">Constrained Non-Determinism</a> is used to create an anonymous string.
+	</p>
+	<p>
+		At this point, AutoFixture has all the information it needs, and it can now return a properly initialized instance of ComplexParent.
+	</p>
+	<p>
+		This ability to create instances of almost arbitrarily complex types is a real time-saver: That, more than the ability to create single strings or numbers, was the reason I originally created AutoFixture, since I got tired of initializing complex object graphs just to satisfy some API that the <a href="http://xunitpatterns.com/test%20fixture%20-%20xUnit.html">Test Fixture</a> requires.
+	</p>
+	<p>
+		It also has the additional advantage that it hides all the irrelevant object creation code that the Test Fixture needs, but which isn't relevant for the test at hand.
+	</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="ce11cd3a8c3d4955aba72764cebbf2d8">
+	<div class="comment-author"><a href="http://www.bonisimo.dk">Klaus Byskov Hoffmann</a></div>
+	<div class="comment-content">That sounds pretty neat. But what if the constructor of ComplexChild imposes some kind of restriction on its parameter? If, for example, instead of the &quot;name&quot; parameter, it would take a &quot;phoneNumber&quot; parameter (as a string), and do some format checking?</div>
+	<div class="comment-date">2009-03-25 09:17 UTC</div>
+</div>
+<div class="comment" id="86976f7349e94336b5852ae80796ef01">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Hi Klaus<br>
+<br>
+Thank you for your question! It is an excellent question, particularly because it gives me the opportunity to touch on both some of the more advanced features of AutoFixture, as well as to demonstrate how TDD drives good design.<br>
+<br>
+However, because of that, I'd also like to cover a bit more ground on some of AutoFixture's features before I dive into the details of my answer. In other words, I'd like to post a few more entries that will act as prerequisites before I post my answer to your particular question, so stay tuned, and I'll get to that in due time :)</div>
+	<div class="comment-date">2009-03-25 13:07 UTC</div>
+</div>
+<div class="comment" id="097054743e384c868918b4502fb03c5c">
+	<div class="comment-author">florin</div>
+	<div class="comment-content">What if I have two constructors with the same number of parameters, how will it decide on the right one?</div>
+	<div class="comment-date">2010-05-21 10:51 UTC</div>
+</div>
+<div class="comment" id="59acfa2c75f84e28b42961e9886e108a">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">It doesn't, so this is a situation best avoided. Essentially AutoFixture orders the constructors according to length, but in case of equal lengths it just picks the first one. Which constructor is the first is up to Reflection to decide, so this is not specified.<br>
+<br>
+This sounds like a serious limitation on AutoFixture's part, but in practice I've found that it rarely matters. In the few cases where a SUT has overloaded constructors, it is essential to the design that none of them puts the SUT into an invalid state, so when you need an <i>anonymous instance</i> it shouldn't matter which constructor is used. This is really what AutoFixture is all about.<br>
+<br>
+That said, in AutoFixture 2.0 it will be possible to register custom types that can use other heuristics to pick constructors.</div>
+	<div class="comment-date">2010-05-21 12:41 UTC</div>
+</div>
+</div>

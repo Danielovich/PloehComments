@@ -1,0 +1,321 @@
+---
+layout: post
+title: "Set is not a functor"
+description: "Sets aren't functors. An example for object-oriented programmers."
+date: 2018-12-03 7:58 UTC
+tags: [Software Design]
+image: "/content/binary/set-violating-second-functor-law.png"
+image_alt: "Diagram illustrating a functor law counter-example."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is an instalment in <a href="/2018/03/22/functors">an article series about functors</a>. The way functors are frequently presented to programmers is as a generic <a href="https://bartoszmilewski.com/2014/01/14/functors-are-containers">container</a> (<code>Foo&lt;T&gt;</code>) equipped with a translation method, normally called <em>map</em>, but in C# <a href="/2015/08/03/idiomatic-or-idiosyncratic">idiomatically</a> called <code>Select</code>.
+	</p>
+	<p>
+		It'd be tempting to believe that any generic type with a <code>Select</code> method is a functor, but it takes more than that. The <code>Select</code> method must also obey the <a href="/2018/03/22/functors">functor laws</a>. This article shows an example of a translation that violates the second functor law.
+	</p>
+	<h3 id="5a13402d14f54ce689a7ae4e62f54233">
+		Mapping sets <a href="#5a13402d14f54ce689a7ae4e62f54233" title="permalink">#</a>
+	</h3>
+	<p>
+		The .NET Base Class Library comes with a class called <a href="https://docs.microsoft.com/en-gb/dotnet/api/system.collections.generic.hashset-1">HashSet&lt;T&gt;</a>. This generic class implements <code>IEnumerable&lt;T&gt;</code>, so, via extension methods, it has a <code>Select</code> method.
+	</p>
+	<p>
+		Unfortunately, that <code>Select</code> method isn't a structure-preserving translation of sets. The problem is that it treats sets as enumerable sequences, which implies an order to elements that isn't part of a set's structure.
+	</p>
+	<p>
+		In order to understand what the problem is, consider this <a href="https://xunit.net">xUnit.net</a> test:
+	</p>
+	<p>
+		<pre>[<span style="color:#2b91af;">Fact</span>]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;SetAsEnumerableSelectLeadsToWrongConclusions()
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;set1&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">HashSet</span>&lt;<span style="color:blue;">int</span>&gt;&nbsp;{&nbsp;1,&nbsp;2,&nbsp;3&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;set2&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">HashSet</span>&lt;<span style="color:blue;">int</span>&gt;&nbsp;{&nbsp;3,&nbsp;2,&nbsp;1&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Assert</span>.True(set1.SetEquals(set2));
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:blue;">int</span>,&nbsp;<span style="color:blue;">int</span>&gt;&nbsp;id&nbsp;=&nbsp;x&nbsp;=&gt;&nbsp;x;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;seq1&nbsp;=&nbsp;set1.AsEnumerable().Select(id);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;seq2&nbsp;=&nbsp;set2.AsEnumerable().Select(id);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Assert</span>.False(seq1.SequenceEqual(seq2));
+}</pre>
+	</p>
+	<p>
+		This test creates two sets, and by using a <a href="http://xunitpatterns.com/Guard%20Assertion.html">Guard Assertion</a> demonstrates that they're equal to each other. It then proceeds to <code>Select</code> over both sets, using the identity function <code>id</code>. The return values aren't <code>HashSet&lt;T&gt;</code> objects, but rather <code>IEnumerable&lt;T&gt;</code> sequences. Due to an implementation detail in <code>HashSet&lt;T&gt;</code>, these two sequences are different, because they were populated in reverse order of each other.
+	</p>
+	<p>
+		The problem is that the <code>Select</code> extension method has the signature <code>IEnumerable&lt;TResult&gt; Select&lt;T, TResult&gt;(IEnumerable&lt;T&gt;, Func&lt;T, TResult&gt;)</code>. It doesn't operate on <code>HashSet&lt;T&gt;</code>, but instead treats it as an ordered sequence of elements. A set isn't intrinsically ordered, so that's not the translation you need.
+	</p>
+	<p>
+		To be clear, <code>IEnumerable&lt;T&gt;</code> <em>is</em> a functor (as long as the sequence is <a href="https://en.wikipedia.org/wiki/Referential_transparency">referentially transparent</a>). It's just not the functor you're looking for. What you need is a method with the signature <code>HashSet&lt;TResult&gt; Select&lt;T, TResult&gt;(HashSet&lt;T&gt;, Func&lt;T, TResult&gt;)</code>. Fortunately, such a method is trivial to implement:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">HashSet</span>&lt;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;Select&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">HashSet</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;source,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;selector)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">HashSet</span>&lt;<span style="color:#2b91af;">TResult</span>&gt;(source.AsEnumerable().Select(selector));
+}</pre>
+	</p>
+	<p>
+		This extension method offers a proper <code>Select</code> method that translates one <code>HashSet&lt;T&gt;</code> into another. It does so by enumerating the elements of the set, then using the <code>Select</code> method for <code>IEnumerable&lt;T&gt;</code>, and finally wrapping the resulting sequence in a new <code>HashSet&lt;TResult&gt;</code> object.
+	</p>
+	<p>
+		This is a better candidate for a translation of sets. Is it a functor, then?
+	</p>
+	<h3 id="44c78cf51897490a8d844a89eaa8ef73">
+		Second functor law <a href="#44c78cf51897490a8d844a89eaa8ef73" title="permalink">#</a>
+	</h3>
+	<p>
+		Even though <code>HashSet&lt;T&gt;</code> and the new <code>Select</code> method have the correct types, it's still only a functor if it obeys the functor laws. It's easy, however, to come up with a counter-example that demonstrates that <code>Select</code> violates the second functor law.
+	</p>
+	<p>
+		Consider a pair of conversion methods between <code>string</code> and <code>DateTimeOffset</code>:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">DateTimeOffset</span>&nbsp;ParseDateTime(<span style="color:blue;">string</span>&nbsp;s)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">DateTimeOffset</span>&nbsp;dt;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(<span style="color:#2b91af;">DateTimeOffset</span>.TryParse(s,&nbsp;<span style="color:blue;">out</span>&nbsp;dt))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;dt;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:#2b91af;">DateTimeOffset</span>.MinValue;
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">string</span>&nbsp;FormatDateTime(<span style="color:#2b91af;">DateTimeOffset</span>&nbsp;dt)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;dt.ToString(<span style="color:#a31515;">&quot;yyyy&#39;-&#39;MM&#39;-&#39;dd&#39;T&#39;HH&#39;:&#39;mm&#39;:&#39;sszzz&quot;</span>);
+}</pre>
+	</p>
+	<p>
+		The first method, <code>ParseDateTime</code>, converts a <code>string</code> into a <code>DateTimeOffset</code> value. It tries to parse the input, and returns the corresponding <code>DateTimeOffset</code> value if this is possible; for all other input values, it simply returns <code>DateTimeOffset.MinValue</code>. You may dislike how the method deals with input values it can't parse, but that's not important. In order to prove that sets aren't functors, I just need <em>one</em> counter-example, and the one I'll pick will not involve unparseable strings.
+	</p>
+	<p>
+		The <code>FormatDateTime</code> method converts any <code>DateTimeOffset</code> value to an <a href="https://en.wikipedia.org/wiki/ISO_8601">ISO 8601 string</a>.
+	</p>
+	<p>
+		The <code>DateTimeOffset</code> type is the interesting piece of the puzzle. In case you're not intimately familiar with it, a <code>DateTimeOffset</code> value contains a date, a time, and a time-zone offset. You can, for example create one like this:
+	</p>
+	<p>
+		<pre>&gt; <span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DateTimeOffset</span>(2018,&nbsp;4,&nbsp;17,&nbsp;15,&nbsp;9,&nbsp;55,&nbsp;<span style="color:#2b91af;">TimeSpan</span>.FromHours(2))
+[17.04.2018 15:09:55 +02:00]</pre>
+	</p>
+	<p>
+		This represents April 17, 2018, at 15:09:55 at UTC+2. You can convert that value to UTC:
+	</p>
+	<p>
+		<pre>&gt; <span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DateTimeOffset</span>(2018,&nbsp;4,&nbsp;17,&nbsp;15,&nbsp;9,&nbsp;55,&nbsp;<span style="color:#2b91af;">TimeSpan</span>.FromHours(2)).ToUniversalTime()
+[17.04.2018 13:09:55 +00:00]</pre>		
+	</p>
+	<p>
+		This value clearly contains different constituent elements, but it does represent the same instant in time. This is how <code>DateTimeOffset</code> implements <code>Equals</code>. These two object are considered equal, as the following test will demonstrate.
+	</p>
+	<p>
+		In a sense, you could argue that there's some sense in implementing equality for <code>DateTimeOffset</code> in that way, but this unusual behaviour provides just the counter-example that demonstrates that sets aren't functors:
+	</p>
+	<p>
+		<pre>[<span style="color:#2b91af;">Fact</span>]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;SetViolatesSecondFunctorLaw()
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;x&nbsp;=&nbsp;<span style="color:#a31515;">&quot;2018-04-17T13:05:28+02:00&quot;</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;y&nbsp;=&nbsp;<span style="color:#a31515;">&quot;2018-04-17T11:05:28+00:00&quot;</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Assert</span>.Equal(ParseDateTime(x),&nbsp;ParseDateTime(y));
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;set&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">HashSet</span>&lt;<span style="color:blue;">string</span>&gt;&nbsp;{&nbsp;x,&nbsp;y&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;l&nbsp;=&nbsp;set.Select(ParseDateTime).Select(FormatDateTime);
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;r&nbsp;=&nbsp;set.Select(s&nbsp;=&gt;&nbsp;FormatDateTime(ParseDateTime(s)));
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Assert</span>.False(l.SetEquals(r));
+}</pre>
+	</p>
+	<p>
+		This passing test provides the required counter-example. It first creates two ISO 8601 representations of the same instant. As the Guard Assertion demonstrates, the corresponding <code>DateTimeOffset</code> values are considered equal.
+	</p>
+	<p>
+		In <a href="/2013/06/24/a-heuristic-for-formatting-code-according-to-the-aaa-pattern">the <em>act</em> phase</a>, the test creates a <code>set</code> of these two strings. It then performs two round-trips over <code>DateTimeOffset</code> and back to <code>string</code>. The second functor law states that it shouldn't matter whether you do it in one or two steps, but it does. <code>Assert.False</code> passes because <code>l</code> is <em>not</em> equal to <code>r</code>. Q.E.D.
+	</p>
+	<h3 id="f392310c11984d08a31bf6456849dd01">
+		An illustration <a href="#f392310c11984d08a31bf6456849dd01" title="permalink">#</a>
+	</h3>
+	<p>
+		The problem is that sets only contain one element of each value, and due to the way that <code>DateTimeOffset</code> interprets equality, two values that both represent the same instant are collapsed into a single element when taking an intermediary step. You can illustrate it like this:
+	</p>
+	<p>
+		<img src="/content/binary/set-violating-second-functor-law.png" alt="Diagram illustrating the above counter-example.">
+	</p>
+	<p>
+		In this illustration, I've hidden the date behind an ellipsis in order to improve clarity. The date segments are irrelevant in this example, since they're all identical.
+	</p>
+	<p>
+		You start with a set of two <code>string</code> values. These are obviously different, so the set contains two elements. When you map the set using the <code>ParseDateTime</code> function, you get two <code>DateTimeOffset</code> values that .NET considers equal. For that reason, <code>HashSet&lt;DateTimeOffset&gt;</code> considers the second value redundant, and ignores it. Therefore, the intermediary set contains only a single element. When you map that set with <code>FormatDateTime</code>, there's only a single element to translate, so the final set contains only a single <code>string</code> value.
+	</p>
+	<p>
+		On the other hand, when you map the input set without an intermediary set, each <code>string</code> value is first converted into a <code>DateTimeOffset</code> value, and then immediately thereafter converted back to a <code>string</code> value. Since the two resulting strings are different, the resulting set contains two values.
+	</p>
+	<p>
+		Which of these paths is correct, then? Both of them. That's the problem. When considering the semantics of sets, both translations produce correct results. Since the results diverge, however, the translation isn't a functor.
+	</p>
+	<h3 id="ee52a36b611b40c5a7d015bea3cbf1dc">
+		Summary <a href="#ee52a36b611b40c5a7d015bea3cbf1dc" title="permalink">#</a>
+	</h3>
+	<p>
+		A functor must not only preserve the structure of the data container, but also of functions. The functor laws express that a translation of functions preserves the structure of how the functions compose, in addition to preserving the structure of the containers. Mapping a set doesn't preserve those structures, and that's the reason that sets aren't functors.
+	</p>
+	<h3 id="649aceb6a241450abc861ec63f34ff0a">
+		P.S. <a href="#649aceb6a241450abc861ec63f34ff0a" title="permalink">#</a>
+	</h3>
+	<p>
+		<strong>2019-01-09.</strong> There's been some controversy around this post, and more than one person has pointed out to me that the underlying reason that the functor laws are violated in the above example is because <code>DateTimeOffset</code> behaves oddly. Specifically, its <code>Equals</code> implementation breaks the <em>substitution property</em> of equality. See e.g. <a href="https://giacomociti.github.io">Giacomo Citi</a>'s <a href="https://giacomociti.github.io/2019/01/02/Abstract-types-are-more-equal.html">response</a> for details.
+	</p>
+	<p>
+		The term <em>functor</em> originates from <a href="https://en.wikipedia.org/wiki/Category_theory">category theory</a>, and I don't claim to be an expert on that topic. It's unclear to me if the underlying concept of <em>equality</em> is explicitly defined in category theory, but it wouldn't surprise me if it is. If that definition involves the substitution property, then the counter-example presented here says nothing about Set as a functor, but rather that <code>DateTimeOffset</code> has unlawful equality behaviour.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2018/10/01/applicative-functors">Applicative functors</a>.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	<div class="comment" id="b58fe3a0556347a9bcfb2f39b0b5250c">
+		<div class="comment-author">Matt Heuer</div>
+		<div class="comment-content">
+			<p>
+				The Problem here is not the HashSet, but the DateTimeOffset Class. 
+				It defines Equality loosely, so Time-Comparison is possible between different Time-Zones. 
+
+				The Functor Property can be restored by applying a stricter Equality Comparer like this one: 
+
+				<pre>
+						var l = set.Select(ParseDateTime, StrictDateTimeOffsetComparer._).Select(FormatDateTime);
+
+						/// <summary> Compares both <see cref="DateTimeOffset.Offset"/> and <see cref="DateTimeOffset.UtcTicks"/> </summary>
+						public class StrictDateTimeOffsetComparer : IEqualityComparer<DateTimeOffset> {
+
+							public bool Equals(DateTimeOffset x, DateTimeOffset y) 
+								=> x.Offset.Equals(y.Offset) && x.UtcTicks == y.UtcTicks;
+
+							public int GetHashCode(DateTimeOffset obj) => HashCode.Combine(obj.Offset, obj.UtcTicks);
+
+							/// <summary> Singleton Instance </summary>
+							public static readonly StrictDateTimeOffsetComparer _ = new();
+							StrictDateTimeOffsetComparer(){}
+
+						}
+
+				</pre>
+
+				As for preserving Referential Transparency, the Distinction between Equality and Identity is important. 
+				By Default, Classes implement 'Equals' and '==' using ReferenceEquals which guarantees Substitution.
+				
+				Structs don't have a Reference unless they are boxed, instead they are copied and usually have Value Semantics. 
+				To be truly 'referentially transparent' though, Equality must be based on ALL Fields. 
+
+				When someone overrides Equals with a weaker Equivalence Relation than ReferenceEquals, 
+				it is their Responsibility to preserve Substitution. 
+
+				No Library Author can cover all possible application cases for HashSet.
+				 
+			</p>
+		</div>
+		<div class="comment-date">2021-03-13 13:16 UTC</div>
+	</div>
+
+	<div class="comment" id="2e5d7f35754e4b1b9ae2ffc2ab353be1">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Matt, thank you for writing. <code>DateTimeOffset</code> already defines the <a href="https://docs.microsoft.com/dotnet/api/system.datetimeoffset.equalsexact">EqualsExact</a> method. Wouldn't it be easier to use that?
+			</p>
+		</div>
+		<div class="comment-date">2021-03-14 8:40 UTC</div>
+	</div>
+	
+	<div class="comment" id="fa6e9103c5fb4fc4807828e4e53b3929">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<blockquote>
+				In order to prove that sets aren't functors, I just need <em>one</em> counter-example, and the one I'll pick will not involve unparseable strings.
+			</blockquote>
+			<p>
+				In context, you are correct; you can pick whatever example you want to create a counter-example.  However, your counter-example does not prove that <code>HashSet&lt;&gt;</code> is not a functor.
+			</p>
+			<p>
+				We often say that a type is or isn't a functor.  That is not quite right.  It is more correct to say that a type <code>T&lt;&gt;</code> <em>and</em> a function with inputs <code>T&lt;A&gt;</code> and <code>A</code> and output <code>T&lt;B&gt;</code> are or are not a functor.  Then I think it is reasonable to say some type is a functor if (and only if) there <em>exists</em> a function such that the type and that functor are a functor.  In that case, to conclude that <code>HashSet&lt;&gt;</code> is not a functor requires one to prove that, <em>for all </em> functions <code>f</code>, the pair <code>HashSet&lt;&gt;</code> and <code>f</code> are not a functor.  Because of the universal quantification, this cannot be achieved via a single counter-example.
+			</p>
+			<p>
+				Your counter-example shows that the type <code>HashSet&lt;&gt;</code> and <em>your</em> function that you called <code>Select</code> is not a functor.  Your <code>Select</code> function uses <a href="https://docs.microsoft.com/en-us/dotnet/api/system.collections.generic.hashset-1.-ctor#System_Collections_Generic_HashSet_1__ctor_System_Collections_Generic_IEnumerable__0__">this constructor overload of <code>HashSet&lt;&gt;</code></a>, which eventually uses <code>EqualityComparer&lt;T&gt;.Default</code> in places like <a href="https://github.com/dotnet/runtime/blob/5ef6a0687ad58fdb726387897cde0d2584264fb6/src/libraries/System.Private.CoreLib/src/System/Collections/Generic/HashSet.cs#L931">here</a> and <a href="https://github.com/dotnet/runtime/blob/5ef6a0687ad58fdb726387897cde0d2584264fb6/src/libraries/System.Private.CoreLib/src/System/Collections/Generic/HashSet.cs#L321">here</a>.  The instance of <code>EqualityComparer&lt;DateTimeOffset&gt;.Default</code> implements its <code>Equals</code> method via <code>DateTimeOffset.Equals</code>.  The comments by Giacomo Citi and others explained "why" your <code>Select</code> function (and the type <code>HashSet&lt;&gt;</code>) doesn't satisfy the second functor law: you picked a constructor overload of <code>HashSet&lt;&gt;</code> that uses an implementation of <code>IEqualityComparer&lt;DateTimeOffset&gt;</code> that depends on <code>DateTimeOffset.Equals</code>, which doesn't satisfy the substitution property.
+			</p>
+			<blockquote>
+				The term <em>functor</em> originates from <a href="https://en.wikipedia.org/wiki/Category_theory">category theory</a>, and I don't claim to be an expert on that topic. It's unclear to me if the underlying concept of <em>equality</em> is explicitly defined in category theory, but it wouldn't surprise me if it is. If that definition involves the substitution property, then the counter-example presented here says nothing about Set as a functor, but rather that <code>DateTimeOffset</code> has unlawful equality behaviour.
+			</blockquote>
+			<p>
+				I think this is a red herring.  Microsoft can implement <code>HashSet&lt;&gt;</code> however it wants and you can implement your <code>Select</code> function however you want.  Then the pair are either a functor or not.  Independent of this is that Microsoft gets to define the contract for <a href="https://docs.microsoft.com/en-us/dotnet/api/system.collections.generic.iequalitycomparer-1.equals#System_Collections_Generic_IEqualityComparer_1_Equals__0__0_"><code>IEqualityComparer&lt;&gt;.Equals</code></a>.  The documentation states that a valid implementation must be reflexive, symmetric, and transitive but does not require that the substitution property is satisifed.
+			</p>
+			<p>
+				I think the correct question is this: Is <code>HashSet&lt;&gt;</code> a functor?...which is equivalent to: Does there exist a function such that <code>HashSet&lt;&gt;</code> and that function are a functor?  I think the answer is "yes".
+			</p>
+			<p>
+				Implement <code>Select</code> by calling <a href="https://docs.microsoft.com/en-us/dotnet/api/system.collections.generic.hashset-1.-ctor#System_Collections_Generic_HashSet_1__ctor_System_Collections_Generic_IEnumerable__0__System_Collections_Generic_IEqualityComparer__0__">the constructor overload of <code>HashSet&lt;&gt;</code> that takes an instance of <code>IEnumerable&lt;&gt;</code> as well as an instance of <code>IEqualityComparer&lt;&gt;</code></a>.  For the second argument, provide an instance that implements <code>Equals</code> by always returning <code>false</code> (and it suffices to implement <code>GetHashCode</code> by returning a constant).  I claim that <code>HashSet&lt;&gt;</code> and that function are a functor.  In fact, I further claim that this functor is isomorphic to the functor <code>IEnumerable&lt;&gt;</code> (with the function <a href="https://docs.microsoft.com/en-us/dotnet/api/system.linq.enumerable.select#System_Linq_Enumerable_Select__2_System_Collections_Generic_IEnumerable___0__System_Func___0___1__"><code>Enumerable.Select</code></a>).  That doesn't make it a very interesting functor, but it is a functor nonetheless.  (Also, notice that this implementation of <code>Equals</code> is not reflexive, but I still used it to create a functor.)
+			</p>
+		</div>
+		<div class="comment-date">2021-03-16 18:32 UTC</div>
+	</div>
+
+	<div class="comment" id="11b5047c500241058aa9a58320157824">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Tyson, thank you for writing. Yes, I agree with most of what you write. As I added in <a href="#649aceb6a241450abc861ec63f34ff0a">the P.S.</a>, I'm aware that this post draws the wrong conclusions. I also understand why.
+			</p>
+			<p>
+				It's true that one way to think of a functor is a type and an associated function. When I (and others) sometimes fall into the trap of directly equating types with functors, it's because this is the most common implementation of functors (and monads) in statically typed programming. This is probably most explicit in <a href="https://www.haskell.org">Haskell</a>, where a particular functor is explicitly associated with a type. This has the implication that in order to distinguish between multiple functors, Haskell comes with all sort of wrapper types. You mostly see this in the context of semigroups and monoids, where the <a href="https://hackage.haskell.org/package/base/docs/Data-Semigroup.html#t:Sum">Sum</a> and <a href="https://hackage.haskell.org/package/base/docs/Data-Semigroup.html#t:Product">Product</a> wrappers exist only to distinguish between two monoids over the same type (numbers).
+			</p>
+			<p>
+				You could imagine something similar happening with <a href="/2019/01/07/either-bifunctor">Either</a> and <a href="/2018/12/31/tuple-bifunctor">tuple bifunctors</a>. By conventions (and because of a bit pseudo-principled hand-waving), we conventionally pick one of the their dimensions for the 'functor instance'. For example, we pick the <em>right</em> dimension of Either for the functor instance. In both Haskell, <a href="https://fsharp.org">F#</a>, and C#, this enables certain syntax, such as Haskell <code>do</code> notation, F# computation expressions, or C# query syntax.
+			</p>
+			<p>
+				If we wanted to instead make mapping over, say, <em>left</em>, the 'functor instance', we can't do that without throwing away the language support for the <em>right</em> side. The solution is to introduce a new type that comes with the desired function associated. This enables the compiler to distinguish between two (or more) functors over what would otherwise be the same type.
+			</p>
+			<p>
+				That aside, can we resolve the issue in the way that you suggest? Possibly. I haven't thought deep and long about it, but what you write sounds plausible.
+			</p>
+			<p>
+				For anyone who wants to use such a <em>set functor</em> for real code, I'd suggest wrapping it in another type, since relying on client developers to use the 'correct' constructor overload seems too brittle.
+			</p>
+		</div>
+		<div class="comment-date">2021-03-17 18:57 UTC</div>
+	</div>
+
+	<div class="comment" id="69992ac5293246b894cbef27f8fe7585">
+		<div class="comment-author">Matt Heuer</div>
+		<div class="comment-content">
+			<p>
+				Well, yes, but since you have to implement a proper matching HashCode Function anyway, 
+				I thought it would be more obvious to write a matching Equals Function too.
+			</p>
+		</div>
+		<div class="comment-date">2021-03-19 8:43 UTC</div>
+	</div>
+		
+	<div class="comment" id="7751aa9592eb4a149945a079a2d03968">
+		<div class="comment-author">Matt Heuer</div>
+		<div class="comment-content">
+			<p>
+				Ah, so you're proposing to subclass HashSet&lt;DateTimeOffset> and pass the proper EqualityComparer to the base class. 
+				Alright, that would be a proper Functor then. 
+			</p>
+		</div>
+		<div class="comment-date">2021-03-19 8:43 UTC</div>
+	</div>
+	
+</div>

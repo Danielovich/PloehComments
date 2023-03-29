@@ -1,0 +1,129 @@
+---
+layout: post
+tags: [Dependency Injection, Software Design]
+date: 2013-01-10 10:37:35 UTC
+title: "Role Interface Role Hint"
+description: "This article describes how object roles can be indicated by the use of Role Interfaces."
+---
+{% include JB/setup %}
+
+<div id="post">
+<p>
+	<em>{{ page.description }}</em>
+</p>
+<p>
+	In my <a href="/2013/01/07/RoleHints.aspx">overview article on Role Hints</a> I described how making object roles explicit can help making code more object-oriented. One way code can convey information about the role played by an object is by implementing one or more <a href="http://martinfowler.com/bliki/RoleInterface.html">Role Interfaces</a>. As the name implies, a Role Interface describes a role an object can play. Classes can implement more than one Role Interface.
+</p>
+<h3 id="5b4aa1d4a8da43a793129b3f773ba0b8">
+	Example: Selecting a shipping Strategy <a href="#5b4aa1d4a8da43a793129b3f773ba0b8" title="permalink">#</a>
+</h3>
+<p>
+	As an example, consider the shipping Strategy selection problem from <a href="/2013/01/09/MetadataRoleHint.aspx">the previous post</a>. That example seemed to suffer from the <a href="http://c2.com/cgi/wiki?FeatureEnvySmell">Feature Envy smell</a> because the attribute had to expose the handled shipping method as a property in order to enable the selection mechanism to pick the right Strategy.
+</p>
+<p>
+	Another alternative is to define a Role Interface for matching objects to shipping methods:
+</p>
+<p>
+	</p>
+<pre style="margin: 0px;"><span style="color: blue;">public</span> <span style="color: blue;">interface</span> <span style="color: #2b91af;">IHandleShippingMethod</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">bool</span> CanHandle(<span style="color: #2b91af;">ShippingMethod</span> shippingMethod);
+}</pre>
+<p></p>
+<p>
+	A shipping cost calculator can implement the IHandleShippingMethod interface to participate in the selection process:
+</p>
+<p>
+	</p>
+<pre style="margin: 0px;"><span style="color: blue;">public</span> <span style="color: blue;">class</span> <span style="color: #2b91af;">ExpressShippingCostCalculator</span> : 
+&nbsp;&nbsp;&nbsp; <span style="color: #2b91af;">IBasketCalculator</span>, <span style="color: #2b91af;">IHandleShippingMethod</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">int</span> CalculatePrice(<span style="color: #2b91af;">ShoppingBasket</span> basket)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: green;">/* Perform some complicated price calculation based on the</span>
+<span style="color: green;">&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; * basket argument here. */</span>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">return</span> 1337;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">bool</span> CanHandle(<span style="color: #2b91af;">ShippingMethod</span> shippingMethod)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">return</span> shippingMethod == <span style="color: #2b91af;">ShippingMethod</span>.Express;
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+<p></p>
+<p>
+	An ExpressShippingCostCalculator object can play one of two roles: It can calculate basket prices and it can handle basket calculations related to shipping methods. It doesn't have to expose as a property the shipping method it handles, which enables some more sophisticated scenarios like handling more than one shipping method, or handling a certain shipping method only if some other set of conditions are also met.
+</p>
+<p>
+	You can implement the selection algorithm like this:
+</p>
+<p>
+	</p>
+<pre style="margin: 0px;"><span style="color: blue;">public</span> <span style="color: blue;">class</span> <span style="color: #2b91af;">ShippingCostCalculatorFactory</span> : <span style="color: #2b91af;">IShippingCostCalculatorFactory</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">private</span> <span style="color: blue;">readonly</span> <span style="color: #2b91af;">IEnumerable</span>&lt;<span style="color: #2b91af;">IBasketCalculator</span>&gt; candidates;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> ShippingCostCalculatorFactory(
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: #2b91af;">IEnumerable</span>&lt;<span style="color: #2b91af;">IBasketCalculator</span>&gt; candidates)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">this</span>.candidates = candidates;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: #2b91af;">IBasketCalculator</span> GetCalculator(<span style="color: #2b91af;">ShippingMethod</span> shippingMethod)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">return</span> (<span style="color: blue;">from</span> c <span style="color: blue;">in</span> <span style="color: blue;">this</span>.candidates
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">let</span> handles = c <span style="color: blue;">as</span> <span style="color: #2b91af;">IHandleShippingMethod</span>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">where</span> handles != <span style="color: blue;">null</span>
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &amp;&amp; handles.CanHandle(shippingMethod)
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">select</span> c).First();
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+<p></p>
+<p>
+	Notice that because the implementation of CanHandle can be more sophisticated and conditional on the context, more than one of the candidates may be able to handle a given shipping method. This means that the order of the candidates matters. Instead of selecting a <a href="http://msdn.microsoft.com/en-us/library/bb155325.aspx">Single</a> item from the candidates, the implementation now selects the <a href="http://msdn.microsoft.com/en-us/library/bb291976.aspx">First</a>. This provides a fall-through mechanism where a preferred, but specialized candidate is asked before less preferred, general-purpose candidates.
+</p>
+<p>
+	This particular definition of the IHandleShippingMethod interface suffers from the same tight coupling to the ShippingMethod enum as the <a href="/2013/01/09/MetadataRoleHint.aspx">previous example</a>. One fix may be to define the shipping method as a string, but you could still successfully argue that even implementing an interface such as IHandleShippingMethod in a Domain Model object mixes architectural concerns. Detached metadata might still be a better option.
+</p>
+<h3 id="db85e9ea5e59496fb509e6925947a0dc">
+	Summary <a href="#db85e9ea5e59496fb509e6925947a0dc" title="permalink">#</a>
+</h3>
+<p>
+	As the name implies, a Role Interface can be used as a Role Hint. However, you must be wary of pulling in disconnected architectural concerns. Thus, while a class can implement several Role Interfaces, it should only implement interfaces defined in appropriate layers. (The word 'layer' here is used in a loose sense, but the same considerations apply for <a href="http://c2.com/cgi/wiki?PortsAndAdaptersArchitecture">Ports and Adapters</a>: don't mix Port types and Adapter types.)
+</p>
+</div>
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	
+	<div class="comment" id="82064da2bec44f3989a98208bcd4785f">
+		<div class="comment-author"><a href="http://blogs.msdn.com">Jeff Soper</a></div>
+		<div class="comment-content">
+		<p>
+			Could you expand upon how you might implement the fall-through mechanism you mentioned in your IShippingCostCalculatorFactory implementation, where more than one candidate can handle the shippingMethod?
+		</p>
+		<p>
+			How would you sort your IEnumerable&lt;IBasketCalculator&gt; candidates in GetCalculator() so that the candidate returned by First() is the one specifically meant to handle the ShippingMethod when one exists, and the default implementation when a specific one doesn't exist?
+		</p>
+		<p>
+			I considered using FirstOrDefault(), then returning the default implementation if the result of the query was nothing, but my default IHandleShippingMethod implementation always returns True from CanHandle() - I don't know what other value it could return.
+		</p>
+		</div>
+		<div class="comment-date">2013-08-14 15:37 UTC</div>
+	</div>
+
+	<div class="comment" id="fa4e59570dce4db68cb832b9bb94eac6">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				You could have super-specialized IBasketCalculator implementations, that (e.g.) are only active certain times of day, and you could have the ones I've shown here, and then you could have a fallback that implements IHandleShippingMethod.CanHandle by simply returning true no matter what the input is. If you put this fallback implementations <em>last</em> in the injected candidates, it's only going to picked up by the First method if no other candidate (before it) returns true from CanHandle.
+			</p>
+			<p>
+				Thus, there no reason to sort the candidates within GetCalculator - in fact, it would be an error to do so. As I wrote above, "the order of the candidates matters."
+			</p>
+		</div>
+		<div class="comment-date">2013-08-14 17:39 UTC</div>
+	</div>
+</div>

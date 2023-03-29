@@ -1,0 +1,90 @@
+---
+layout: post
+tags: [Dependency Injection, Software Design]
+date: 2010-12-18 14:21:17 UTC
+title: "On Role Interfaces, the Reused Abstractions Principle and Service Locators"
+description: "An example refactoring away from Service Locator and RAP violation towards nicer code."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>As a comment to my previous post about <a href="/2010/12/02/Interfacesarenotabstractions">interfaces being no guarantee for abstractions</a>, Danny asks some interesting questions. In particular, his questions relate to <a href="http://www.udidahan.com/">Udi Dahan</a>'s presentation <a href="http://www.infoq.com/presentations/Making-Roles-Explicit-Udi-Dahan">Intentions &amp; Interfaces: Making patterns concrete</a> (also known as <em>Making Roles Explicit</em>). Danny writes:</p> <blockquote> <p>it would seem that Udi recommends creating interfaces for each "role" the domain object plays and using a Service Locator to find the concrete implementation ... or in his case the concrete FetchingStrategy used to pull data back from his ORM. This sounds like his application would have many 1:1 abstractions.</p></blockquote> <p>Can this be true, or can we consolidate <a href="http://martinfowler.com/bliki/RoleInterface.html">Role Interfaces</a> with the <a href="http://parlezuml.com/blog/?postid=934">Reused Abstractions Principle (RAP)</a>  -  preferably without resorting to a <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern">Service Locator</a>? Yes, of course we can.</p> <p>In Udi Dahan's talks, we see various examples where he queries a Service Locator for a Role Interface. If the Service Locator returns an instance he uses it; otherwise, he falls back to some sort of default behavior. Here is my interpretation of Udi Dahan's slides:</p>
+	<p>
+		<pre style="margin: 0px"><span><font color="#0000ff"><font style="font-size: 10pt">public</font></font></span><font style="font-size: 10pt"> <span><font color="#0000ff">void</font></span> Persist(<span><font color="#2b91af">Customer</font></span> entity)</font>
+<font style="font-size: 10pt">{</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">var</font></span> validator = <span><font color="#0000ff">this</font></span>.serviceLocator</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Get&lt;<span><font color="#2b91af">IValidator</font></span>&lt;<span><font color="#2b91af">Customer</font></span>&gt;&gt;();</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">if</font></span> (validator != <span><font color="#0000ff">null</font></span>)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; validator.Validate(entity);</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; </font><span><font style="font-size: 10pt" color="#008000">// Save entity in actual store</font></span>
+<font style="font-size: 10pt">}</font></pre>
+</p>
+<p>This is actually not very pretty object-oriented code, but I have Udi Dahan suspected of choosing this implementation to better communicate the essence of how to use Role Interfaces. However, a more proper implementation would have a default (or Null Object) implementation of the Role Interface, and then the special implementation.</p>
+<p>If we assume that a NullValidator exists, we can require that the Service Locator can always serve up a proper instance of IValidator&lt;Customer&gt;. This enables us to simplify the Persist method to something like this:</p>
+<p>
+	<pre style="margin: 0px"><span><font color="#0000ff"><font style="font-size: 10pt">public</font></font></span><font style="font-size: 10pt"> <span><font color="#0000ff">void</font></span> Persist(<span><font color="#2b91af">Customer</font></span> entity)</font>
+<font style="font-size: 10pt">{</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">var</font></span> validator = <span><font color="#0000ff">this</font></span>.serviceLocator</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Get&lt;<span><font color="#2b91af">IValidator</font></span>&lt;<span><font color="#2b91af">Customer</font></span>&gt;&gt;();</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; validator.Validate(entity);</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; </font><span><font style="font-size: 10pt" color="#008000">// Save entity in actual store</font></span>
+<font style="font-size: 10pt">}</font></pre>
+</p>
+<p>Either the Service Locator returns a specialized CustomerValidator, or it returns the NullValidator. In any case, this assumption enables us to leverage the <a href="http://en.wikipedia.org/wiki/Liskov_substitution_principle">Liskov Substitution Principle</a> and refactor the conditional logic to polymorphism.</p>
+<p>In other words: every single time we discover the need to extract a Role Interface, we should end up with <em>at least</em> two implementations: the Null Object and the <a href="http://martinfowler.com/eaaCatalog/specialCase.html">Special Case</a>. Thus the RAP is satisfied.</p>
+<p>As a last refactoring, we can also get rid of the Service Locator. Instead, we can use Constructor Injection to inject IValidator&lt;Customer&gt; directly into the Persistence class:</p>
+<p>
+	<pre style="margin: 0px"><span><font color="#0000ff"><font style="font-size: 10pt">public</font></font></span><font style="font-size: 10pt"> <span><font color="#0000ff">class</font></span> <span><font color="#2b91af">CustomerPersistence</font></span> </font>
+<font style="font-size: 10pt">{</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">private</font></span> <span><font color="#0000ff">readonly</font></span> <span><font color="#2b91af">IValidator</font></span>&lt;<span><font color="#2b91af">Customer</font></span>&gt; validator;</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">public</font></span> CustomerPersistence(<span><font color="#2b91af">IValidator</font></span>&lt;<span><font color="#2b91af">Customer</font></span>&gt; v)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">if</font></span> (v == <span><font color="#0000ff">null</font></span>)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">throw</font></span> <span><font color="#0000ff">new</font></span> <span><font color="#2b91af">ArgumentNullException</font></span>(<span><font color="#a31515">"..."</font></span>);</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">this</font></span>.validator = v;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">public</font></span> <span><font color="#0000ff">void</font></span> Persist(<span><font color="#2b91af">Customer</font></span> entity)</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; {</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span><font color="#0000ff">this</font></span>.validator.Validate(entity);</font>
+<font style="font-size: 10pt">&nbsp;</font>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; </font><span><font style="font-size: 10pt" color="#008000">// Save entity in actual store</font></span>
+<font style="font-size: 10pt">&nbsp;&nbsp;&nbsp; }</font>
+<font style="font-size: 10pt">}</font></pre>
+</p>
+<p>Thus, the use of Role Interfaces in no way hinges on using a Service Locator, and everything is good again :)</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="62cc5dc8f38a49aca264c61f590ae1f2">
+	<div class="comment-author"><a href="http://glasscasket.myopenid.com">Bill</a></div>
+	<div class="comment-content">Great article.<br>
+<br>
+However, I'm sure there's a good answer for this but wouldn't you run into the same issue when it came time to use the CustomerPersistence class? How would you instantiate CustomerPersistence with it's dependencies without relying on a service locator?<br>
+<br>
+Thank you.</div>
+	<div class="comment-date">2011-02-10 00:50 UTC</div>
+</div>
+<div class="comment" id="dd1481ca99dd413fb5e3ebe261940169">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Use Constructor Injection all the way and defer composition until the application's entry point. In <a href="http://amzn.to/12p90MG">my book</a> I call this the <b>Composition Root</b>.</div>
+	<div class="comment-date">2011-02-10 06:04 UTC</div>
+</div>
+<div class="comment" id="49623a57284f4fdbb719879b96abb2f4">
+	<div class="comment-author"><a href="http://glasscasket.myopenid.com">Bill</a></div>
+	<div class="comment-content">Thanks, Mark. I just bought the book. :D</div>
+	<div class="comment-date">2011-02-10 22:19 UTC</div>
+</div>
+</div>

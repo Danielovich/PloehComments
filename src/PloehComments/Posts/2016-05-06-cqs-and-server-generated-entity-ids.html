@@ -1,0 +1,306 @@
+---
+layout: post
+title: "CQS and server-generated Entity IDs"
+description: "Is it a violation of Command Query Separation to update an ID property when saving an Entity to a database?"
+date: 2016-05-06 17:36 UTC
+tags: [Software Design]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		In my <a href="{{ site.production_url }}/encapsulation-and-solid">Encapsulation and SOLID</a> course on Pluralsight, I explain how the elusive object-oriented quality <em>encapsulation</em> can be approximated by the actionable principles of <a href="https://en.wikipedia.org/wiki/Command%E2%80%93query_separation">Command Query Separation</a> (CQS) and <a href="https://en.wikipedia.org/wiki/Robustness_principle">Postel's law</a>.
+	</p>
+	<p>
+		One of the questions that invariably arise when people first learn about CQS is how to deal with (database) server-generated IDs. While I've <a href="/2014/08/11/cqs-versus-server-generated-ids">already covered that question</a>, I recently came upon <a href="http://enterprisecraftsmanship.com/2014/11/15/cqs-with-database-generated-ids/#comment-2650708342">a variation of the question</a>:
+		<blockquote>
+			"The Create method is a command, then if the object passed to this method have some changes in their property, does it violate any rule? I mean that we can always get the new id from the object itself, so we don't need to return another integer. Is it good or bad practice?"
+		</blockquote>
+		In this article, I'll attempt to answer this question.
+	</p>
+	<h3 id="0a85c24e528a4778aa351d2345ff0c8f">
+		Returning an ID by mutating input <a href="#0a85c24e528a4778aa351d2345ff0c8f" title="permalink">#</a>
+	</h3>
+	<p>
+		I interpret the question like this: an Entity (as described in <a href="http://amzn.to/WBCwx7">DDD</a>) can have a mutable <code>Id</code> property. A <cdata>Create</cdata> method could save the Entity in a database, and then update the input value's <code>Id</code> property with the newly created record's ID.
+	</p>
+	<p>
+		As an example, consider this User class:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">User</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">int</span>&nbsp;Id&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">string</span>&nbsp;FirstName&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">string</span>&nbsp;LastName&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		In order to create a new User in your database, you could define an API like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IUserRepository</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Create(<span style="color:#2b91af;">User</span>&nbsp;user);
+}</pre>
+	</p>
+	<p>
+		An implementation of <code>IUserRepository</code> based on a relational database could perform an <code>INSERT</code> into the appropriate database, get the ID of the created record, and update the User object's <code>Id</code> property.
+	</p>
+	<p>
+		This test snippet demonstrates that behaviour:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;u&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">User</span>&nbsp;{&nbsp;FirstName&nbsp;=&nbsp;<span style="color:#a31515;">&quot;Jane&quot;</span>,&nbsp;LastName&nbsp;=&nbsp;<span style="color:#a31515;">&quot;Doe&quot;</span>&nbsp;};
+<span style="color:#2b91af;">Assert</span>.Equal(0,&nbsp;u.Id);
+ 
+repository.Create(u);
+<span style="color:#2b91af;">Assert</span>.NotEqual(0,&nbsp;u.Id);</pre>
+	</p>
+	<p>
+		When you create the <code>u</code> object, by not assigning a value to the <code>Id</code> property, it will have the default value of 0. Only after the <code>Create</code> method returns does <code>Id</code> hold a proper value.
+	</p>
+	<h3 id="5018d830da5246b69a28e43fd21cbb1f">
+		Evaluation <a href="#5018d830da5246b69a28e43fd21cbb1f" title="permalink">#</a>
+	</h3>
+	<p>
+		Does this design adhere to CQS? Yes, it does. The <code>Create</code> method doesn't return a value, but rather changes the state of the system. Not only does it create a record in your database, but it also changes the state of the <code>u</code> object. Nowhere does CQS state that an operation can't change more than a single part of the system.
+	</p>
+	<p>
+		Is it good design, then? I don't think that it is.
+	</p>
+	<p>
+		First, the design violates another part of encapsulation: protection of invariants. The invariants of any Entity is that is has an ID. It is the single defining feature of Entities that they have enduring and stable identities. When you change the identity of an Entity, it's no longer the same Entity. Yet this design allows exactly that:
+	</p>
+	<p>
+		<pre>u.Id&nbsp;=&nbsp;42;
+<span style="color:green;">//&nbsp;...</span>
+u.Id&nbsp;=&nbsp;1337;</pre>
+	</p>
+	<p>
+		Second, such a design puts considerable trust in the implicit protocol between any client and the implementation of <code>IUserRepository</code>. Not only must the <code>Create</code> method save the <code>User</code> object in a data store, but it must also update the <code>Id</code>.
+	</p>
+	<p>
+		What happens, though, if you replay the method call:
+	</p>
+	<p>
+		<pre>repository.Create(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">User</span>&nbsp;{&nbsp;FirstName&nbsp;=&nbsp;<span style="color:#a31515;">&quot;Ada&quot;</span>,&nbsp;LastName&nbsp;=&nbsp;<span style="color:#a31515;">&quot;Poe&quot;</span>&nbsp;});
+repository.Create(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">User</span>&nbsp;{&nbsp;FirstName&nbsp;=&nbsp;<span style="color:#a31515;">&quot;Ada&quot;</span>,&nbsp;LastName&nbsp;=&nbsp;<span style="color:#a31515;">&quot;Poe&quot;</span>&nbsp;});</pre>
+	</p>
+	<p>
+		This will result in duplicated entries, because the repository can't detect whether this is a replay, or simply two new users with the same name. You may find this example contrived, but in these days of cloud-based storage, it's common to apply retry strategies to clients.
+	</p>
+	<p>
+		If you use <a href="/2014/08/11/cqs-versus-server-generated-ids">one of the alternatives I previously outlined</a>, you will not have this problem.
+	</p>
+	<h3 id="379c0a435dc041d29413a56c6bfbf736">
+		Invariants <a href="#379c0a435dc041d29413a56c6bfbf736" title="permalink">#</a>
+	</h3>
+	<p>
+		Even if you don't care about replays or duplicates, you should still consider the invariants of Entities. As a minimum, you shouldn't be able to change the ID of an Entity. For a class like <code>User</code>, it'll also make client developers' job easier if it can provide some useful guarantees. This is part of Postel's law applied: be conservative in what you send. In this case, at least guarantee that no values will be null. Thus, a better (but by no means perfect) User class could be:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">User</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;User(<span style="color:blue;">int</span>&nbsp;id)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(id&nbsp;&lt;=&nbsp;0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentOutOfRangeException</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">nameof</span>(id),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#a31515;">&quot;The&nbsp;ID&nbsp;must&nbsp;be&nbsp;a&nbsp;(unique)&nbsp;positive&nbsp;value.&quot;</span>);;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.Id&nbsp;=&nbsp;id;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.firstName&nbsp;=&nbsp;<span style="color:#a31515;">&quot;&quot;</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.lastName&nbsp;=&nbsp;<span style="color:#a31515;">&quot;&quot;</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">int</span>&nbsp;Id&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">string</span>&nbsp;firstName;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">string</span>&nbsp;FirstName
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">get</span>&nbsp;{&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>.firstName;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">set</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(<span style="color:blue;">value</span>&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:blue;">nameof</span>(<span style="color:blue;">value</span>));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.firstName&nbsp;=&nbsp;<span style="color:blue;">value</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">string</span>&nbsp;lastName;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">string</span>&nbsp;LastName
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">get</span>&nbsp;{&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>.lastName;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">set</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(<span style="color:blue;">value</span>&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:blue;">nameof</span>(<span style="color:blue;">value</span>));
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.lastName&nbsp;=&nbsp;<span style="color:blue;">value</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		The constructor initialises all class fields, and ensure that <code>Id</code> is a positive integer. It can't ensure that the ID is unique, though - at least, not without querying the database, which would introduce other problems.
+	</p>
+	<p>
+		How do you create a new <code>User</code> object and save it in the database, then?
+	</p>
+	<p>
+		One option is this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IUserRepository</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Create(<span style="color:blue;">string</span>&nbsp;firstName,&nbsp;<span style="color:blue;">string</span>&nbsp;lastName);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">User</span>&nbsp;Read(<span style="color:blue;">int</span>&nbsp;id);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Update(<span style="color:#2b91af;">User</span>&nbsp;user);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Delete(<span style="color:blue;">int</span>&nbsp;id);
+}</pre>
+	</p>
+	<p>
+		The <code>Create</code> method doesn't use the <code>User</code> class at all, because at this time, the Entity doesn't yet exist. It only exists once it has an ID, and in this scenario, this only happens once the database has stored it and assigned it an ID.
+	</p>
+	<p>
+		Other methods can still use the <code>User</code> class as either input or output, because once the Entity has an ID, its invariants are satisfied.
+	</p>
+	<p>
+		There are other problems with this design, though, so I still prefer <a href="/2014/08/11/cqs-versus-server-generated-ids">the alternatives I originally sketched</a>.
+	</p>
+	<h3 id="8e46171ac6574e3098141dfd4c44c3e6">
+		Conclusion <a href="#8e46171ac6574e3098141dfd4c44c3e6" title="permalink">#</a>
+	</h3>
+	<p>
+		Proper object-oriented design should, as a bare minimum, consider <em>encapsulation</em>. This includes protecting the invariants of objects. For Entities, it means that an Entity must always have a stable and enduring identity. Well-designed Entities guarantee that identity values are always present and immutable. This requirement tend to be at odds with most popular Object-Relational Mappers (ORM), which require that ID fields are externally assignable. In order to use ORMs, most programmers compromise on encapsulation, ending up with systems that are relational in nature, but far from object-oriented.
+	</p>
+</div>
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">Comments</h2>
+	<div class="comment" id="34a1cc1aebf84e169f518352d3bf19e8">
+		<div class="comment-author"><a href="http://enterprisecraftsmanship.com/">Vladimir Khorikov</a></div>
+		<div class="comment-content">
+			<p>
+				>" This includes protecting the invariants of objects. For Entities, it means that an Entity must always have a stable and enduring identity."
+			</p>
+			<p>
+				Great points.
+			</p>
+			<p>
+				However, how would you get from <em>void Create(string firstName, string lastName)</em> to <em>User Read(int id)</em> especially if an entity doesn't have a natural key?
+			</p>
+		</div>
+		<div class="comment-date">2016-05-06 18:26 UTC</div>
+	</div>
+
+  <div class="comment" id="b46a79d34936452d84421cc8759afe75">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Vladimir, thank you for writing. Exactly how you get the ID depends on the exact requirements of your application. As an example, if you're developing a web application, you may simply be creating the user, and then that's the end of the HTTP request. Meanwhile, asynchronously, a background process is performing the actual database insertion and subsequently sends an email to the user with a link to click in order to verify the email. In that link is the generated ID, so when your server receives the next request, you already know the ID.
+			</p>
+			<p>
+				That may not always be a practical strategy, but I started to describe this technique, because my experience with CQRS and REST tells me that you have lots of options for communicating state and identity. Still, if you need an ID straight away, you can always pass a GUID as a correlation ID, so that you can later find the Entity you created. That's the technique I <a href="/2014/08/11/cqs-versus-server-generated-ids">originally described</a>.
+			</p>
+		</div>
+		<div class="comment-date">2016-05-06 19:04 UTC</div>
+	</div>
+
+  <div class="comment" id="1ce9248e341c444a8978b8d79cf37476">
+		<div class="comment-author"><a href="http://enterprisecraftsmanship.com/">Vladimir Khorikov</a></div>
+		<div class="comment-content">
+			<p>
+				Thank you for the reply.
+			</p>
+			<p>
+				BTW, ORMs don't require you to make Ids externally assignable. You can have ORMs assign Ids for you internally, and that's a preferred design in most cases. Also, you can make the Id setters non-public and thus protect entities' encapsulation. There still are issues, of course. Namely, entities don't have established identities until they are saved to the DB or added to the Context/Session. But this issue isn't that big comparing to what you described in the post.
+			</p>
+		</div>
+		<div class="comment-date">2016-05-06 19:25 UTC</div>
+	</div>
+	<div class="comment" id="56a92a0784fa45d1af8f538a548d464b">
+		<div class="comment-author">Ethan Nelson</div>
+		<div class="comment-content">
+		<p>
+			I was skimming through the comments and had this nagging suspicion that the entire topic of, "how do I get my ID with CQS", was a false dichotomy.  The premise that the "ID" stored in the database is the "identity" of the object or entity I think can be challenged.
+		</p>
+		<p>
+			I prefer to look at the "ID" as purely database implementation details.  Assuming the repository is SQL, the key type preferred by db admins will be the smallest-reasonable monotonically increasing ID... namely INT.  But switch to Amazon DynamoDB and that conclusion flies out the window.  With their totally managed and distributed indexes and hashing algorithms... GUID's would be fantastic.
+		</p>
+		<p>
+			What I WISH developers would do is take the time to think about their Domain and form their own understanding of what truly defines the identity of the entity.  Whatever decision they make, it translates to a "natural key" for persistence.
+		</p>
+		<p>
+			Natural keys are great because a developer has promised, "these combinations of properties uniquely identify entities of type T".  The result is unique indexes that can have dramatic performance benefits... outside the application benefit of being able to construct your repository like this:
+<pre style="overflow:auto;font-family:consolas;font-size:13px;padding:9.5px;margin-top:0px;margin-bottom:10px;line-height:1.42857;word-break:break-all;word-wrap:break-word;border:1px solid rgb(204,204,204);border-radius:4px;background-color:rgb(245,245,245)"><span style="color:blue">public</span>&nbsp;<span style="color:blue">interface</span>&nbsp;<span style="color:rgb(43,145,175)">IRepository</span>&lt;<wbr>T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue">void</span>&nbsp;Create(T&nbsp;item);
+}</pre>
+		<p>
+			As for the "ID" field?  Who cares?... that's up to the database.  The developer already knows exactly how to find this T.  I wouldn't even include it on the domain model object.
+		</p>
+		<p>
+			This would give db admins options.  We can look at the natural key size, evaluate how it is queried and order it appropriately.  We can decide if the nature of typical joins merit clustering (as is common with Header -> Detail style records).  If needed, we can optimize lookup of large keys through stored procedures and computed persisted checksum columns.  Nullability and default values become part of design discussions on the front end.  Finally, if we feel like it... we can assign a surrogate key, or use a GUID.  The developer doesn't care, our dba's do.
+		</p>
+		<p>
+			Thinking back to my last 6 or so development projects, I've never had to "get the id".  The next operation is always a matter of query or command on unique criteria I was responsible for creating in the first place.  This approach makes my dba's happy.
+		</p>
+		</div>
+		<div class="comment-date">2016-05-10 15:06 UTC</div>
+	</div>
+
+  <div class="comment" id="0dee5ebc7f9a48658630359df990520e">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Ethan, thank you for your comment; I agree with 90 percent of what you wrote, which is also the reason I prefer the options I <a href="/2014/08/11/cqs-versus-server-generated-ids">previously outlined</a>.
+			</p>
+			<p>
+				Entities don't always have 'natural IDs', though, and even when they have, experience has taught me not to use them. Is a person's email address a natural ID? It is, but people change email addresses.
+			</p>
+			<p>
+				Here in Denmark, for many years many public software systems have used the <a href="https://en.wikipedia.org/wiki/Personal_identification_number_(Denmark)">Danish personal identification numbers</a> as natural keys, as they were assumed to be nationally unique and stable. These numbers encode various information about a person, such as birth-date and sex. A few inhabitants, however, get sex change operations, and then desire a new number that corresponds to their new sex. Increasingly, these requests are being granted. New ID, same person.
+			</p>
+			<p>
+				I've seen such changes happen so many times during my career that I've become distrustful of 'natural IDs'. If I need to identify an Entity, I usually attach a GUID to it.
+			</p>
+		</div>
+		<div class="comment-date">2016-05-10 20:04 UTC</div>
+	</div>
+
+	<div class="comment" id="33151ad98fad4e8ab4e778197ec6303f">
+		<div class="comment-author">Ethan Nelson</div>
+		<div class="comment-content">
+		<p>
+			With regard to entity identification, I'm not sure stability matters.  Who cares if the email address changes... as long as it is unique?  Uniqueness is sufficient for the application to identify the entity.  I agree from a strictly database standpoint; I'm not thrilled about assigning a primary key to a natural key due to the stability issue across relationships.  But that does not invalidate the key for use as an identity in my mind.  Both indexes can exist, both be unique, and each with their own purpose.
+		</p>
+		<p>
+			Also, it is difficult for me to envision a scenario where there is no natural key.  If there are two rows where the only difference is an auto-incrementing integer, or different guids... what is the meaning of one row versus the next?  That meaning cannot, by definition, be contained in the surrogate keys... they add nothing to the business meaning of the entity.
+		</p>
+		<p>
+			I feel I've derailed the discussion into database modeling theory, and we are talking about CQS with "create the entity" as a stimulating use case.  Suffice it to say, IMHO, if (a, b) is unique today according to business rule, than it should be my unique identity from a developer perspective.  By leaving row identifiers up to DBA's and dropping them from my domain model entirely, I minimize impact to those technical implementations when the business rules change such that (a, b, c) becomes the new unique, and, preserve CQS in the process.
+		</p>
+		</div>
+		<div class="comment-date">2016-05-10 23:41 UTC</div>
+	</div>
+
+	<div class="comment" id="1188ea0d07674d2e862727cdac07c21b">
+		<div class="comment-author">Endy Tjahjono</div>
+		<div class="comment-content">
+			<p>
+				SQL Server has a feature called 'sequence' (from 2012 and above if I'm not mistaken). We can use sequence to generate unique int ID instead of using identity column. The sequence can be called without inserting row to the table. We can create a service that call this sequence to generate the next running number. The UI code can call this running number generator service to get a new ID, and then send the new entity complete with ID to the create service.
+			</p>
+		</div>
+		<div class="comment-date">2017-02-06 07:19:00 UTC</div>
+	</div>
+	
+</div>

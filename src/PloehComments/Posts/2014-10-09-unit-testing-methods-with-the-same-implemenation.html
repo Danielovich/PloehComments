@@ -1,0 +1,266 @@
+---
+layout: post
+title: "Unit Testing methods with the same implementation"
+description: "How do you comprehensibly unit test two methods that are supposed to have the same behaviour?"
+date: 2014-10-9 18:45 UTC
+tags: [Unit Testing, xUnit.net]
+---
+{% include JB/setup %}
+
+<div id="post">
+  <p>
+    <em>{{ page.description }}</em>
+  </p>
+  <p>
+    Occasionally, you may find yourself in situations where you need to have two (or more) public methods with the same behaviour. How do you properly cover them with unit tests?
+  </p>
+  <p>
+    The obvious answer is to copy and paste all the tests, but that leads to test duplication. People with a superficial knowledge of DAMP (Descriptive And Meaningful Phrases) would argue that test duplication isn't a problem, but it <em>is</em>, simply because it's more code that you need to maintain.
+  </p>
+  <p>
+    Another approach may be to simply ignore one of those methods, effectively not testing it, but if you're writing <a href="/2012/12/18/RangersandZookeepers">Wildlife Software</a>, you have to have mechanisms in place that can protect you from introducing breaking changes.
+  </p>
+  <p>
+    This article outlines one approach you can use if your unit testing framework supports <a href="http://xunitpatterns.com/Parameterized%20Test.html">Parameterized Tests</a>.
+  </p>
+  <h3 id="e5902beafaaf40298a0de41157c8a300">
+    Example problem <a href="#e5902beafaaf40298a0de41157c8a300" title="permalink">#</a>
+  </h3>
+  <p>
+    Recently, I was working on a class with a complex AppendAsync method:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Task</span>&nbsp;AppendAsync(T&nbsp;@event)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Lots&nbsp;of&nbsp;stuff&nbsp;going&nbsp;on&nbsp;here...</span>
+}</pre>
+  </p>
+  <p>
+    To incrementally define the behaviour of that AppendAsync method, I had used Test-Driven Development to implement it, ending with 13 test methods. None of those test methods were simple one-liners; they ranged from 3 to 18 statements, and averaged 8 statements per test.
+  </p>
+  <p>
+    After having fully implemented the AppendAsync method, I wanted to make the containing class implement <a href="http://msdn.microsoft.com/en-us/library/dd783449.aspx">IObserver&lt;T&gt;</a>, with the OnNext method implemented like this:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;OnNext(T&nbsp;value)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.AppendAsync(value).Wait();
+}</pre>
+  </p>
+  <p>
+    That was my plan, but how could I provide appropriate coverage with unit tests of that OnNext implementation, given that I didn't want to copy and paste those 13 test methods?
+  </p>
+  <h3 id="ecd7fb0041c341a38b74316f327ab18a">
+    Parameterized Tests with varied behaviour <a href="#ecd7fb0041c341a38b74316f327ab18a" title="permalink">#</a>
+  </h3>
+  <p>
+    In this code base, I was already using <a href="http://xunit.github.io">xUnit.net</a> with its nice support for Parameterized Tests; in fact, I was using <a href="http://www.nuget.org/packages/AutoFixture.Xunit">AutoFixture.Xunit</a> with attribute-based test input, so my tests looked like this:
+  </p>
+  <p>
+    <pre>[<span style="color:#2b91af;">Theory</span>,&nbsp;<span style="color:#2b91af;">AutoAtomData</span>]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;AppendAsyncFirstEventWritesPageBeforeIndex(
+&nbsp;&nbsp;&nbsp;&nbsp;[<span style="color:#2b91af;">Frozen</span>(As&nbsp;=&nbsp;<span style="color:blue;">typeof</span>(<span style="color:#2b91af;">ITypeResolver</span>))]<span style="color:#2b91af;">TestEventTypeResolver</span>&nbsp;dummyResolver,
+&nbsp;&nbsp;&nbsp;&nbsp;[<span style="color:#2b91af;">Frozen</span>(As&nbsp;=&nbsp;<span style="color:blue;">typeof</span>(<span style="color:#2b91af;">IContentSerializer</span>))]<span style="color:#2b91af;">XmlContentSerializer</span>&nbsp;dummySerializer,
+&nbsp;&nbsp;&nbsp;&nbsp;[<span style="color:#2b91af;">Frozen</span>(As&nbsp;=&nbsp;<span style="color:blue;">typeof</span>(<span style="color:#2b91af;">IAtomEventStorage</span>))]<span style="color:#2b91af;">SpyAtomEventStore</span>&nbsp;spyStore,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">AtomEventObserver</span>&lt;<span style="color:#2b91af;">XmlAttributedTestEventX</span>&gt;&nbsp;sut,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">XmlAttributedTestEventX</span>&nbsp;@event)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;sut.AppendAsync(@event).Wait();
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;feed&nbsp;=&nbsp;<span style="color:#2b91af;">Assert</span>.IsAssignableFrom&lt;<span style="color:#2b91af;">AtomFeed</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;spyStore.ObservedArguments.Last());
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Assert</span>.Equal(sut.Id,&nbsp;feed.Id);
+}</pre>
+  </p>
+  <p>
+    This is the sort of test I needed to duplicate, but instead of calling <code>sut.AppendAsync(@event).Wait();</code> I needed to call <code>sut.OnNext(@event);</code>. The only variation in the test should be in the <a href="http://xunitpatterns.com/exercise%20SUT.html">exercise SUT</a> phase of the test. How can you do that, while maintaining the terseness of using attributes for defining test cases? The problem with using attributes is that you can only supply primitive values as input.
+  </p>
+  <p>
+    First, I briefly experimented with applying the <a href="http://en.wikipedia.org/wiki/Template_method_pattern">Template Method</a> pattern, and while I got it working, I didn't like having to rely on inheritance. Instead, I devised this little, test-specific type hierarchy:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IAtomEventWriter</span>&lt;T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;WriteTo(<span style="color:#2b91af;">AtomEventObserver</span>&lt;T&gt;&nbsp;observer,&nbsp;T&nbsp;@event);
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">enum</span>&nbsp;<span style="color:#2b91af;">AtomEventWriteUsage</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;AppendAsync&nbsp;=&nbsp;0,
+&nbsp;&nbsp;&nbsp;&nbsp;OnNext
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">AppendAsyncAtomEventWriter</span>&lt;T&gt;&nbsp;:&nbsp;<span style="color:#2b91af;">IAtomEventWriter</span>&lt;T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;WriteTo(<span style="color:#2b91af;">AtomEventObserver</span>&lt;T&gt;&nbsp;observer,&nbsp;T&nbsp;@event)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;observer.AppendAsync(@event).Wait();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">OnNextAtomEventWriter</span>&lt;T&gt;&nbsp;:&nbsp;<span style="color:#2b91af;">IAtomEventWriter</span>&lt;T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;WriteTo(<span style="color:#2b91af;">AtomEventObserver</span>&lt;T&gt;&nbsp;observer,&nbsp;T&nbsp;@event)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;observer.OnNext(@event);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">AtomEventWriterFactory</span>&lt;T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IAtomEventWriter</span>&lt;T&gt;&nbsp;Create(<span style="color:#2b91af;">AtomEventWriteUsage</span>&nbsp;use)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">switch</span>&nbsp;(use)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">case</span>&nbsp;<span style="color:#2b91af;">AtomEventWriteUsage</span>.AppendAsync:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">AppendAsyncAtomEventWriter</span>&lt;T&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">case</span>&nbsp;<span style="color:#2b91af;">AtomEventWriteUsage</span>.OnNext:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">OnNextAtomEventWriter</span>&lt;T&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">default</span>:
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentOutOfRangeException</span>(<span style="color:#a31515;">&quot;Unexpected&nbsp;value.&quot;</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+  </p>
+  <p>
+    This is test-specific code that I added to my unit tests, so there's no test-induced damage here. These types are defined in the unit test library, and are not available in the SUT library at all.
+  </p>
+  <p>
+    Notice that I defined an interface to abstract how to use the SUT for this particular test purpose. There are two small classes implementing that interface: one using AppendAsync, and one using OnNext. However, this small polymorphic type hierarchy can't be supplied from attributes, so I also added an enum, and a concrete factory to translate from the enum to the writer interface.
+  </p>
+  <p>
+    This test-specific type system enabled me to refactor my unit tests to something like this:
+  </p>
+  <p>
+    <pre>[<span style="color:#2b91af;">Theory</span>]
+[<span style="color:#2b91af;">InlineAutoAtomData</span>(<span style="color:#2b91af;">AtomEventWriteUsage</span>.AppendAsync)]
+[<span style="color:#2b91af;">InlineAutoAtomData</span>(<span style="color:#2b91af;">AtomEventWriteUsage</span>.OnNext)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;WriteFirstEventWritesPageBeforeIndex(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">AtomEventWriteUsage</span>&nbsp;usage,
+&nbsp;&nbsp;&nbsp;&nbsp;[<span style="color:#2b91af;">Frozen</span>(As&nbsp;=&nbsp;<span style="color:blue;">typeof</span>(<span style="color:#2b91af;">ITypeResolver</span>))]<span style="color:#2b91af;">TestEventTypeResolver</span>&nbsp;dummyResolver,
+&nbsp;&nbsp;&nbsp;&nbsp;[<span style="color:#2b91af;">Frozen</span>(As&nbsp;=&nbsp;<span style="color:blue;">typeof</span>(<span style="color:#2b91af;">IContentSerializer</span>))]<span style="color:#2b91af;">XmlContentSerializer</span>&nbsp;dummySerializer,
+&nbsp;&nbsp;&nbsp;&nbsp;[<span style="color:#2b91af;">Frozen</span>(As&nbsp;=&nbsp;<span style="color:blue;">typeof</span>(<span style="color:#2b91af;">IAtomEventStorage</span>))]<span style="color:#2b91af;">SpyAtomEventStore</span>&nbsp;spyStore,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">AtomEventWriterFactory</span>&lt;<span style="color:#2b91af;">XmlAttributedTestEventX</span>&gt;&nbsp;writerFactory,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">AtomEventObserver</span>&lt;<span style="color:#2b91af;">XmlAttributedTestEventX</span>&gt;&nbsp;sut,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">XmlAttributedTestEventX</span>&nbsp;@event)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;writerFactory.Create(usage).WriteTo(sut,&nbsp;@event);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;feed&nbsp;=&nbsp;<span style="color:#2b91af;">Assert</span>.IsAssignableFrom&lt;<span style="color:#2b91af;">AtomFeed</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;spyStore.ObservedArguments.Last());
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Assert</span>.Equal(sut.Id,&nbsp;feed.Id);
+}</pre>
+  </p>
+  <p>
+    Notice that this is the same test case as before, but because of the two occurrences of the [InlineAutoAtomData] attribute, each test method is being executed twice: once with AppendAsync, and once with OnNext.
+  </p>
+  <p>
+    This gave me coverage, and protection against breaking changes of both methods, without making any test-induced damage.
+  </p>
+  <p>
+    The entire source code in this article is available <a href="https://github.com/GreanTech/AtomEventStore">here</a>. The commit just before the refactoring is <a href="https://github.com/GreanTech/AtomEventStore/commit/9521a38e2f0d502ebca0be5177b555ea7b01c0ec">this one</a>, and the commit with the completed refactoring is <a href="https://github.com/GreanTech/AtomEventStore/commit/1d4f79cd56cdca7efdce070fcdb6e407adeb144f">this one</a>.
+  </p>
+</div>
+<div id="comments">
+  <hr/>
+  <h2 id="comments-header">Comments</h2>
+  <div class="comment" id="19e600d1ad1f4936813f4ab86b703f5e">
+    <div class="comment-author"><a href="http://twitter.com/ricmrodrigues">Ricardo Rodrigues</a></div>
+    <div class="comment-content">I'm not familiar with xUnit, but does it now allow to use something along the lines of nUnit's TestCaseSource to provide the different implementations? From an OOD your implementation is flawless, but I just believe that for tests, simplicity is key so that readability is not affected and intent is instantly captured.</div>
+    <div class="comment-date">2014-10-29 14:34 UTC</div>
+  </div>
+  <div class="comment" id="86c76e3222244adbbf102f0c4db903c2">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Ricardo, thank you for writing. xUnit.net's equivalent to [TestCaseSource] is to combine the [Theory] attribute with one of the built-in [PropertyData], [ClassData], etc. attributes. However, in this particular case, there's a couple of reasons that I didn't find those attractive:
+        <ul>
+          <li>
+            When supplying test data in this way, you can write any code you'd like, but you have to supply values for <em>all</em> the parameters for <em>all</em> the test cases. In the above example, I wanted to vary the System Under Test (SUT), while I didn't care about varying any of the other parameters. The above approach enabled my to do so in a fairly DRY manner.
+          </li>
+          <li>
+            In general, I don't like using [PropertyData], [ClassData] (or NUnit's [TestCaseSource]) unless I truly have a set of <em>reusable</em> test cases. Having a member or type encapsulating a set of test cases implies that these test cases are reusable - but they rarely are.
+          </li>
+        </ul>
+        Perhaps a better approach would be to use something like <a href="https://github.com/GreanTech/Exude">Exude</a>, but while I wish such semantics were built into xUnit.net or NUnit directly, I didn't want to take a dependency on Exude only for a couple of tests.
+      </p>
+    </div>
+    <div class="comment-date">2014-10-30 12:26 UTC</div>
+  </div>  
+  <div class="comment" id="ae19ced9238941f6b4b944397da8d865">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>
+        That's an interesting take on test reuse. Exude also reminds me of F#'s Expecto. 
+
+        I'd be curious what you think of a few other reuse approaches.
+      </p>
+      <p>
+        First, I've found <a href="https://github.com/haf/expecto">expecto's</a> composable tests lists make <a href="https://spencerfarley.com/2021/10/08/testapi-in-fsharp-revised/">reuse quite intuitive</a>.
+      </p>
+        
+      <p>
+        Second, some dev friends of mine have been contemplating test reuse.
+      </p>
+      <p>
+        The root idea sourced from a friend thinking about the fragile test problem. 
+        <a href="https://codewithspoon.com/2019/12/stop-corrupting-yourself-test-against-abstractions/">He concluded that tests should be decoupled from the system</a>. 
+        Effectively, the test creates it's own anti-corruption layer which allows tests to stay clean even if the system is messy. 
+        This pushes tests to reflect requirements over implementations, which are much more stable. 
+        Initially skeptical, I've <a href="https://spencerfarley.com/2020/08/21/test-api-inpractice/">found significant value</a> in the approach. 
+        Systems with <a href="https://martinfowler.com/bliki/RoleInterface.html">role-based interfaces</a> (e.g. ports and adapters) can write one core test suite verifying behaviors for all implementations of that interface. 
+      </p>
+      <p>
+        I've been using this paradigm to map test reuse back to C#. The test list is a class with facts/theories and a constructor that takes the test list's anti-corruption abstraction as a constructor argument. Then I can make implementation-specific tests by inheriting the list and passing an implementation. The same could be done against a role interface instead of a test-specific abstraction if desired.
+      </p>
+      <p>
+        Taking it even further, I've been wondering if such tests could practically <a href="https://spencerfarley.com/2021/10/31/efficient-inter-team-contracts-with-acceptance-tests/">act as acceptance tests between teams</a> as a lower cost alternative to gherkin.
+      </p>
+      <p>
+        That ended up long. Any depth of feedback would be appreciated.
+      </p>    
+    </div>
+    <div class="comment-date">2022-02-22 02:26 UTC</div>
+  </div>
+
+  <div class="comment" id="c9f45b24cb5944e5934acd86921f4511">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Spencer, thank you for writing. Tests as first-class values are certainly much to be preferred. That's <a href="/2018/05/07/inlined-hunit-test-lists">how I write parametrised tests in Haskell</a>, because <a href="https://hackage.haskell.org/package/HUnit">HUnit</a> models tests as values. I'm aware that Expecto does the same.
+      </p>
+      <p>
+        I also agree with you that decoupling tests from implementation details is beneficial. People tend to think of this as only possible with Acceptance Tests or BDD-style tests, but I find that it's also <a href="/2021/05/03/structural-equality-for-better-tests">possible in the small</a>. In general, I've found property-based testing to be useful as a technique to add some distance between the test and the system under test.
+      </p>
+      <p>
+        The idea about using Acceptance Tests between teams sounds like a technique that Ian Robinson calls <a href="https://martinfowler.com/articles/consumerDrivenContracts.html">Consumer-Driven Contracts</a>.
+      </p>
+    </div>
+    <div class="comment-date">2022-02-25 14:45 UTC</div>
+  </div>
+  <div class="comment" id="4f05782279ce4e1097ade558fa3722cf">
+    <div class="comment-author"><a href="https://spencerfarley.com">Spencer Farley</a></div>
+    <div class="comment-content">
+      <p>
+        Thank you for your feedback. I'm glad you've also found value in tests as values and decoupling tests from implementations.
+      </p>
+      <p>
+        Consumer-Driven Contracts does seem to share a lot in common with my idea for using implementation-decoupled tests as acceptance tests.
+        Ian's idea starts from thinking about the provider and how it can manage message compatibility with consumers. 
+        Mine started from the consumer and testing multiple implementations of a port abstraction. 
+        Then, realizing those tests could also be reused by external consumers (extension contributors, upstream teams).
+      </p>
+      <p>
+        I think the test-focused approach is able to partially mitigate a few of his concerns. 
+        First, the overall added work may be less because the tests already need to be defined for the consumer whether or not there is a complex externally-owned provider.
+        Second, package systems have reached general adoption since his post and greatly improve coordination of shared code.
+        Unit tests [can already be shared with a package manager](https://spencerfarley.com/2021/11/05/acceptance-test-logisitcs/), though there is definitely room for improvement.
+      </p>
+      <p>
+        I'm a smidge sad because I thought I'd had an original idea, but I'm very glad to discover another author to follow. Thanks for connecting me!
+      </p>
+    </div>
+    <div class="comment-date">2022-02-28 17:51 UTC</div>
+  </div>
+</div>
+

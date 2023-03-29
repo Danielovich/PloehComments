@@ -1,0 +1,356 @@
+---
+layout: post
+tags: [Castle Windsor, Dependency Injection, Services, ASP.NET Web API]
+date: 2012-10-03 03:45:22 UTC
+title: "Dependency Injection in ASP.NET Web API with Castle Windsor"
+description: "This post describes how to compose Controllers with Castle Windsor in the ASP.NET Web API"
+---
+{% include JB/setup %}
+
+<div id="post">
+<p>
+	<em>{{ page.description }}</em>
+</p>
+<p>
+  In my <a href="/2012/09/28/DependencyInjectionAndLifetimeManagementWithASPNETWebAPI.aspx">previous post</a> I described how to use Dependency Injection (DI) in the <a href="http://www.asp.net/web-api">ASP.NET Web API</a> using Poor Man's DI. It explained the basic building blocks, including the relevant extensibility points in the Web API. Poor Man's DI can be an easy way to get started with DI and may be sufficient for a small code base, but for larger code bases you may want to adopt a more convention-based approach. Some DI Containers provide excellent support for Convention over Configuration. One of these is <a href="http://docs.castleproject.org/Windsor.MainPage.ashx">Castle Windsor</a>.
+</p>
+<h3 id="ad821840294543bab18b09fa3a7c9726">
+	Composition Root <a href="#ad821840294543bab18b09fa3a7c9726" title="permalink">#</a>
+</h3>
+<p>
+  Instead of the PoorMansCompositionRoot from the example in the previous post, you can create an implementation of <a href="http://msdn.microsoft.com/en-us/library/system.web.http.dispatcher.ihttpcontrolleractivator.aspx">IHttpControllerActivator</a> that acts as an <a href="http://en.wikipedia.org/wiki/Adapter_pattern">Adapter</a> over Castle Windsor:
+</p>
+<p>
+  </p>
+<pre style="margin: 0px;"><span style="color: blue;">public</span> <span style="color: blue;">class</span> <span style="color: #2b91af;">WindsorCompositionRoot</span> : <span style="color: #2b91af;">IHttpControllerActivator</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">private</span> <span style="color: blue;">readonly</span> <span style="color: #2b91af;">IWindsorContainer</span> container;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> WindsorCompositionRoot(<span style="color: #2b91af;">IWindsorContainer</span> container)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">this</span>.container = container;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: #2b91af;">IHttpController</span> Create(
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: #2b91af;">HttpRequestMessage</span> request,
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: #2b91af;">HttpControllerDescriptor</span> controllerDescriptor,
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: #2b91af;">Type</span> controllerType)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> controller =
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; (<span style="color: #2b91af;">IHttpController</span>)<span style="color: blue;">this</span>.container.Resolve(controllerType);
+&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; request.RegisterForDispose(
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">new</span> <span style="color: #2b91af;">Release</span>(
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; () =&gt; <span style="color: blue;">this</span>.container.Release(controller)));
+&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">return</span> controller;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">private</span> <span style="color: blue;">class</span> <span style="color: #2b91af;">Release</span> : <span style="color: #2b91af;">IDisposable</span>
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">private</span> <span style="color: blue;">readonly</span> <span style="color: #2b91af;">Action</span> release;
+&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> Release(<span style="color: #2b91af;">Action</span> release)
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">this</span>.release = release;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> Dispose()
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">this</span>.release();
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+<p></p>
+<p>
+  That's pretty much all there is to it, but there are a few points of interest here. First of all, the class implements IHttpControllerActivator just like the previous PoorMansCompositionRoot. That's the extensibility point you need to implement in order to create Controller instances. However, instead of hard-coding knowledge of concrete Controller classes into the Create method, you delegate creation of the instance to an injected IWindsorContainer instance. However, before returning the IHttpController instance created by calling container.Resolve, you register that object graph for disposal.
+</p>
+<p>
+  With Castle Windsor decommissioning is done by invoking the Release method on IWindsorContainer. The input into the Release method is the object graph originally created by IWindsorContainer.Resolve. That's the rule from the <a href="/2010/09/29/TheRegisterResolveReleasePattern.aspx">Register Resolve Release pattern</a>: What you Resolve you must also Release. This ensures that if the Resolve method created a disposable instance (even deep in the object graph), the Release method signals to the container that it can now safely dispose of it. You can read more about this subject in <a href="http://amzn.to/12p90MG">my book</a>.
+</p>
+<p>
+  The <a href="http://msdn.microsoft.com/en-us/library/system.net.http.httprequestmessageextensions.registerfordispose.aspx">RegisterForDispose</a> method takes as a parameter an <a href="http://msdn.microsoft.com/en-us/library/system.idisposable.aspx">IDisposable</a> instance, and not a Release method, so you must wrap the call to the Release method in an IDisposable implementation. That's the little private Release class in the code example. It adapts an <a href="http://msdn.microsoft.com/en-us/library/system.action.aspx">Action delegate</a> into a class which implements IDisposable, invoking the code block when Dispose is invoked. The code block you pass into the constructor of the Release class is a closure around the outer variables <code>this.container</code> and <code>controller</code> so when the Dispose method is called, the container releases the controller (and the entire object graph beneath it).
+</p>
+<h3 id="7a580fe878214c54a4c49bd3772ab756">
+	Configuring the container <a href="#7a580fe878214c54a4c49bd3772ab756" title="permalink">#</a>
+</h3>
+<p>
+  With the WindsorCompositionRoot class in place, all that's left is to set it all up in Global.asax. Since IWindsorContainer itself implements IDisposable, you should create and configure the container in the application's constructor so that you can dispose it when the application exits:
+</p>
+<p>
+  </p>
+<pre style="margin: 0px;"><span style="color: blue;">private</span> <span style="color: blue;">readonly</span> <span style="color: #2b91af;">IWindsorContainer</span> container;
+&nbsp;
+<span style="color: blue;">public</span> WebApiApplication()
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">this</span>.container =
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: blue;">new</span> <span style="color: #2b91af;">WindsorContainer</span>().Install(<span style="color: blue;">new</span> <span style="color: #2b91af;">DependencyConventions</span>());
+}
+&nbsp;
+<span style="color: blue;">public</span> <span style="color: blue;">override</span> <span style="color: blue;">void</span> Dispose()
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">this</span>.container.Dispose();
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">base</span>.Dispose();
+}</pre>
+<p></p>
+<p>
+  Notice that you can configure the container with the Install method directly in the constructor. That's the Register phase of the Register Resolve Release pattern.
+</p>
+<p>
+  In Application_Start you tell the ASP.NET Web API about your WindsorCompositionRoot instead of PoorMansCompositionRoot from the previous example:
+</p>
+<p>
+  </p>
+<pre style="margin: 0px;"><span style="color: #2b91af;">GlobalConfiguration</span>.Configuration.Services.Replace(
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">typeof</span>(<span style="color: #2b91af;">IHttpControllerActivator</span>),
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">new</span> <span style="color: #2b91af;">WindsorCompositionRoot</span>(<span style="color: blue;">this</span>.container));</pre>
+<p></p>
+<p>
+  Notice that the <code>container</code> instance field is passed into the constructor of WindsorCompositionRoot, so that it can use the container instance to Resolve Controller instances.
+</p>
+<h3 id="032b0259bc3a42ad912d65876549b8ed">
+	Summary <a href="#032b0259bc3a42ad912d65876549b8ed" title="permalink">#</a>
+</h3>
+<p>
+  Setting up DI in the ASP.NET Web API with a DI Container is easy, and it would work very similarly with other containers (not just Castle Windsor), although the Release mechanisms tend to be a bit different from container to container. You'll need to create an Adapter from IHttpControllerActivator to your container of choice and set it all up in the Global.asax.
+</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="32792a0e61104313bf8f00e9357ed464">
+	<div class="comment-author">Mahesh</div>
+	<div class="comment-content">Hi,<br>
+<br>
+I am getting an error -<br>
+<br>
+The type or namespace name 'DependencyConventions' could not be found (are you missing a using directive or an assembly reference?)<br>
+<br>
+I added Castle windsor via Nuget in VS 2012 Web Express.<br>
+<br>
+What's the problem?<br>
+<br>
+Thanks,<br>
+Mahesh.</div>
+	<div class="comment-date">2012-10-14 10:49 UTC</div>
+</div>
+<div class="comment" id="32792a0e61104313bf8f00e9357ed464">
+	<div class="comment-author">Luis</div>
+	<div class="comment-content">Hi Mark,<br>
+<br>
+Not even remotely related to Web API, but I was wondering if a blog post about CQRS and DI in general was in the pipeline. Last time I posted I hadn't read your book, now that I have, I'm finding myself reading your blog posts like a book and I can't wait for the next. Great book by the way, can't recommend it enough, unless you're on some sort of diet.<br>
+<br>
+Luis</div>
+	<div class="comment-date">2012-10-16 08:15 UTC</div>
+</div>
+<div class="comment" id="3af3ad29331e4134a15f878135058c58">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Thank you. Have you read <a href="http://msdn.microsoft.com/en-us/magazine/gg983487.aspx">my CQRS article</a>? For examples on using DI with CQRS, I'd like to suggest the <a href="https://github.com/ploeh/Booking">updated example code</a>.</div>
+	<div class="comment-date">2012-10-16 11:59 UTC</div>
+</div>
+<div class="comment" id="11898626066b48d28abaedae4440aac0">
+	<div class="comment-author">Simon</div>
+	<div class="comment-content">Hi Mark,<br>
+<br>
+Does the above implementation also resolve normal MVC4 website controllers? If so is there any extra setup required in the Global.asax file? Prior to MVC4 I was using the ControllerFactory method described in your book but is this still the best way?<br>
+</div>
+	<div class="comment-date">2012-10-17 08:12 UTC</div>
+</div>
+<div class="comment" id="6d3452f6338742e49a55ca4198050a0b">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">IHttpControllerActivator is a special Web API interface, as is IHttpController. MVC Controllers are not resolved with this API, but it's very similar to the approach outlined in my book.</div>
+	<div class="comment-date">2012-10-17 12:30 UTC</div>
+</div>
+<div class="comment" id="4aad1d461bfc40229d2c683074ee93f1">
+	<div class="comment-author">Rema Manual</div>
+	<div class="comment-content">Hi Mark,<br>
+<br>
+How about using Windsor/above technique for injecting dependencies into MVC 4 attributes? I am using customized Authorize and ExceptionFilter attributes and so far I have not found a nice, easy and clean way to inject dependencies into them?<br>
+<br>
+</div>
+	<div class="comment-date">2012-10-20 12:58 UTC</div>
+</div>
+<div class="comment" id="ee16da9980cd4b2c9bf74f6a3df18463">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">You can't use the <em>above</em> technique for injecting anything into MVC 4 attributes, since they aren't Controllers. The only way to inject dependencies into MVC attributes is by Property Injection, and if you read section 4.2 of <a href="http://amzn.to/12p90MG">my book</a> you'll see that there are many issues with this pattern.<br>
+<br>
+A better approach is <a href="http://stackoverflow.com/a/7194467/126014">to use global filters with behaviour, and use only passive attributes</a>.</div>
+	<div class="comment-date">2012-10-21 13:48 UTC</div>
+</div>
+<div class="comment" id="9467132e7c7f40e2afcd5db30f61ad36">
+	<div class="comment-author">Daniel Hilgarth</div>
+	<div class="comment-content">Thanks for your article. I adapted it to Autofac and I thought I'd share that code. <br>
+Autofac has the concept of LifetimeScopes. Using these, the code looks like the following:<br>
+<br>
+public IHttpController Create(HttpRequestMessage request, HttpControllerDescriptor controllerDescriptor, Type controllerType)<br>
+{<br>
+    var scope = _container.BeginLifetimeScope();<br>
+    var controller = (IHttpController)scope.Resolve(controllerType);<br>
+    request.RegisterForDispose(scope);<br>
+    return controller;<br>
+}<br>
+<br>
+If you want to register dependencies that are different for every request (like Hyprlinkr's RouteLinker), you can do this when beginning the lifetime scope:<br>
+<br>
+public IHttpController Create(HttpRequestMessage request, HttpControllerDescriptor controllerDescriptor, Type controllerType)<br>
+{<br>
+    var scope = _container.BeginLifetimeScope(x =&gt; RegisterRequestDependantResources(x, request));<br>
+    var controller = (IHttpController)scope.Resolve(controllerType);<br>
+    request.RegisterForDispose(scope);<br>
+    return controller;<br>
+}<br>
+<br>
+private static void RegisterRequestDependantResources(ContainerBuilder containerBuilder, HttpRequestMessage request)<br>
+{<br>
+    containerBuilder.RegisterInstance(new RouteLinker(request));<br>
+    containerBuilder.RegisterInstance(new ResourceLinkVerifier(request.GetConfiguration()));<br>
+}<br>
+<br>
+Sorry for the formatting, I have no idea how to format code here.</div>
+	<div class="comment-date">2012-10-26 18:54 UTC</div>
+</div>
+<div class="comment" id="1fd7822d8d8b40be94d09cdb70590786">
+	<div class="comment-author">Alexander</div>
+	<div class="comment-content">Hi Mark,<br>
+Nice article.<br>
+<br>
+As I understand WebApiApplication can be instantiated several times and disposed several times as well. This page(http://msdn.microsoft.com/en-gb/library/ms178473.aspx) says &quot;The Application_Start and Application_End methods are special methods that do not represent HttpApplication events. ASP.NET calls them once for the lifetime of the application domain, not for each HttpApplication instance.&quot;<br>
+So as I understand your approach we can get into a situation using disposed context. <br>
+<br>
+What do you think about this?</div>
+	<div class="comment-date">2012-11-20 02:32 UTC</div>
+</div><div class="comment">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">I've never experienced it to be a problem, so my guess is that in reality the documentation is off and there's only one instance of HttpApplication. Otherwise, the container should be disposed, and I've never seen that happen.</div>
+	<div class="comment-date">2012-11-20 08:07 UTC</div>
+</div>
+<div class="comment" id="90e118589a394986b2bf7d3f8db87d5d">
+	<div class="comment-author">Alexander</div>
+	<div class="comment-content">I've ended with static context in the HttpApplication. Create context in Application_Start and dispose Application_End. I think it's better for future once documentation become the reality:). For each AppDomain which possibly can be created we will have separate context.<br>
+Anyway your example is very useful for me.</div>
+	<div class="comment-date">2012-11-20 09:38 UTC</div>
+</div>
+<div class="comment" id="481592c9d1b3496ab0276f3135b45c45">
+	<div class="comment-author">Chris</div>
+	<div class="comment-content">Is the constructor the correct place to initialise the container?<br>
+<br>
+As there are multiple instances of HttpApplication per application<br>
+<br>
+(If I put a breakpoint in the constructor it gets hit multiple times)<br>
+<br>
+As you can see by these articles, there is not a single instance of HttpApplication, but multiple<br>
+<br>
+http://lowleveldesign.wordpress.com/2011/07/20/global-asax-in-asp-net/<br>
+http://msdn.microsoft.com/en-us/library/a0xez8f2(v=vs.71).aspx <br>
+<br>
+wouldn't it be more appropriate to go in Application_Start?<br>
+<br>
+<br>
+</div>
+	<div class="comment-date">2012-12-07 13:50 UTC</div>
+
+</div>
+<div class="comment" id="5ed7bbdb1d654afba786b405842c2c56">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">See previous comments.</div>
+	<div class="comment-date">2012-12-09 19:36 UTC</div>
+</div>
+
+
+<div class="comment" id="369682befd4c486ba67e273bcca88bf6">
+	<div class="comment-author"><a href="http://www.redturtle.co.uk">Will Webster</a></div>
+	<div class="comment-content">Thanks for this post. Very useful. Not sure if I am missing something, but having the same issue as the first commentor (Mahesh). What should <em>DependencyConventions()</em> actually do?</div>
+	<div class="comment-date">2013-04-12 16:01 UTC</div>
+</div>
+
+<div class="comment" id="e86238fe82c14454a5b85e1222842086">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Will, <em>DependencyConventions</em> is just a <a href="http://docs.castleproject.org/Default.aspx?Page=Installers&NS=Windsor&AspxAutoDetectCookieSupport=1">Windsor Installer</a>. I just called it <em>DependencyConventions</em> because <a href="/2012/11/06/WhentouseaDIContainer/">I prefer Convention over Configuration when using DI Containers</a>. In your own project, you'll need to define your own Windsor Installer. Alternatively, you can configure the container directly in the <em>WebApiApplication</em> constructor.</div>
+	<div class="comment-date">2013-04-12 16:00 UTC</div>
+</div>
+
+<div class="comment" id="0343fdc08fd049b087e1eda9635eb2e5">
+	<div class="comment-author">Jeff Soper</div>
+	<div class="comment-content">
+		<p>
+		I've been studying this article and some of your answers like <a href="http://stackoverflow.com/a/7194467/533958">this one</a> to StackOverflow questions pertaining to DI. It seems that the established community efforts to integrate popular IoC containers such as <a href="http://www.ninject.org">Ninject</a> are, at their core,<a href="https://github.com/ninject/ninject.web.mvc/blob/master/mvc3/src/Ninject.Web.Mvc/NinjectDependencyResolver.cs">implementations of IDependencyResolver</a>, rather than IHttpControllerActivator.
+		</p>
+		<p>
+		Are these popular community efforts missing the 'access to context' trait of your solution, or are they simply accomplishing it another way? Are there any established projects, open-source or otherwise, that do what you propose, or is this still an untapped 'pull request' opportunity for projects like the Ninject MVC, etc?
+		</p>
+	</div>
+	<div class="comment-date">2014-03-15 17:40 UTC</div>
+</div>
+
+<div class="comment" id="5085dbb7787f44d8ae235b5a15843eca">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">
+		<p>
+			Jeff, thank you for writing. You are indeed correct that one of the many problems with the <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern">Service Locator anti-pattern</a> (and therefore <a href="/2010/11/01/PatternRecognitionAbstractFactoryorServiceLocator">also IDependencyResolver</a>) is that the overall context is hidden. <a href="http://codebetter.com/glennblock/">Glenn Block</a> originally pointed that particular problem out to me.
+		</p>
+		<p>
+		 	This is also the case with IDependencyResolver, because when GetService(Type) or GetServices(Type) is invoked, the only information the composition engine knows, is the requested type. Thus, resolving something that requires access to the HttpRequestMessage or one of its properties, is <em>impossible</em> with IDependencyResolver, but perfectly possible with IHttpControllerActivator.
+		</p>
+		<p>
+			So, yes, I would definitely say that any DI Container that provides 'ASP.NET Web API integration' by implementing IDependencyResolver is missing out. In any case, these days <a href="/2012/11/06/WhentouseaDIContainer">I rarely use a DI Container</a>, so I don't consider it a big deal - and if I need to use a DI Container, I just need to add those few lines of code listed above in this blog post.
+		</p>
+	</div>
+	<div class="comment-date">2014-03-15 18:28 UTC</div>
+</div>
+
+<div class="comment" id="514761f66eb4487aa541ff6b48b89142">
+	<div class="comment-author">Dmitry Goryunov</div>
+	<div class="comment-content">
+		<p>
+			Can't figure out, how is it better to organize my solution.
+		</p>
+		<p>
+			There are, for example, three projects Cars.API, Cars.Core, and Cars.Data. API contains web-interface, Core contains all the abstractions, and Data communicates with DB. Data and API should depend on Core according to Dependency inversion principle. At this point everything seems to be clear, but then we implement our Composition Root in the API project, which makes it dependent on the Data project containing implementations of abstractions that are stored in Core project. Is it violation of Dependency inversion principle?
+		</p>
+		<p>
+			P.S. thank you for your book and the articles you write.
+		</p>
+	</div>
+	<div class="comment-date">2015-12-07 16:53 UTC</div>
+</div>
+
+	<div class="comment" id="cee515aeff4540a59a96d30d80d0aff2">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Dmitry, thank you for writing. Does <a href="/2013/12/03/layers-onions-ports-adapters-its-all-the-same">this</a> or <a href="http://stackoverflow.com/a/9503612/126014">this</a> help?
+			</p>
+		</div>
+		<div class="comment-date">2015-12-07 17:05 UTC</div>
+	</div>
+	
+	<div class="comment" id="36345defe32d44dd9d96670f65bec1a5">
+		<div class="comment-author">Andrew G</div>
+		<div class="comment-content">
+			<p>
+				In the Configuring the Container section, you are placing the Install inside the constructor. Whenever the application starts up or executes a request, the constructor seems to be called multiple times. In turn, the container will be created multiple times throughout its life time. Is that the point? Or should the container be moved into the Application_Start? Although the constructor is called multiple times, application start seems to be called once. The dispose doesnt seem to be called till the end as well.  Is there something earlier in the lifecycle that would cause a need for the Register to be done in the constructor?
+			</p>
+			<p>
+				I very much enjoy your book and your blog btw. great source of solid information! 
+			</p>
+		</div>
+		<div class="comment-date">2017-09-01 10:52 UTC</div>
+	</div>
+
+	<div class="comment" id="a5dd4df78d2843f8984ff1c330a6c464">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Andrew, thank you for writing. In general, I don't recall that this has ever been an issue, but see previous threads in the comments for this post. The question's come up before.				
+			</p>
+			<p>
+				I do, however, admit that I've never formally studied the question like <a href="/2010/05/17/ServiceHostFactorylifetime">I did with WCF</a>, so it's possible that I'm wrong on this particular issue. Also, details of the framework could have changed in the five years that's gone by since I wrote the article.
+			</p>
+		</div>
+		<div class="comment-date">2017-09-02 15:33 UTC</div>
+	</div>
+
+</div>

@@ -1,0 +1,682 @@
+---
+layout: post
+tags: [Dependency Injection, Software Design, Design Patterns]
+date: 2011-07-28 15:22:04 UTC
+title: "Composition Root"
+description: "A Dependency Injection pattern."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		In <a href="http://amzn.to/12p90MG">my book</a> I describe the Composition Root pattern in chapter 3. This post serves as a summary description of the pattern.
+	</p>
+	<p>
+		The Constructor Injection pattern is easy to understand until a follow-up question comes up:
+	</p>
+	<blockquote>
+		<p>
+			Where should we compose object graphs?
+		</p>
+	</blockquote>
+	<p>
+		It's easy to understand that each class should require its dependencies through its constructor, but this pushes the responsibility of composing the classes with their dependencies <a href="http://www.natpryce.com/articles/000783.html">to a third party</a>. Where should that be?
+	</p>
+	<p>
+		It seems to me that most people are eager to compose as early as possible, but the correct answer is:
+	</p>
+	<blockquote>
+		<p>
+			As close as possible to the application's entry point.
+		</p>
+	</blockquote>
+	<p>
+		This place is called the <em>Composition Root</em> of the application and defined like this:
+	</p>
+	<blockquote>
+		<p>
+			A Composition Root is a (preferably) unique location in an application where modules are composed together.
+		</p>
+	</blockquote>
+	<p>
+		This means that all the application code relies solely on Constructor Injection (or other injection patterns), but is <em>never composed</em>. Only at the entry point of the application is the <a href="/2011/03/04/Composeobjectgraphswithconfidence">entire object graph</a> finally composed.
+	</p>
+	<p>
+		The appropriate entry point depends on the framework:
+	</p>
+	<ul>
+		<li>In console applications it's the Main method</li>
+		<li>In ASP.NET MVC applications it's global.asax and a custom IControllerFactory</li>
+		<li>In WPF applications it's the Application.OnStartup method</li>
+		<li>In WCF it's a custom ServiceHostFactory</li>
+		<li>etc.</li>
+	</ul>
+	<p>
+		(you can read more about framework-specific Composition Roots in chapter 7 of my book.)
+	</p>
+	<p>
+		The Composition Root is an <em>application infrastructure component</em>.
+	</p>
+	<blockquote>
+		<p>
+			Only applications should have Composition Roots. Libraries and frameworks shouldn't.
+		</p>
+	</blockquote>
+	<p>
+		The Composition Root can be implemented with <del datetime="2019-01-30T11:59:12Z">Poor Man's DI</del> <ins><a href="/2014/06/10/pure-di">Pure DI</a></ins>, but is also the (only) appropriate place to use a DI Container.
+	</p>
+	<blockquote>
+		<p>
+			A DI Container should only be referenced from the Composition Root. All other modules should have no reference to the container.
+		</p>
+	</blockquote>
+	<p>
+		<del datetime="2019-01-30T11:59:12Z">Using a DI Container is often a good choice.</del> In that case it should be applied using the <a href="/2010/09/29/TheRegisterResolveReleasepattern">Register Resolve Release</a> pattern entirely from within the Composition Root.
+	</p>
+	<p>
+		Read more in <a href="/dippp">Dependency Injection Principles, Practices, and Patterns</a>.
+	</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="ce7019a5117d4a638b7b4c1208867f43">
+	<div class="comment-author">David Martin</div>
+	<div class="comment-content">Reading the pre-release and it's very good. As for the single composition root: what about complex apps with several deep features?  These features could be considered by some to be mini-apps in and of themselves.   Would it be appropriate to consider each feature to have its own composition root?  I'm thinking of Unity's child containers here. Hopefully the question makes sense. As I use your book as ammo at work I come across the particular question. </div>
+	<div class="comment-date">2011-08-02 03:24 UTC</div>
+</div>
+<div class="comment" id="bc6b70f521b844b788216a116d35d09b">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Each application/process requires only a single Composition Root. It doesn't matter how complex the application is.<br>
+<br>
+The earlier you compose, the more you limit your options, and there's simply no reason to do that.<br>
+<br>
+You may or may not find <a href="/2011/03/04/Composeobjectgraphswithconfidence">this article</a> helpful - otherwise, please write again :)</div>
+	<div class="comment-date">2011-08-02 07:56 UTC</div>
+</div>
+<div class="comment" id="7a9a1473e32d42d6b560fbfa20162004">
+	<div class="comment-author">Erkan Durmaz</div>
+	<div class="comment-content">Hi Mark,<br>
+<br>
+My question is quite parallel to David’s. How about we have a complex application that loads its modules dynamically on-demand, and these modules can consist of multiple assemblies. <br>
+<br>
+For example, a client application that has a page-based navigation. Different modules can be deployed and undeployed all the time. At design-time we don’t know all the types we wanna compose and we don’t have direct reference to them. <br>
+<br>
+Should we introduce some infrastructure code, like David suggested, to let the modules register their own types (e.g. services) to a child container, then we apply “resolve” on the loaded module and dispose the child container when we are done with the module?<br>
+<br>
+Looking forward to the final release of your book BTW :-)<br>
+<br>
+Thanks<br>
+</div>
+	<div class="comment-date">2011-09-29 11:57 UTC</div>
+</div>
+<div class="comment" id="39c681c0ac2b4f3cace589c2f169e3d4">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">The problem with letting each module register their own types to any sort of container is that it tightly couples the modules (and <em>any</em> application in which you might want to use them) to a specific container. Even worse, if you ever need to consume a service provided by one module from another module, you'd have to couple these two to each other. Pretty soon, you'll end up with a tightly coupled mess.<br>
+<br>
+One option is to use whichever DI Container you'd like from the Composition Root, and use its XML capabilities to configure the modules into each particular application that needs them. That's always possible, but adds some overhead, and is rarely required.<br>
+<br>
+A better option is to simply drop all desired modules in an add-in folder and then use convention-based rules to scan each assembly. The most difficult part of that exercise is that you have to think explicitly about cardinality, but that's always an issue with add-in architectures. The MEF chapter of my book discusses cardinality a bit.</div>
+	<div class="comment-date">2011-10-03 06:18 UTC</div>
+</div>
+<div class="comment" id="195cfbb70f0f4ba8b7d9d64f60a2ac8d">
+	<div class="comment-author"><a href="http://imaginarydevelopment.blogspot.com">Brandon Dimperio</a></div>
+	<div class="comment-content">I left your book at home, never mind it's here on my desk. I was going to ask what your composition root for asp.net webforms looked like, but here it is on pg 227.<br>
+<br>
+I think I'm headed in <br>
+UI(Asp.net) depends on Presentation layer and a pure interfaces/DTOs (with any serialization attributes/methods needed). so structure/schema of the 'model' lives in that domain-schema layer. domain model depends on the domain-schema layer, but is purely behaviors (methods/logic). In this way there's a sharing of schema/dto between service layer and presentation layer, with the clean separation  of all business logic and only business logic living in the domain layer.So outside of the composition root, neither the UI, presentation layer, or resource access layers (public api -&gt; internal adapter-&gt; individual resource) can touch the domain methods or types. Requires we define an interface for the domain model classes I think? Cross cutting-concerns would live in their own assembly.<br>
+<br>
+Any thoughts?</div>
+	<div class="comment-date">2011-10-21 16:09 UTC</div>
+</div>
+<div class="comment" id="28fc58fc632f426e8d83141dd1dbd981">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Why would your UI depend on DTOs? A Data Transfer Object plays the role of a boundary data carrier, just like View Model might do - they fit architecturally at the same place of application architecture: <a href="/2011/05/31/AttheBoundaries,ApplicationsareNotObject-Oriented">at the boundary</a>. If you base your inner architecture upon DTOs you'll be headed in the direction of an <a href="http://martinfowler.com/bliki/AnemicDomainModel.html">Anemic Domain Model</a>, so that doesn't sound a particularly good idea to me...</div>
+	<div class="comment-date">2011-10-23 09:05 UTC</div>
+</div>
+<div class="comment" id="73f9e8fdedba4883995bafbf9f95f576">
+	<div class="comment-author"><a href="http://imaginarydevelopment.blogspot.com">Brandon Dimperio</a></div>
+	<div class="comment-content">I'm only up to reading mid-way through your chapter on doing it right (and jumped to the asp.net webforms composition root after reading this blog post), but here is more of my reasoning.<br>
+<br>
+<i>The catch comes when you look at the behavior, and you realize that there is hardly any behavior on these objects, making them little more than bags of getters and setters. Indeed often these models come with design rules that say that you are not to put any domain logic in the the domain objects. </i><a href="http://martinfowler.com/bliki/AnemicDomainModel.html">AnemicDomain Models</a> - Martin Fowler<br>
+<br>
+<br>
+<i>It becomes a 'real' domain model when it contains all (or most) of the behaviour that makes up the business domain (note I'm emphasising business logic, not UI or other orthogonal concerns).</i> <a href="http://stackoverflow.com/questions/1805641/anemic-domain-model-versus-domain-model/1807593#1807593">Anemic Domain Models</a> - Stack overflow<br>
+<br>
+I don't feel that this is headed into an Anemic domain model as the domain model assembly would contain all behaviors specific to the domain.<br>
+<br>
+<i>  Designs that share very little state or, even better, have no state at all tend to be less prone to hard to analyze bugs and easier to repurpose when requirements change.</i> <a href="http://www.colourcoding.net/blog/archive/2009/07/21/gang-of-four-anti-patterns.aspx">Blog article</a> - makes sense but i could be missing multiple boats here.<br>
+<br>
+The domain would have zero state, and would depend on interfaces not DTOs. This would make test-ability and analysis simple.<br>
+<br>
+ Motivation for DTOs in the interfaces layer: presentation and persistence could all share the DTOs rather than having them duplicated in either place.<br>
+Barring that perceived gain, then the shared layer across all would just be interfaces.<br>
+<br>
+ The UI could depend on interfaces only, but the same assembly would contain DTOs that the presentation layer and any persistence could share without having to be duplicated/rewritten. So the domain is completely persistence and presentation ignorant.</div>
+	<div class="comment-date">2011-10-25 00:17 UTC</div>
+</div>
+<div class="comment" id="7ae20f60258a4ba1911c4f75a41f153a">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">It may just be that we use the terminology different, but according to <a href="http://www.amazon.com/gp/product/0321127420/ref=as_li_qf_sp_asin_tl?ie=UTF8&tag=ploeh-20&linkCode=as2&camp=217145&creative=399369&creativeASIN=0321127420">Patterns of Enterprise Application Architecture</a> &quot;a Data Transfer Object is one of those objects our mothers told us never to write. It's often little more than a bunch of fields and the getters and setters for them.&quot;<br>
+<br>
+The purpose of a DTO is &quot;to transfer multiple items of data between two processes in a single method call.&quot; That is (I take it) not what you are attempting to do here.<br>
+<br>
+Whether or not you implement the business logic in the same assembly as your DTOs has nothing to with avoiding an Anemic Domain Model. The behavior must be defined by the object that holds the data.</div>
+	<div class="comment-date">2011-10-25 06:46 UTC</div>
+</div>
+<div class="comment" id="7c3de6cba1f448aba9a53f469fef2356">
+	<div class="comment-author">Jordan Morris</div>
+	<div class="comment-content">I appreciate your exhortations to good architecture, but I am struggling to apply them in my situation.<br>
+<br>
+I am writing a WPF system tray application which has a primary constraint to keep lean, especially in terms of performance and memory usage. This constraint, along with the relatively low complexity of the application, means that I cannot justify the overhead of MVVM. In the absence of a prescribed architecture for building the object graph, I could set one up 'manually' in Application.OnStartup. Presumably it would mean instantiating all the Window objects (with dependences), which are utilised from time to time by the user.<br>
+<br>
+However, I have a problem with these Window instance sitting in memory, doing nothing, 90% of the time. It seems much more sensible to me to instantiate these Window objects in the events where the user asks for them. Yet, I will want to maintain the inversion of control, so how can I avoid accessing the DI container in multiple points in my app?</div>
+	<div class="comment-date">2013-01-12 10:09 UTC</div>
+</div>
+<div class="comment" id="739139aaeaca402aa8fda056327513b0">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Jordan, would the <a href="/2011/03/04/Composeobjectgraphswithconfidence">Virtual Proxy pattern be of help here?</a><br>
+<br>
+You can use one of the solutions outlined in <a href="/2013/01/07/RoleHints">my recent series on Role Hints</a> to avoid referencing a container outside of the Composition Root.</div>
+	<div class="comment-date">2013-01-12 21:17 UTC</div>
+</div>
+<div class="comment" id="714d47da37a947809874563a352ef4d3">
+	<div class="comment-author">Jordan Morris</div>
+	<div class="comment-content">Hi Mark<br>
+<br>
+I wanted to post the following comment on your linked page, here<br>
+/2011/03/04/Composeobjectgraphswithconfidence<br>
+but I am encountering a page error on submission.<br>
+<br>
+The above article suggests a great framework for delayed construction of resources, however I have a different reason for wanting this than loading an assembly.<br>
+<br>
+In my scenario I have occasionally-needed Window objects with heavy GUIs, presenting lots of data. The GUI and data only need to be in memory while the Window is displayed. The lazy loading approach seems to apply, except it leaves me with a couple of questions.<br>
+<br>
+1) When the window is closed again, I want to release the resources. How can I unload and reload it again?<br>
+<br>
+2) What would this line look like when using an IoC like Ninject?<br>
+<br>
+&gt; new Lazy&lt;ISolo&lt;IMarker&gt;&gt;(() =&gt; new C1(<br>
+<br>
+An alternative I am considering is putting classes defining events in the object graph, instead of the windows themselves. These event classes could be constructed with instances of dependencies which will be used in the event methods to construct Windows when needed. The dependancies I am wanting to inject to maintain inversion of control are light-weight objects like persistance services which will exist as singletons in memory anyway (due to the way most IoC's work). Do you see any problem with this?<br>
+<br>
+Many thanks.</div>
+	<div class="comment-date">2013-01-13 23:07 UTC</div>
+</div>
+<div class="comment" id="ab5e7abb85bc4f849a7a34a6fc68d3c5">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">I'll refer you to section 6.2 in <a href="http://amzn.to/12p90MG">my book</a> regarding lifetime management and the closing of resources. However, if things aren't disposable, you can also just let them go out of scope again and let the garbage collector take care of cleaning up.<br>
+<br>
+I can't help you with Ninject.<br>
+<br>
+</div>
+	<div class="comment-date">2013-01-18 10:03 UTC</div>
+</div>
+<div class="comment" id="9b431d82da7c4e469495d2481a1e91ad">
+	<div class="comment-author">Allan Friis Hansen</div>
+	<div class="comment-content">
+I would like to touch and expand upon the subject David Martin raised regarding complex applications with deep features.<br />
+You make the point that only the composition root should register dependencies of various layers and components. And thereby only the project containing the composition root would have references to the DI container being used <br />
+<br />
+In a couple of projects I've worked on we have multiple applications and thereby composition root, being websites, service endpoint, console applications etc. giving us around 10 application endpoints that needs to have their own composition roots. 
+But at the same time we work with a components based design which nicely encapsulates different aspects of the system. <br />
+<br />
+If I were to only do my registration code within the place of the composition roots, then applications using the same components would have to register exactly the same dependencies per compontent, leading to severe code duplication<br />
+At this point we've gone with a solution where every component has their own registration class which the composition root's then register, so basically out composition roots only compose another level of composition roots. I hope it makes sense!<br />
+<br />
+What I'm explaining here directly violates the principles you make in this post. Which I already had I sense it would. But at the same time I don't know how else to manage this situation effectively. Do you have any ideas for how to handle this type of situation?
+
+<br>
+</div>
+	<div class="comment-date">2014-08-02 22:28 UTC</div>
+</div>
+
+	<div class="comment" id="3c37390024b34873a298e918387c57bf">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Allan, thank you for writing. In the end, you'll need to do what makes sense to you, and based on what you write, it may make sense to do what you do. Still, my first reaction is that I would probably tend to <a href="/2014/08/07/why-dry">worry less about duplication</a> than you seem to do. However, I don't know your particular project: neither how big your Composition Roots are, or how often they change. In other words, it's easy enough for me to say that a bit of duplication is okay, but that may not fit your reality at all.
+			</p>
+			<p>
+				Another point is that, in my experience at least, even if you have different applications (web sites, services, console applications, etc.) as part of the same overall system, and they share code, the way they <em>should</em> be composed tend to diverge the longer they live. This is reminiscent of Mathias Verraes' point that <a href="http://verraes.net/2014/08/dry-is-about-knowledge/">duplication may be coincidental</a>, but that the duplicated code may deviate from each other in the future. This could also happen for such applications; e.g. at one point, you may wish to <a href="/2010/09/20/InstrumentationwithDecoratorsandInterceptors">instrument</a> some of your web site's dependencies, but not your batch job.
+			</p>
+			<p>
+				My best advice is to build smaller systems, in order to keep complexity down, and then build more of them, rather than building big systems. Again, that advice may not be useful in your case...
+			</p>
+			<p>
+				Another option, since you mention component-based design, is to <a href="/2012/11/06/WhentouseaDIContainer">move towards a convention-based approach</a>, so that you don't have to maintain those Composition Roots at all: just drop in the binaries, and let your DI Container take care of the rest. Take a look at the Managed Extensibility Framework (MEF) for inspiration. Still, while MEF exposes some nice ideas, and is a good source of inspiration, I would personally chose to do something like this with a proper DI Container that also supports run-time Interception and programmable Pointcuts.
+			</p>
+			<p>
+				In the end, I think I understand your problem, but my overall reaction is that you seem to have a problem you shouldn't have, so my priority would be:
+				<ol>
+					<li>Remove the problem altogether.</li>
+					<li>Live with it.</li>
+					<li>If that's not possible, solve it with technology.</li>
+				</ol>
+			</p>
+		</div>
+		<div class="comment-date">2014-08-08 12:02 UTC</div>
+	</div>
+	<div class="comment" id="fb01283395284a36b98c6213d482367d">
+		<div class="comment-author"><a href="http://blog.majcica.com">Mario Majcica</a></div>
+		<div class="comment-content">
+		<p>
+			It seems that I have a certan inclination for reopening <a href="/2012/03/26/IQueryableTisTightCoupling">"old"</a> posts.
+			Still the may be considered evergreens! :) Now back on topic.
+		</p>
+		<p>
+			When it comes to the well known frameworks as ASP.NET MVC, Web.API, WCF, it is quite clear on where and how to set our composition root.
+			But what if we do not have a clear "entry point" to our code?
+			Imagine that you are writing an SDK, laying down some classes that will be used by other developers.
+			Now, you have a class that exposes the following constructor.
+			<p>
+				public MyClass(IWhatEver whatEver)
+			</p>
+			Consider also that who is going to use this classes has no idea about IWhatEver nor it should have.
+			For make the usage of MyClass as simple as possible, we I should be able to instatiate MyClass via the parameterless constructor.
+			I had the idea of making the constructor that is used for DI, internal, and the only publically available one to be the paramtereless constructor.
+			Then fetch somehow the instances of my dependencies in the paramterless constructor.
+			
+			Now imagine that I have several of classes as MyClass and that I do have a common set of "services" that are injected inside of them.
+			
+			Now, my questions are.
+			<ol type="1">
+				<li>
+					Can I still have the single composition root?
+				</li>
+				<li>
+					How do I trigger the composition?
+				</li>
+				<li>
+					Does recreating the composition root per each "high level" class has a significant performance impact (considering a dependency tree of let's say 1000 objects).
+				</li>
+				<li>
+					Is there a better way (pattern) to solve a problem like this?
+				</li>
+			</ol>
+			
+			Some of this questions may be slightly off topic, still the main question is, how to deal with the composition root in cases like this cases.
+			
+			Hoping you will make some clarity,
+			I do thank you in advance.
+		</div>
+		<div class="comment-date">2014-09-18 07:17 UTC</div>
+	</div>
+	<div class="comment" id="e75096f63eac4349aa61314f55b80bd7">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Mario, thank you for writing. If you're writing an SDK, you are writing either a library or a framework, so the Composition Root pattern isn't appropriate (as stated above). Instead, consider the guidelines for writing <a href="/2014/05/19/di-friendly-library">DI friendly libraries</a> or <a href="/2014/05/19/di-friendly-framework">DI friendly frameworks</a>.
+			</p>
+			<p>
+				So, in order to answer your specific questions:
+			</p>
+			<p>
+				<strong>1:</strong> Conceptually, there should only be a <em>single</em> Composition Root, but it belongs to the application, so as a library developer, then no: 'you' can't have any Composition Root.
+			</p>
+			<p>
+				<strong>2:</strong> A library shouldn't trigger any composition, but <a href="/2014/05/19/di-friendly-library">as I explain in my guidelines for writing DI friendly libraries</a>, you can provide Facades to make the learning curve gentle. For frameworks, you may need to <a href="/2014/05/19/di-friendly-framework">provide appropriate Abstract Factories</a>.
+			</p>
+			<p>
+				<strong>3:</strong> The <a href="/2011/03/04/Composeobjectgraphswithconfidence">performance impact of Composition shouldn't be a major concern</a>. However, the real problem of attempting to apply the Composition Root pattern where it doesn't apply is that <a href="http://stackoverflow.com/a/9503612/126014">it increases coupling</a> and takes away options that the client developer may want to utilize; e.g. how can a client developer <a href="/2010/09/20/InstrumentationwithDecoratorsandInterceptors">instrument a sub-graph with Decorators</a> if that sub-graph isn't available?
+			</p>
+			<p>
+				<strong>4: </strong> There are better ways to design <a href="/2014/05/19/di-friendly-library">DI friendly libraries</a> and <a href="/2014/05/19/di-friendly-framework">DI friendly frameworks</a>.
+			</p>
+		</div>
+		<div class="comment-date">2014-09-18 08:12 UTC</div>
+	</div>
+	<div class="comment" id="1c785ded6e254c41a874624b0e2da1ed">
+		<div class="comment-author"><a href="http://blog.majcica.com">Mario Majcica</a></div>
+		<div class="comment-content">
+		<p>
+			Thank you for your quick and valuable replay.
+		</p>
+		<p>	
+			I read your posts and made some toughs about them. Still I am not convinced that what is described in that posts does tackle my problem. Even more I'm realizing that is less and less relevant to the topic of composition root.
+			However, let me try describe a situation.
+		</p>
+		<p>	
+			I do plan to write an SDK (a library that will allow developers to interact with my application and use some of it's functionality).
+			Consider that I'm exposing a class called FancyCalculator. FancyCalculater needs to get some information from the settings repository.
+			Now, I have a dependency on ISettingsRepository implementation and it is injected via a constructor into my FancyCalculator.
+			Nevertheless, who is going to use the FancyCalculator, doesn't know and he shouldn't know anything about ISettingsRepository and it's dependency tree.
+			He is expected only to make an instance of FancyCalculator and call a method on it.
+			I do have a single implementation of ISettingsRepository in form of SettingsRepository class.
+			In this case, how do I get to create an instance of SettingsRepository once my FancyCalculator is created?
+		</p>
+		<p>
+			A Factory? Service locator? Something else?
+		</p>	
+		<p>
+			Composition root in applications like MVC, WebAPI, etc, is a very nice and clean approach, but what about the situations when we do not have a clean single entry point to the application?
+		</p>
+		<p>
+			Thank you again!
+		</p>
+		</div>
+		<div class="comment-date">2014-09-18 12:57 UTC</div>
+	</div>
+	<div class="comment" id="47c25a0ef223427ea63b0f93f4ce2c8c">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Mario, thank you for writing again. As far as I understand, you basically have this scenario:
+			</p>
+			<p>
+				<pre style="font-family:Consolas;font-size:13;color:black;"><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">FancyCalculator</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">ISettingsRepository</span>&nbsp;settingsRepository;
+}</pre>
+			</p>
+			<p>
+				Then you say: "a dependency on ISettingsRepository implementation and it is injected via a constructor into my FancyCalculator". Okay, that means this:
+			</p>
+			<p>
+				<pre style="font-family:Consolas;font-size:13;color:black;"><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">FancyCalculator</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">ISettingsRepository</span>&nbsp;settingsRepository;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;FancyCalculator(<span style="color:#2b91af;">ISettingsRepository</span>&nbsp;settingsRepository)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(settingsRepository&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;settingsRepository&quot;</span>);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.settingsRepository&nbsp;=&nbsp;settingsRepository;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+			</p>
+			<p>
+				But then you say: "who is going to use the FancyCalculator, doesn't know and he shouldn't know anything about ISettingsRepository and it's dependency tree."
+			</p>
+			<p>
+				That sounds to me like mutually exclusive constraints. Why are you injecting ISettingsRepository into FancyCalculator if you don't want to enable the user to supply any implementation of ISettingsRepository? If you don't want to allow that, the solution is easy:
+			</p>
+			<p>
+				<pre style="font-family:Consolas;font-size:13;color:black;"><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">FancyCalculator</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">ISettingsRepository</span>&nbsp;settingsRepository;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;FancyCalculator()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.settingsRepository&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DefaultSettingsRepository</span>();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+			</p>
+			<p>
+				If you want the best of both worlds, the solution is the Facade pattern I already described in my <a href="/2014/05/19/di-friendly-library">DI Friendly library</a> article.
+			</p>
+		</div>
+		<div class="comment-date">2014-09-19 19:56 UTC</div>
+	</div>
+	<div class="comment" id="cdee2f3b0b8e435589753b9628f7c966">
+		<div class="comment-author"><a href="http://blog.majcica.com">Mario Majcica</a></div>
+		<div class="comment-content">
+		<p>
+		Hi Mark,
+		
+		You got the example right. The reason of my choices are the following.
+		I do not want user of my library to know about the dependencies for a couple of reason. First of all it needs to be as simple as possible to use. Second thing the dependencies are let's say "internal", so that code is loosely coupled and testable.
+		He should not know even about them or get bothered at any point.
+		
+		Still I do not think it's wise to create instances of the dependencies in the parameterless constructor. Why? Well, I am concerned about maintainability. I would like a to somehow request the default instance of my dependency in the parameterless constructor and get it, so that I do have a single point in my sdk where teh default dependency is specified, and also that I do not need to handle the dependency tree.
+		The fact is that I can't get what this something should be. I re-read the chapter 5 of your book this weekend to see if I can come up with something valid ideas. What I came up with is that I should use the parameterless constructor of each of my classes to handle it's own default dependencies. In this way, resolving the tree should be fine, and it is easy to maintain. Also to prevent user to see the constructors that to require the dependencies to be injected (and confuse it) I tough of declaring these constructors as internal.
+		This are my words translated in code (easier to understand).
+		</p>
+		<p>
+			<pre style="font-family:Consolas;font-size:13;color:black;background:white;"><span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Program</span>
+			{
+			&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">void</span>&nbsp;Main(<span style="color:blue;">string</span>[]&nbsp;args)
+			&nbsp;&nbsp;&nbsp;&nbsp;{
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Using&nbsp;the&nbsp;SDK&nbsp;by&nbsp;others</span>
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">FancyCalculator</span>&nbsp;calculator&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">FancyCalculator</span>();
+			 
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Console</span>.WriteLine(calculator.DoSomeThingFancy());
+			&nbsp;&nbsp;&nbsp;&nbsp;}
+			}
+			 
+			<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">ISettingsRepository</span>&nbsp;{&nbsp;}
+			<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">ILogging</span>&nbsp;{&nbsp;}
+			 
+			<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Logging</span>&nbsp;:&nbsp;<span style="color:#2b91af;">ILogging</span>&nbsp;{&nbsp;}
+			 
+			<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">SettingsRepository</span>&nbsp;:&nbsp;<span style="color:#2b91af;">ISettingsRepository</span>
+			{
+			&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">ILogging</span>&nbsp;logging;
+			 
+			&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;SettingsRepository()
+			&nbsp;&nbsp;&nbsp;&nbsp;{
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.logging&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Logging</span>();
+			&nbsp;&nbsp;&nbsp;&nbsp;}
+			 
+			&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">internal</span>&nbsp;SettingsRepository(<span style="color:#2b91af;">ILogging</span>&nbsp;logging)
+			&nbsp;&nbsp;&nbsp;&nbsp;{
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(logging&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;logging&quot;</span>);
+			 
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.logging&nbsp;=&nbsp;logging;
+			&nbsp;&nbsp;&nbsp;&nbsp;}
+			}
+			 
+			<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">FancyCalculator</span>
+			{
+			&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">ISettingsRepository</span>&nbsp;settingsRepository;
+			 
+			&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;FancyCalculator()
+			&nbsp;&nbsp;&nbsp;&nbsp;{
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.settingsRepository&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">SettingsRepository</span>();
+			&nbsp;&nbsp;&nbsp;&nbsp;}
+			 
+			&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">internal</span>&nbsp;FancyCalculator(<span style="color:#2b91af;">ISettingsRepository</span>&nbsp;settingsRepository)
+			&nbsp;&nbsp;&nbsp;&nbsp;{
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(settingsRepository&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;settingsRepository&quot;</span>);
+			 
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.settingsRepository&nbsp;=&nbsp;settingsRepository;
+			&nbsp;&nbsp;&nbsp;&nbsp;}
+			 
+			&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">int</span>&nbsp;DoSomeThingFancy()&nbsp;{&nbsp;<span style="color:blue;">return</span>&nbsp;1;&nbsp;}
+			}</pre>
+		</p>
+		<p>
+		What do you think about a solution like this? What are a bad sides of this approach? Is there any pattern that encapsulates a practise like this?
+		</p>
+		</div>
+		<div class="comment-date">2014-09-22 10:07 UTC</div>
+	</div>
+	<div class="comment" id="e038553290a7415c98c8f19735fc6b53">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Mario, you don't want the user of your library to know about the dependencies, in order to make it easy to use the SDK. That's fine: this goal is easily achieved with one of those Facade patterns <a href="/2014/05/19/di-friendly-library">I've already described</a>. With either Constructor Chaining, or use of the Fluent Builder pattern, you can make it as easy to get started with FancyCalculator as possible: just invoke its parameterless constructor.
+			</p>
+			<p>
+				What then, is your <em>motivation</em> for wanting to make the other constructors internal? What do you gain from doing that?
+			</p>
+			<p>
+				Such code isn't loosely coupled, because only classes internal to the library can use those members. Thus, such a design violates the <a href="http://en.wikipedia.org/wiki/Open/closed_principle">Open/Closed Principle</a>, because these classes aren't open for extension.
+			</p>
+		</div>
+		<div class="comment-date">2014-09-13 6:48 UTC</div>
+	</div>
+	<div class="comment" id="f11302844e274d81adc147c431083980">
+		<div class="comment-author"><a href="http://rpajak.com">Robert Pajak</a></div>
+		<div class="comment-content">
+			<p>
+				Dear Mark,
+			<p>
+				I am pretty sure that Mario uses internal code in order to be able to write unit tests. Probably the interfaces of the dependecies which he is hiding should also be internal. I think it is a good aproach because thanks to it he can safely refactor those interfaces, beacuse it is not a public API and also he can have unit tests. 
+			</p>
+			<p>
+				Yes - "Such code isn't loosely coupled, because only classes internal to the library can use those member", however I think that very often stable API is very important for libraries.
+			</p>
+			<p>
+				Could you give any comments on that?
+			</p>
+		</div>
+		<div class="comment-date">2014-09-25 20:10 UTC</div>
+	</div>
+	<div class="comment" id="8407c9cd2bd041af8a99234a371703e6">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Robert, thank you for writing. Your guess sounds reasonable. Even assuming that this is the case, I find it important to preface my answer with the caution that since I don't know the entire context, my answer is, at best, based on mainstream scenarios I can think of. There may be contexts where this approach is, indeed, the best solution, but in my experience, this tends not to be the case.
+			</p>
+			<p>
+				To me, the desire to keep an API stable leads to APIs that are so locked down that they are close to useless unless you happen to be so incredibly lucky that you're <em>right</em> on the path of a 'supported use case'. Over the years, I've worked with many object models in the .NET Base Class Library, where I've wanted it to do something a little out of the ordinary, only to find myself in a cul-de-sac of internal interfaces, sealed classes, or internal virtual methods. Many other people have had the same problems with .NET, which, I believe, has been a contributing factor causing so many of the brightest programmers to leave the platform for other, more open platforms and languages (Ruby, Clojure, JavaScript, Erlang, etc.).
+			</p>
+			<p>
+				The .NET platform is getting much better in this regard, but it's still not nearly as good as it could be. Additionally, .NET is littered with failed technologies that turned out to be completely useless after all (Windows Workflow Foundation, Commerce Server, (early versions of) Entity Framework, etc.).
+			</p>
+			<p>
+				.NET has suffered from a combination of fear of breaking backwards compatibility, combined with Big Design Up-Front (BDUF). The fact that (after all) it's still quite useful is a testament to the people who originally designed it; these people were (or are) some of most skilled people in the industry. Unless you're Anders Hejlsberg, Krzysztof Cwalina, Brad Abrams, or on a similar level, you can't expect to produce a useful and stable API if you take the conservative BDUF approach.
+			</p>
+			<p>
+				Instead, what you can do is to <a href="/2011/11/10/TDDimprovesreusability">use TDD to explore the design of your API</a>. This doesn't guarantee that you'll end up with a <em>stable</em> API, but it does help to make the API as useful as possible.
+			</p>
+			<p>
+				How do you ensure stability, then? One option is to realise that <a href="/2011/02/28/Interfacesareaccessmodifiers">you can use interfaces as access modifiers</a>. Thus, you can publish a library that mostly contains interfaces and a few high-level classes, and then add the public implementations of those interfaces in other libraries, and clearly document that these types are not guaranteed to remain stable. This option may be useful in some contexts, but if you're really exposing an API <a href="/2012/12/18/RangersandZookeepers">to the wild</a>, you probably need a more robust strategy.
+			</p>
+			<p>
+				The best strategy I've been able to identify so far is to realise that you can't design a stable API up front. You <em>will</em> make mistakes, and you will need to deal with these design mistakes. One really effective strategy is to apply the <a href="http://www.martinfowler.com/bliki/StranglerApplication.html">Strangler pattern</a>: leave the design mistakes in, but add new, better APIs as you learn; <a href="/2012/01/03/SOLIDisAppend-only">SOLID is append-only</a>. In my <a href="{{ site.production_url }}/encapsulation-and-solid">Encapsulation and SOLID Pluralsight course</a>, I discuss this particular problem and approach in the <em>Append-Only</em> section of the <em>Liskov Substitution Principle</em> module.
+			</p>
+		</div>
+		<div class="comment-date">2014-09-28 13:40 UTC</div>
+	</div>
+	<div class="comment" id="60709234fc3e42688890c011e01bc65f">
+		<div class="comment-author"><a href="http://rpajak.com">Robert Pajak</a></div>
+		<div class="comment-content">
+			<p>
+				Good point Mark! I really like your point of view, in general I agree with you.
+			</p>
+			<p>
+				I will try to 'defend' the internal dependecies, beacuse it may help us explore all the possible reasonable usages of it.
+			</p>
+			<p>
+				1. Personlly I would hide my dependencies with internal access <b>when I would be quite certain that my design is bad</b>, but I do not have time to fix it, but I will do it for sure in probably near future. 
+			</p>
+			<p>
+				2. Moreover if I would have unit tests without accessing to internal's (so not the case which I was writing in my previous comment), then I should be able to refactor the 'internals' without even touching the unit tests. This is why I see <b>internal depedencies as a refactoring terchnique</b> - especially when working with legacy code.
+			</p>
+			<p>
+				These were some cases for Library/Framework. What about internal access in non-modular Application development that is consists of several projects (dll's)? Personally I try to keep everthing internal by default and only make public interfaces, entities, messages etc. for things that are used between the projects.  Then I compose them in a dedicated project (which I name Bootstrapper) which is a composition root and has access to all internal types... If your books covers this topic - please just give a reference. I have not read your book so far, but it is in the queue :)
+			</p>
+		</div>
+		<div class="comment-date">2014-09-28 18:12 UTC</div>
+	</div>
+	<div class="comment" id="759905d3d7a349f9820a945e00e9c1f8">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Please note that I'm not saying that internal or private classes are always bad; all I'm saying is that unit testing internal classes (presumably using the <a href="http://msdn.microsoft.com/en-us/library/system.runtime.compilerservices.internalsvisibletoattribute.aspx">[InternalsVisibleTo]</a> attribute) is, in my opinion, not a good idea.
+			</p>
+			<p>
+				You can always come up with some edge cases against a blanket statement like <em>never unit test internal classes</em>, but in the general case, I believe I've already outlined why I think it's a really poor idea to do so.
+			</p>
+			<p>
+				Ultimately, I've never understood the need for the [InternalsVisibleTo] attribute. When you're applying it, you're basically making internal types public to select consumers, with all the coupling that implies. Why not make the types truly public then?
+			</p>
+			<p>
+				As far as I can tell, the main motivation for not making types public is when the creators don't trust their code. If this is the case, making things internal isn't a <em>solution</em>, it's a <em>symptom</em>. Address the problem instead of trying to hide it. Make the types trustworthy by applying <a href="{{ site.production_url }}/encapsulation-and-solid">encapsulation</a>.
+			</p>
+		</div>
+		<div class="comment-date">2014-09-29 11:59 UTC</div>
+	</div>
+	<div class="comment" id="9181cc2cd64f46e3b709044d1791eac4">
+		<div class="comment-author"><a href="http://rpajak.com">Robert Pajak</a></div>
+		<div class="comment-content">
+			<p>
+				An example from my last days at work: I marked a class as internal that is wrapping some native library (driver for some hardware) using <a href="http://msdn.microsoft.com/en-us/library/system.runtime.interopservices.dllimportattribute(v=vs.100).aspx">[DllImport]</a>. I want clients of my Library use my classes - not the DLL wrapper - this is why I hide it using internal. However I needed InternalVisibleTo so that I could write integration tests to see if the  wrapper really works.
+			</p>
+			<p>
+				Why making public when nobody outside is using it? YAGNI. I only expose when I know when its needed for the clients. Then for those that I have already exposed I need to have backward compability. The less I have exposed the more easily and safely I can refactor my design. And it is not about always bad design. New requirements frequently come in parallel with refactoring the design. This is why I like the Martin Fowler's idea of <a href="http://martinfowler.com/bliki/PublishedInterface.html">Published Interface</a> which is also mentioned in his <a href="http://martinfowler.com/bliki/AccessModifier.html">Access Modifier article</a>.
+			</p>
+			<p>
+				Additionally I always had a feeling that making everything public can affect badly influence the software architecture. The more encaupsulated are the packages the better. And for me internal access is also a mean of encaupsulation at the packaging level. Three days ago <a href="http://www.codingthearchitecture.com/">Simon Brown</a> had a presentation named "Software Architecture vs Code" on <a href="http://devday.pl/">DevDay conference</a>. When he told something like "do not make public classes by default" people were applauding!
+			</p>
+			<p>
+				My rules of a thumb for seting the class access modifiers are:
+				<ul>
+					<li>private - when it is a helper for a class where it is being nested</li>
+					<li>internal - when it used only in the package</li>
+					<li>public - when other packages needs to use it</li>
+					<li>oh and, how I would love to have this Published Interface!</li>
+				</ul>
+				So for each package I can end up with having some public interfaces and classes (like messages and entities) and many internal interfaces and classes which are only seen by the unit tests and a bootstrapping package (if I have such!)
+				It really helps when you have a project that has about 300k lines of code :)
+			</p>
+		</div>
+		<div class="comment-date">2014-09-29 16:40 UTC</div>
+	</div>	
+
+	<div class="comment" id="f25abd103769449a8dd66edc1aed318a">
+		<div class="comment-author"><a href="https://plus.google.com/108617450837535451203">Jo Takion</a></div>
+		<div class="comment-content">
+			<p>
+				Thank to Mark Seemann for his very inspiring write about Composition Root design pattern, <a href="/2011/07/28/CompositionRoot">/2011/07/28/CompositionRoot/</a>
+			</p>
+			<p>
+				I wrote my own JavaScript Dependency Injection Framework called Di-Ninja with these principles in mind <a href="https://github.com/di-ninja/di-ninja">https://github.com/di-ninja/di-ninja</a>
+			</p>
+			<p>
+				As I know, is the only one in javascript that implement the Composition-Root design pattern and it's documentation could be another good example to demonstrate how it works.
+			</p>
+			<p>
+				It work for both NodeJS and browser (with Webpack)
+			</p>
+		</div>
+		<div class="comment-date">2018-01-04 08:22 UTC</div>
+	</div>
+	
+	<div class="comment" id="35c0b5a5d9064a7ea06dea79e0350a5f">
+		<div class="comment-author"><a href="https://www.linkedin.com/in/lisber-pontes/">Lisber Pontes</a></div>
+		<div class="comment-content">
+			<p>
+				Thanks for this insightful post!
+			</p>
+			<p>
+				I was just wondering, could we say then that using a Service Locator exclusively at the Composition root is not something bad, actually is perfectly fine?
+			</p>
+			<p>
+				I'm asking this, since it's wide-spread the service locator 'anti-pattern', however, at the Composition root its usage is not a problem at all, right ?
+			</p>
+			<p>
+				Thanks for the amazing blog! ;)
+			</p>
+		</div>
+		<div class="comment-date">2022-01-24 9:25 UTC</div>
+	</div>
+	
+	<div class="comment" id="a29ee88350874218a3991801eedbc0bb">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Lisber, thank you for writing. Does <a href="/2011/08/25/ServiceLocatorrolesvs.mechanics">this</a> answer your question?
+			</p>
+		</div>
+		<div class="comment-date">2022-01-24 11:49 UTC</div>
+	</div>
+
+	<div class="comment" id="f2e74af7338144e79f48aa7c41f9f10c">
+		<div class="comment-author"><a href="https://www.linkedin.com/in/lisber-pontes/">Lisber Pontes</a></div>
+		<div class="comment-content">
+			<p>
+				Totally!
+			</p>
+			<p>
+				The sum up at the end of that article is brilliant!
+			</p>
+			<i>
+				It becomes a Service Locator if used incorrectly: when application code (as opposed to infrastructure code) actively queries a service in order to be provided with required dependencies, then it has become a Service Locator.
+			</i>
+			<p>
+				Thank you for clarifying that.
+			</p>
+		</div>
+		<div class="comment-date">2022-01-24 13:40 UTC</div>
+	</div>
+	
+</div>

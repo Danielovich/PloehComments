@@ -1,0 +1,159 @@
+---
+layout: post
+title: "Applicative assertions"
+description: "An exploration."
+date: 2022-11-07 6:56 UTC
+tags: [Article Series, Unit Testing, Software Design]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		In a recent Twitter exchange, <a href="https://lucasdicioccio.github.io/">Lucas DiCioccio</a> made an interesting observation:
+	</p>
+	<blockquote>
+		<p>
+			"Imho the properties you want of an assertion-framework are really close (the same as?) applicative-validation: one assertion failure with multiple bullet points composed mainly from combinators."
+		</p>
+		<footer><cite><a href="https://twitter.com/lucasdicioccio/status/1572264819109003265">Lucas DiCioccio</a></cite></footer>
+	</blockquote>
+	<p>
+		In another branch off my initial tweet <a href="https://www.joshka.net/">Josh McKinney</a> pointed out the short-circuiting nature of standard assertions:
+	</p>
+	<blockquote>
+		<p>
+			"short circuiting often causes weaker error messages in failing tests than running compound assertions. E.g.
+		</p>
+		<p>
+<pre>TransferTest {
+  a.transfer(b,50);
+  a.shouldEqual(50);
+  b.shouldEqual(150); // never reached?
+}</pre>
+		</p>
+		<footer><cite><a href="https://twitter.com/joshuamck/status/1572232484884217864">Josh McK</a></cite></footer>
+	</blockquote>
+	<p>
+		Most standard assertion libraries work by throwing exceptions when an assertion fails. Once you throw an exception, remaining code doesn't execute. This means that you only get the first assertion message. Further assertions are not evaluated.
+	</p>
+	<p>
+		Josh McKinney <a href="https://twitter.com/joshuamck/status/1572528796125003777">later gave more details about a particular scenario</a>. Although in the general case I don't consider the short-circuiting nature of assertions to be a problem, I grant that there are cases where proper assertion composition would be useful.
+	</p>
+	<p>
+		Lucas DiCioccio's suggestion seems worthy of investigation.
+	</p>
+	<h3 id="54fc71d7459d4251a79dc16f58bd79b3">
+		Ongoing exploration <a href="#54fc71d7459d4251a79dc16f58bd79b3" title="permalink">#</a>
+	</h3>
+	<p>
+		<a href="https://twitter.com/ploeh/status/1572282314402721805">I asked</a> Lucas DiCioccio whether he'd done any work with his idea, and the day after <a href="https://twitter.com/lucasdicioccio/status/1572639255582867456">he replied</a> with a <a href="https://www.haskell.org">Haskell</a> proof of concept.
+	</p>
+	<p>
+		I found the idea so interesting that I also wanted to carry out a few proofs of concept myself, perhaps within a more realistic setting.
+	</p>
+	<p>
+		As I'm writing this, I've reached some preliminary conclusions, but I'm also aware that they may not hold in more general cases. I'm posting what I have so far, but you should expect this exploration to evolve over time. If I find out more, I'll update this post with more articles.
+	</p>
+	<ul>
+		<li><a href="/2022/11/28/an-initial-proof-of-concept-of-applicative-assertions-in-c">An initial proof of concept of applicative assertions in C#</a></li>
+		<li><a href="/2022/12/19/error-accumulating-composable-assertions-in-c">Error-accumulating composable assertions in C#</a></li>
+		<li><a href="/2023/01/30/built-in-alternatives-to-applicative-assertions">Built-in alternatives to applicative assertions</a></li>
+	</ul>
+	<p>
+		A preliminary summary is in order. Based on the first two articles, applicative assertions look like overkill. I think, however, that it's because of the degenerate nature of the example. Some assertions are essentially one-stop verifications: Evaluate a predicate, and throw an exception if the result is <em>false</em>. These assertions return <a href="/2018/01/15/unit-isomorphisms">unit or void</a>. Examples from <a href="https://xunit.net/">xUnit</a> include <code>Assert.Equal</code>, <code>Assert.True</code>, <code>Assert.False</code>, <code>Assert.All</code>, and <code>Assert.DoesNotContain</code>.
+	</p>
+	<p>
+		These are the kinds of assertions that the initial two articles explore.
+	</p>
+	<p>
+		There are other kinds of assertions that return a value in case of success. xUnit.net examples include <code>Assert.Throws</code>, <code>Assert.Single</code>, <code>Assert.IsAssignableFrom</code>, and some overloads of <code>Assert.Contains</code>. <code>Assert.Single</code>, for example, verifies that a collection contains only a single element. While it throws an exception if the collection is either empty or has more than one element, in the success case it returns the single value. This can be useful if you want to add more assertions based on that value.
+	</p>
+	<p>
+		I haven't experimented with this yet, but as far as can tell, you'll run into the following problem: If you make such an assertion return an <a href="/2018/10/01/applicative-functors">applicative functor</a>, you'll need some way to handle the success case. Combining it with another assertion-producing function, such as <code>a -> Asserted e b</code> (pseudocode) is possible with <a href="/2018/03/22/functors">functor</a> mapping, but will leave you with a nested functor.
+	</p>
+	<p>
+		You'll probably want to flatten the nested functor, which is exactly what <a href="/2022/03/28/monads">monads</a> do. Monads, on the other hand, short circuit, so you don't want to make your applicative assertion type a monad. Instead, you'll need to use an isomorphic monad container (<a href="/2022/05/09/an-either-monad">Either</a> should do) to move in and out of. Doable, but is the complexity warranted?
+	</p>
+	<p>
+		I realise that the above musings are abstract, and that I really should show rather than tell. I'll add some more content here if I ever collect something worthy of an article. if you ask me now, though, I consider that a bit of a toss-up.
+	</p>
+	<p>
+		The first two examples also suffer from being written in C#, which doesn't have good syntactic support for applicative functors. Perhaps I'll add some articles that use <a href="https://fsharp.org/">F#</a> or Haskell.
+	</p>
+	<h3 id="676b3bf45f0841bc9a51d3510d917a6a">
+		Conclusion <a href="#676b3bf45f0841bc9a51d3510d917a6a" title="permalink">#</a>
+	</h3>
+	<p>
+		There's the occasional need for composable assertions. You can achieve that with an applicative functor, but the question is whether it's warranted. Could you make something simpler based on the <a href="/2022/04/19/the-list-monad">list monad</a>?
+	</p>
+	<p>
+		As I'm writing this, I don't consider that question settled. Even so, you may want to read on.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2022/11/28/an-initial-proof-of-concept-of-applicative-assertions-in-c">An initial proof of concept of applicative assertions in C#</a>.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	<div class="comment" id="e3269279056146f985c8405f6d3ad286">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<blockquote>
+				Monads, on the other hand, short circuit, so you don't want to make your applicative assertion type a monad.
+			</blockquote>
+			<p>
+				I want my assertion type to be both applicative and monadic.
+				So does Paul Loath, the creator of Language Ext,
+				which is most clearly seen via <a href="https://github.com/louthy/language-ext/blob/main/LanguageExt.Tests/ValidationTests.cs#L267-L277">this Validation test code</a>.
+				So does Alexis King (as you pointed out to me) in her Haskell Validation package,
+				which violiates Hakell's monad type class,
+				and which she defends <a href="https://hackage.haskell.org/package/monad-validate-1.2.0.1/docs/Control-Monad-Validate.html#:~:text=ValidateT%20and%20the%20Monad%20laws">here</a>.
+			</p>
+			<p>
+				When I want (or typically need) short-circuiting behavior,
+				then I use the type's monadic API.
+				When I want "error-collecting behavior",
+				then I use the type's applicative API.
+			</p>
+			<blockquote>
+				The first two examples also suffer from being written in C#, which doesn't have good syntactic support for applicative functors.
+			</blockquote>
+			<p>
+				The best syntactic support for applicative functors in C# that I have seen is in Langauge Ext.
+				<a href="https://github.com/louthy/language-ext/blob/15cd875ea40925e2ca9cd702c84f9142918dbb77/LanguageExt.Tests/ValidationTests.cs#L272-L277">A comment explains</a>
+				in that same Validation test how it works,
+				and the line after the comment shows it in action.
+			</p>
+		</div>
+		<div class="comment-date">2023-01-16 21:13 UTC</div>
+	</div>
+
+	<div class="comment" id="a1516515c1b84cb2b8473f2c0321562e">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Tyson, thank you for writing. Whether or not you want to enable monadic short-circuiting for assertions or validations depends, I think, on 'developer ergonomics'. It's a trade-off mainly between <em>ease</em> and <em>simplicity</em> as <a href="https://www.infoq.com/presentations/Simple-Made-Easy/">outlined by Rich Hickey</a>. Enabling a monadic API for something that isn't naturally monadic does indeed provide ease of use, in that the compositional capabilities of a monad are readily 'at hand'.
+			</p>
+			<p>
+				If you don't have that capability you'll have to map back and forth between, say, <code>Validation</code> and <code>Either</code> (if using the <a href="https://hackage.haskell.org/package/validation">validation</a> package). This is tedious, but <a href="https://peps.python.org/pep-0020/">explicit</a>.
+			</p>
+			<p>
+				Making validation or assertions monadic makes it easier to compose nested values, but also (in my experience) makes it easier to make mistakes, in the sense that you (or a colleague) may <em>think</em> that the behaviour is error-collecting, whereas in reality it's short-circuiting.
+			</p>
+			<p>
+				In the end, the trade-off may reduce to how much you trust yourself (and co-workers) to steer clear of mistakes, and how important it is to avoid errors. In this case, how important is it to collect the errors, rather than short-circuiting?
+			</p>
+			<p>
+				You can choose one alternative or the other by weighing such concerns.
+			</p>
+		</div>
+		<div class="comment-date">2023-01-19 8:30 UTC</div>
+	</div>
+</div>

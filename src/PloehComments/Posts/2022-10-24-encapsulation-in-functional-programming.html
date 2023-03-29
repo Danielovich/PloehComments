@@ -1,0 +1,463 @@
+---
+layout: post
+title: "Encapsulation in Functional Programming"
+description: "Encapsulation is only relevant for object-oriented programming, right?"
+date: 2022-10-24 5:54 UTC
+tags: [Functional Programming, F#]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		The concept of <em>encapsulation</em> is closely related to object-oriented programming (OOP), and you rarely hear the word in discussions about (statically-typed) functional programming (FP). I will argue, however, that the notion is relevant in FP as well. Typically, it just appears with a different catchphrase.
+	</p>
+	<h3 id="f0f64bfaaa6f4d22b990fae4775a8b89">
+		Contracts <a href="#f0f64bfaaa6f4d22b990fae4775a8b89" title="permalink">#</a>
+	</h3>
+	<p>
+		I base my understanding of encapsulation on <a href="/ref/oosc">Object-Oriented Software Construction</a>. I've tried to distil it in my Pluralsight course <a href="/encapsulation-and-solid">Encapsulation and SOLID</a>.
+	</p>
+	<p>
+		In short, encapsulation denotes the distinction between an object's contract and its implementation. An object should fulfil its contract in such a way that client code doesn't need to know about its implementation.
+	</p>
+	<p>
+		Contracts, according to <a href="https://en.wikipedia.org/wiki/Bertrand_Meyer">Bertrand Meyer</a>, describe three properties of objects:
+	</p>
+	<ul>
+		<li>Preconditions: What client code must fulfil in order to successfully interact with the object.</li>
+		<li>Invariants: Statements about the object that are always true.</li>
+		<li>Postconditions: Statements that are guaranteed to be true after a successful interaction between client code and object.</li>
+	</ul>
+	<p>
+		You can replace <em>object</em> with <em>value</em> and I'd argue that the same concerns are relevant in FP.
+	</p>
+	<p>
+		In OOP <em>invariants</em> often point to the properties of an object that are guaranteed to remain even in the face of state mutation. As you change the state of an object, the object should guarantee that its state remains valid. These are the properties (i.e. <em>qualities</em>, <em>traits</em>, <em>attributes</em>) that don't vary - i.e. are <em>invariant</em>.
+	</p>
+	<p>
+		An example would be helpful around here.
+	</p>
+	<h3 id="72a37691c0c14d4a8673d52f25e7c3e2">
+		Table mutation <a href="#72a37691c0c14d4a8673d52f25e7c3e2" title="permalink">#</a>
+	</h3>
+	<p>
+		Consider an object that models a table in a restaurant. You may, for example, be working on <a href="/2020/01/27/the-maitre-d-kata">the Maître d' kata</a>. In short, you may decide to model a table as being one of two kinds: Standard tables and communal tables. You can reserve seats at communal tables, but you still share the table with other people.
+	</p>
+	<p>
+		You may decide to model the problem in such a way that when you reserve the table, you change the state of the object. You may decide to describe the contract of <code>Table</code> objects like this:
+	</p>
+	<ul>
+		<li>Preconditions
+			<ul>
+				<li>To create a <code>Table</code> object, you must supply a type (standard or communal).</li>
+				<li>To create a <code>Table</code> object, you must supply the size of the table, which is a measure of its capacity; i.e. how many people can sit at it.</li>
+				<li>The capacity must be a natural number. <em>One</em> (1) is the smallest valid capacity.</li>
+				<li>When reserving a table, you must supply a valid reservation.</li>
+				<li>When reserving a table, the reservation quantity must be less than or equal to the table's remaining capacity.</li>
+			</ul>
+		</li>
+		<li>Invariants
+			<ul>
+				<li>The table capacity doesn't change.</li>
+				<li>The table type doesn't change.</li>
+				<li>The number of remaining seats is never negative.</li>
+				<li>The number of remaining seats is never greater than the table's capacity.</li>
+			</ul>
+		</li>
+		<li>Postconditions
+			<ul>
+				<li>After reserving a table, the number of remaining seats can't be greater than the previous number of remaining seats minus the reservation quantity.</li>
+			</ul>
+		</li>
+	</ul>
+	<p>
+		This list may be incomplete, and if you add more operations, you may have to elaborate on what that means to the contract.
+	</p>
+	<p>
+		In C# you may implement a <code>Table</code> class like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Table</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;List&lt;Reservation&gt;&nbsp;reservations;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Table</span>(<span style="color:blue;">int</span>&nbsp;capacity,&nbsp;TableType&nbsp;type)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(capacity&nbsp;&lt;&nbsp;1)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;ArgumentOutOfRangeException(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nameof(capacity),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#a31515;">$&quot;Capacity&nbsp;must&nbsp;be&nbsp;greater&nbsp;than&nbsp;zero,&nbsp;but&nbsp;was:&nbsp;</span>{capacity}<span style="color:#a31515;">.&quot;</span>);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;reservations&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;List&lt;Reservation&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Capacity&nbsp;=&nbsp;capacity;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Type&nbsp;=&nbsp;type;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RemaingSeats&nbsp;=&nbsp;capacity;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">int</span>&nbsp;Capacity&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;TableType&nbsp;Type&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">int</span>&nbsp;RemaingSeats&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;Reserve(Reservation&nbsp;reservation)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(RemaingSeats&nbsp;&lt;&nbsp;reservation.Quantity)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;InvalidOperationException(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#a31515;">&quot;The&nbsp;table&nbsp;has&nbsp;no&nbsp;remaining&nbsp;seats.&quot;</span>);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(Type&nbsp;==&nbsp;TableType.Communal)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RemaingSeats&nbsp;-=&nbsp;reservation.Quantity;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;RemaingSeats&nbsp;=&nbsp;0;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;reservations.Add(reservation);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		This class has good encapsulation because it makes sure to fulfil the contract. You can't put it in an invalid state.
+	</p>
+	<h3 id="b37e173371f249d99f80d12d64b2bee2">
+		Immutable Table <a href="#b37e173371f249d99f80d12d64b2bee2" title="permalink">#</a>
+	</h3>
+	<p>
+		Notice that two of the invariants for the above <code>Table</code> class is that the table can't change type or capacity. While OOP often revolves around state mutation, it seems reasonable that some data is immutable. A table doesn't all of a sudden change size.
+	</p>
+	<p>
+		In FP data is immutable. Data doesn't change. Thus, data has that invariant property.
+	</p>
+	<p>
+		If you consider the above contract, it still applies to FP. The specifics change, though. You'll no longer be dealing with <code>Table</code> objects, but rather <code>Table</code> data, and to make reservations, you call a function that returns a new <code>Table</code> value.
+	</p>
+	<p>
+		In <a href="https://fsharp.org/">F#</a> you could model a <code>Table</code> like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">type</span>&nbsp;Table&nbsp;=&nbsp;<span style="color:blue;">private</span>&nbsp;Standard&nbsp;<span style="color:blue;">of</span>&nbsp;int&nbsp;*&nbsp;Reservation&nbsp;list&nbsp;|&nbsp;Communal&nbsp;<span style="color:blue;">of</span>&nbsp;int&nbsp;*&nbsp;Reservation&nbsp;list
+ 
+<span style="color:blue;">module</span>&nbsp;Table&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;standard&nbsp;capacity&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;0&nbsp;&lt;&nbsp;capacity
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">then</span>&nbsp;Some&nbsp;(Standard&nbsp;(capacity,&nbsp;[]))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>&nbsp;None
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;communal&nbsp;capacity&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;0&nbsp;&lt;&nbsp;capacity
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">then</span>&nbsp;Some&nbsp;(Communal&nbsp;(capacity,&nbsp;[]))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">else</span>&nbsp;None
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;remainingSeats&nbsp;=&nbsp;<span style="color:blue;">function</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Standard&nbsp;(capacity,&nbsp;[])&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;capacity
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Standard&nbsp;_&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Communal&nbsp;(capacity,&nbsp;rs)&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;capacity&nbsp;-&nbsp;List.sumBy&nbsp;(<span style="color:blue;">fun</span>&nbsp;r&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;r.Quantity)&nbsp;rs
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">let</span>&nbsp;reserve&nbsp;r&nbsp;t&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">match</span>&nbsp;t&nbsp;<span style="color:blue;">with</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Standard&nbsp;(capacity,&nbsp;[])&nbsp;<span style="color:blue;">when</span>&nbsp;r.Quantity&nbsp;&lt;=&nbsp;remainingSeats&nbsp;t&nbsp;<span style="color:blue;">-&gt;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Some&nbsp;(Standard&nbsp;(capacity,&nbsp;[r]))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;Communal&nbsp;(capacity,&nbsp;rs)&nbsp;<span style="color:blue;">when</span>&nbsp;r.Quantity&nbsp;&lt;=&nbsp;remainingSeats&nbsp;t&nbsp;<span style="color:blue;">-&gt;</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Some&nbsp;(Communal&nbsp;(capacity,&nbsp;r&nbsp;::&nbsp;rs))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;_&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;None</pre>
+	</p>
+	<p>
+		While you'll often hear fsharpers say that one should <a href="https://blog.janestreet.com/effective-ml-video/">make illegal states unrepresentable</a>, in practice you often have to rely on <a href="https://www.hillelwayne.com/post/constructive/">predicative</a> data to enforce contracts. I've done this here by making the <code>Table</code> cases <code>private</code>. Code outside the module can't directly create <code>Table</code> data. Instead, it'll have to use one of two functions: <code>Table.standard</code> or <code>Table.communal</code>. These are functions that return <code>Table option</code> values.
+	</p>
+	<p>
+		That's the idiomatic way to model predicative data in statically typed FP. In <a href="https://www.haskell.org/">Haskell</a> such functions are called <a href="https://wiki.haskell.org/Smart_constructors">smart constructors</a>.
+	</p>
+	<p>
+		Statically typed FP typically use <a href="/2022/04/25/the-maybe-monad">Maybe</a> (<code>Option</code>) or <a href="/2022/05/09/an-either-monad">Either</a> (<code>Result</code>) values to communicate failure, rather than throwing exceptions, but apart from that a smart constructor is just an object constructor.
+	</p>
+	<p>
+		The above F# <code>Table</code> API implements the same contract as the OOP version.
+	</p>
+	<p>
+		If you want to see a more elaborate example of modelling table and reservations in F#, see <a href="/2020/04/27/an-f-implementation-of-the-maitre-d-kata">An F# implementation of the Maître d' kata</a>.
+	</p>
+	<h3 id="78027bc1d1414c2fa3604a68c9df6418">
+		Functional contracts in OOP languages <a href="#78027bc1d1414c2fa3604a68c9df6418" title="permalink">#</a>
+	</h3>
+	<p>
+		You can adopt many FP concepts in OOP languages. My book <a href="/2021/06/14/new-book-code-that-fits-in-your-head">Code That Fits in Your Head</a> contains sample code in C# that implements an online restaurant reservation system. It includes a <code>Table</code> class that, at first glance, looks like the above C# class.
+	</p>
+	<p>
+		While it has the same contract, the book's <code>Table</code> class is implemented with the FP design principles in mind. Thus, it's an immutable class with this API:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Table</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;Table&nbsp;Standard(<span style="color:blue;">int</span>&nbsp;seats)
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;Table&nbsp;Communal(<span style="color:blue;">int</span>&nbsp;seats)
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">int</span>&nbsp;Capacity&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">int</span>&nbsp;RemainingSeats&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}
+  
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;Table&nbsp;Reserve(Reservation&nbsp;reservation)
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;T&nbsp;Accept&lt;<span style="color:#2b91af;">T</span>&gt;(ITableVisitor&lt;T&gt;&nbsp;visitor)
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:blue;">bool</span>&nbsp;Equals(<span style="color:blue;">object</span>?&nbsp;obj)
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:blue;">int</span>&nbsp;GetHashCode()
+}</pre>
+	</p>
+	<p>
+		Notice that the <code>Reserve</code> method returns a <code>Table</code> object. That's the table with the reservation associated. The original <code>Table</code> instance remains unchanged.
+	</p>
+	<p>
+		The entire book is written in the <a href="https://www.destroyallsoftware.com/screencasts/catalog/functional-core-imperative-shell">Functional Core, Imperative Shell</a> architecture, so all domain models are immutable objects with <a href="https://en.wikipedia.org/wiki/Pure_function">pure functions</a> as methods.
+	</p>
+	<p>
+		The objects still have contracts. They have proper encapsulation.
+	</p>
+	<h3 id="ca2409555a5b4efe9b98e1c65e77256d">
+		Conclusion <a href="#ca2409555a5b4efe9b98e1c65e77256d" title="permalink">#</a>
+	</h3>
+	<p>
+		Functional programmers may not use the term <em>encapsulation</em> much, but that doesn't mean that they don't share that kind of concern. They often throw around the phrase <em>make illegal states unrepresentable</em> or talk about smart constructors or <a href="https://en.wikipedia.org/wiki/Partial_function">partial versus total functions</a>. It's clear that they care about data modelling that prevents mistakes.
+	</p>
+	<p>
+		The object-oriented notion of <em>encapsulation</em> is ultimately about separating the affordances of an API from its implementation details. An object's contract is an abstract description of the properties (i.e. <em>qualities</em>, <em>traits</em>, or <em>attributes</em>) of the object.
+	</p>
+	<p>
+		Functional programmers care so much about the properties of data and functions that <em>property-based testing</em> is often the preferred way to perform automated testing.
+	</p>
+	<p>
+		Perhaps you can find a functional programmer who might be slightly offended if you suggest that he or she should consider encapsulation. If so, suggest instead that he or she considers the properties of functions and data.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+<div class="comment" id="bb616acbc1ac41cb8f937fe7175ce061">
+	<div class="comment-author"><a href="http://www.raboof.com/">Atif Aziz</a></div>
+	<div class="comment-content">
+		<p>
+			I wonder what's the goal of illustrating OOP-ish examples exclusively in C# and FP-ish ones in F# when you could stick to just one language for the reader. It might not always be as effective depending on the topic, but for encapsulation and the examples shown in this article, a C# version would read just as effective as an F# one. I mean when you get round to making your points in the <strong>Immutable Table</strong> section of your article, you could demonstrate the ideas with a C# version that's nearly identical to and reads as succinct as the F# version:
+		</p>
+<pre><span style="color:gray;">#nullable</span>&nbsp;<span style="color:gray;">enable</span>
+ 
+<span style="color:blue;">readonly</span>&nbsp;<span style="color:blue;">record</span>&nbsp;<span style="color:blue;">struct</span>&nbsp;<span style="color:darkblue;">Reservation</span>(<span style="color:blue;">int</span>&nbsp;<span style="color:#1f377f;">Quantity</span>);
+<span style="color:blue;">abstract</span>&nbsp;<span style="color:blue;">record</span>&nbsp;<span style="color:darkblue;">Table</span>;
+<span style="color:blue;">record</span>&nbsp;<span style="color:darkblue;">StandardTable</span>(<span style="color:blue;">int</span>&nbsp;<span style="color:#1f377f;">Capacity</span>,&nbsp;<span style="color:darkblue;">Reservation</span>?&nbsp;<span style="color:#1f377f;">Reservation</span>):&nbsp;<span style="color:darkblue;">Table</span>;
+<span style="color:blue;">record</span>&nbsp;<span style="color:darkblue;">CommunalTable</span>(<span style="color:blue;">int</span>&nbsp;<span style="color:#1f377f;">Capacity</span>,&nbsp;<span style="color:darkblue;">ImmutableArray</span>&lt;<span style="color:darkblue;">Reservation</span>&gt;&nbsp;<span style="color:#1f377f;">Reservations</span>):&nbsp;<span style="color:darkblue;">Table</span>;
+ 
+<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:darkblue;">TableModule</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:darkblue;">StandardTable</span>?&nbsp;<span style="color:darkcyan;">Standard</span>(<span style="color:blue;">int</span>&nbsp;<span style="color:#1f377f;">capacity</span>)&nbsp;=&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&lt;&nbsp;capacity&nbsp;?&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:darkblue;">StandardTable</span>(capacity,&nbsp;<span style="color:blue;">null</span>)&nbsp;:&nbsp;<span style="color:blue;">null</span>;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:darkblue;">CommunalTable</span>?&nbsp;<span style="color:darkcyan;">Communal</span>(<span style="color:blue;">int</span>&nbsp;<span style="color:#1f377f;">capacity</span>)&nbsp;=&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;0&nbsp;&lt;&nbsp;capacity&nbsp;?&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:darkblue;">CommunalTable</span>(capacity,&nbsp;<span style="color:darkblue;">ImmutableArray</span>&lt;<span style="color:darkblue;">Reservation</span>&gt;.Empty)&nbsp;:&nbsp;<span style="color:blue;">null</span>;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">int</span>&nbsp;<span style="color:darkcyan;">RemainingSeats</span>(<span style="color:blue;">this</span>&nbsp;<span style="color:darkblue;">Table</span>&nbsp;<span style="color:#1f377f;">table</span>)&nbsp;=&gt;&nbsp;table&nbsp;<span style="color:#8f08c4;">switch</span>
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:darkblue;">StandardTable</span>&nbsp;{&nbsp;<span style="color:purple;">Reservation</span>:&nbsp;<span style="color:blue;">null</span>&nbsp;}&nbsp;t&nbsp;=&gt;&nbsp;t.<span style="color:purple;">Capacity</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:darkblue;">StandardTable</span>&nbsp;=&gt;&nbsp;0,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:darkblue;">CommunalTable</span>&nbsp;<span style="color:#1f377f;">t</span>&nbsp;=&gt;&nbsp;t.<span style="color:purple;">Capacity</span>&nbsp;-&nbsp;t.<span style="color:purple;">Reservations</span>.Sum(<span style="color:#1f377f;">r</span>&nbsp;=&gt;&nbsp;r.Quantity)
+&nbsp;&nbsp;&nbsp;&nbsp;};
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:darkblue;">Table</span>?&nbsp;<span style="color:darkcyan;">Reserve</span>(<span style="color:blue;">this</span>&nbsp;<span style="color:darkblue;">Table</span>&nbsp;<span style="color:#1f377f;">table</span>,&nbsp;<span style="color:darkblue;">Reservation</span>&nbsp;<span style="color:#1f377f;">r</span>)&nbsp;=&gt;&nbsp;table&nbsp;<span style="color:#8f08c4;">switch</span>
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:darkblue;">StandardTable</span>&nbsp;<span style="color:#1f377f;">t</span>&nbsp;<span style="color:#8f08c4;">when</span>&nbsp;r.<span style="color:purple;">Quantity</span>&nbsp;&lt;=&nbsp;t.<span style="color:darkcyan;">RemainingSeats</span>()&nbsp;=&gt;&nbsp;t&nbsp;<span style="color:blue;">with</span>&nbsp;{&nbsp;<span style="color:purple;">Reservation</span>&nbsp;=&nbsp;r&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:darkblue;">CommunalTable</span>&nbsp;<span style="color:#1f377f;">t</span>&nbsp;<span style="color:#8f08c4;">when</span>&nbsp;r.<span style="color:purple;">Quantity</span>&nbsp;&lt;=&nbsp;t.<span style="color:darkcyan;">RemainingSeats</span>()&nbsp;=&gt;&nbsp;t&nbsp;<span style="color:blue;">with</span>&nbsp;{&nbsp;<span style="color:purple;">Reservations</span>&nbsp;=&nbsp;t.<span style="color:purple;">Reservations</span>.Add(r)&nbsp;},
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">_</span>&nbsp;=&gt;&nbsp;<span style="color:blue;">null</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;};
+}
+</pre>
+		<p>
+			This way, I can just point someone to your article for enlightenment, &#x1F609; but not leave them feeling frustrated that they need F# to (practice and) model around data instead of state mutating objects. It might still be worthwhile to show an F# version to draw the similarities and also call out some differences; like <code>Table</code> being a true discriminated union in F#, and while it appears to be emulated in C#, they desugar to the same thing in terms of CLR types and hierarchies.
+		</p>
+		<p>
+			By the way, in the C# example above, I modeled the standard table variant differently because if it can hold only one reservation at a time then the model should reflect that.
+		</p>
+	</div>
+	<div class="comment-date">2022-10-27 16:09 UTC</div>
+</div>
+
+	<div class="comment" id="7069ea2b33a64a1caf7247c3a1543bac">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Atif, thank you for supplying and example of an immutable C# implementation.
+			</p>
+			<p>
+				I already have an example of an immutable, functional C# implementation in <a href="/2021/06/14/new-book-code-that-fits-in-your-head">Code That Fits in Your Head</a>, so I wanted to supply something else here. I also tend to find it interesting to compare how to model similar ideas in different languages, and it felt natural to supply an F# example to show how a 'natural' FP implementation might look.
+			</p>
+			<p>
+				Your point is valid, though, so I'm not insisting that this was the right decision.
+			</p>
+		</div>
+		<div class="comment-date">2022-10-28 8:50 UTC</div>
+	</div>
+
+<div class="comment" id="a7b4d4d0dcc8432fb3b49cb7189d8123">
+	<div class="comment-author"><a href="https://github.com/sebastianfrelle">Sebastian Frelle Koch</a></div>
+	<div class="comment-content">
+    <p>I took your idea, Atif, and wrote something that I think is more congruent with the example <a href="#78027bc1d1414c2fa3604a68c9df6418">here</a>. In short, I’m</p>
+
+    <ul>
+      <li>using polymorphism to avoid having to switch over the Table type</li>
+      <li>hiding subtypes of Table to simplify the interface.</li>
+    </ul>
+
+    <p>Here's the code:</p>
+
+    <div class="language-cs highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="err">#</span><span class="n">nullable</span> <span class="n">enable</span>
+
+<span class="k">using</span> <span class="nn">System.Collections.Immutable</span><span class="p">;</span>
+
+<span class="k">readonly</span> <span class="n">record</span> <span class="k">struct</span> <span class="nc">Reservation</span><span class="p">(</span><span class="kt">int</span> <span class="n">Quantity</span><span class="p">);</span>
+<span class="k">abstract</span> <span class="n">record</span> <span class="n">Table</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="k">abstract</span> <span class="n">Table</span><span class="p">?</span> <span class="nf">Reserve</span><span class="p">(</span><span class="n">Reservation</span> <span class="n">r</span><span class="p">);</span>
+    <span class="k">public</span> <span class="k">abstract</span> <span class="kt">int</span> <span class="nf">RemainingSeats</span><span class="p">();</span>
+
+    <span class="k">public</span> <span class="k">static</span> <span class="n">Table</span><span class="p">?</span> <span class="nf">Standard</span><span class="p">(</span><span class="kt">int</span> <span class="n">capacity</span><span class="p">)</span> <span class="p">=&gt;</span> 
+        <span class="n">capacity</span> <span class="p">&gt;</span> <span class="m">0</span> <span class="p">?</span> <span class="k">new</span> <span class="nf">StandardTable</span><span class="p">(</span><span class="n">capacity</span><span class="p">,</span> <span class="k">null</span><span class="p">)</span> <span class="p">:</span> <span class="k">null</span><span class="p">;</span>
+
+    <span class="k">public</span> <span class="k">static</span> <span class="n">Table</span><span class="p">?</span> <span class="nf">Communal</span><span class="p">(</span><span class="kt">int</span> <span class="n">capacity</span><span class="p">)</span> <span class="p">=&gt;</span> 
+        <span class="n">capacity</span> <span class="p">&gt;</span> <span class="m">0</span> <span class="p">?</span> <span class="k">new</span> <span class="nf">CommunalTable</span><span class="p">(</span>
+            <span class="n">capacity</span><span class="p">,</span>
+            <span class="n">ImmutableArray</span><span class="p">&lt;</span><span class="n">Reservation</span><span class="p">&gt;.</span><span class="n">Empty</span><span class="p">)</span> <span class="p">:</span> <span class="k">null</span><span class="p">;</span>
+
+    <span class="k">private</span> <span class="n">record</span> <span class="nf">StandardTable</span><span class="p">(</span><span class="kt">int</span> <span class="n">Capacity</span><span class="p">,</span> <span class="n">Reservation</span><span class="p">?</span> <span class="n">Reservation</span><span class="p">)</span> <span class="p">:</span> <span class="n">Table</span>
+    <span class="p">{</span>
+        <span class="k">public</span> <span class="k">override</span> <span class="n">Table</span><span class="p">?</span> <span class="nf">Reserve</span><span class="p">(</span><span class="n">Reservation</span> <span class="n">r</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="nf">RemainingSeats</span><span class="p">()</span> <span class="k">switch</span>
+        <span class="p">{</span>
+            <span class="kt">var</span> <span class="n">seats</span> <span class="n">when</span> <span class="n">seats</span> <span class="p">&gt;=</span> <span class="n">r</span><span class="p">.</span><span class="n">Quantity</span> <span class="p">=&gt;</span> <span class="k">this</span> <span class="n">with</span> <span class="p">{</span> <span class="n">Reservation</span> <span class="p">=</span> <span class="n">r</span> <span class="p">},</span>
+            <span class="n">_</span> <span class="p">=&gt;</span> <span class="k">null</span><span class="p">,</span>
+        <span class="p">};</span>
+
+        <span class="k">public</span> <span class="k">override</span> <span class="kt">int</span> <span class="nf">RemainingSeats</span><span class="p">()</span> <span class="p">=&gt;</span> <span class="n">Reservation</span> <span class="k">switch</span>
+        <span class="p">{</span>
+            <span class="k">null</span> <span class="p">=&gt;</span> <span class="n">Capacity</span><span class="p">,</span>
+            <span class="n">_</span> <span class="p">=&gt;</span> <span class="m">0</span><span class="p">,</span>
+        <span class="p">};</span>
+    <span class="p">}</span>
+
+    <span class="k">private</span> <span class="n">record</span> <span class="nf">CommunalTable</span><span class="p">(</span>
+        <span class="kt">int</span> <span class="n">Capacity</span><span class="p">,</span> 
+        <span class="n">ImmutableArray</span><span class="p">&lt;</span><span class="n">Reservation</span><span class="p">&gt;</span> <span class="n">Reservations</span><span class="p">)</span> <span class="p">:</span> <span class="n">Table</span>
+    <span class="p">{</span>
+        <span class="k">public</span> <span class="k">override</span> <span class="n">Table</span><span class="p">?</span> <span class="nf">Reserve</span><span class="p">(</span><span class="n">Reservation</span> <span class="n">r</span><span class="p">)</span> <span class="p">=&gt;</span> <span class="nf">RemainingSeats</span><span class="p">()</span> <span class="k">switch</span>
+        <span class="p">{</span>
+            <span class="kt">var</span> <span class="n">seats</span> <span class="n">when</span> <span class="n">seats</span> <span class="p">&gt;=</span> <span class="n">r</span><span class="p">.</span><span class="n">Quantity</span> <span class="p">=&gt;</span>
+                <span class="k">this</span> <span class="n">with</span> <span class="p">{</span> <span class="n">Reservations</span> <span class="p">=</span> <span class="n">Reservations</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="p">},</span>
+            <span class="n">_</span> <span class="p">=&gt;</span> <span class="k">null</span><span class="p">,</span>
+        <span class="p">};</span>
+
+        <span class="k">public</span> <span class="k">override</span> <span class="kt">int</span> <span class="nf">RemainingSeats</span><span class="p">()</span> <span class="p">=&gt;</span> 
+            <span class="n">Capacity</span> <span class="p">-</span> <span class="n">Reservations</span><span class="p">.</span><span class="nf">Sum</span><span class="p">(</span><span class="n">r</span> <span class="p">=&gt;</span> <span class="n">r</span><span class="p">.</span><span class="n">Quantity</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+    </code></pre></div></div>
+
+    <p>I’d love to hear your thoughts on this approach. I think that one of its weaknesses is that calls to <code class="language-plaintext highlighter-rouge">Table.Standard()</code> and <code class="language-plaintext highlighter-rouge">Table.Communal()</code> will yield two instances of <code class="language-plaintext highlighter-rouge">Table</code> that can never be equal. For instance, <code class="language-plaintext highlighter-rouge">Table.Standard(4) != Table.Communal(4)</code>, even though they’re both of type <code class="language-plaintext highlighter-rouge">Table?</code> and have the same number of seats.
+    </p>
+
+    <p>
+    Calling <code class="language-plaintext highlighter-rouge">GetType()</code> on each of the instances reveals that their types are actually <code class="language-plaintext highlighter-rouge">Table+StandardTable</code> and <code class="language-plaintext highlighter-rouge">Table+CommunalTable</code> respectively; however, this isn't transparent to callers. Another solution might be to expose the <code class="language-plaintext highlighter-rouge">Table</code> subtypes and give them private constructors &ndash; I just like the simplicity of not exposing the individual types of tables the same way you’re doing <a href="#b37e173371f249d99f80d12d64b2bee2">here</a>, Mark.</p>
+	</div>
+	<div class="comment-date">2022-11-29 11:28 UTC</div>
+</div>
+<div class="comment" id="f925c18ec3a746c393cfae319200baac">
+   <div class="comment-author"><a href="https://github.com/alexmurari">Alexandre Murari Jr</a></div>
+   <div class="comment-content">
+      <p>
+         Mark,
+      <p>
+         How do you differentiate encapsulation from abstraction?
+      </p>
+      <p>
+         Here's an excerpt from your book Dependency Injection: Principles, Practices, and Patterns.
+      </p>
+      <p>
+         Section: 1.3 - What to inject and what not to inject
+         Subsection: 1.3.1 - Stable Dependencies 
+      </p>
+      <blockquote>
+         "Other examples [of libraries that do not require to be injected] may include specialized libraries that encapsulate alogorithms relevant to your application".
+      </blockquote>
+      <p>
+         In that section, you and Steven were giving examples of stable dependencies that do not require to be injected to keep modularity.
+         You define a library that "encapsulates an algorithm" as an example.
+      </p>
+      <p>
+         Now, to me, encapsulation is "protecting data integrity", plain and simple.
+         A class is encapsulated as long as it's impossible or nearly impossible to bring it to an invalid or inconsistent state.
+      </p>
+      <p>
+         Protection of invariants, implementation hiding, bundling data and operations together, pre- and postconditions, Postel's Law all come into play to achieve this goal.
+      </p>
+      <p>
+         Thus, a class, to be "encapsulatable", has to have a state that can be initialized and/or modified by the client code.
+      </p>
+      <p>
+         Now I ask: most of the time when we say that something is encapsulating another, don't we really mean abstracting?
+      </p>
+      <p>
+         Why is it relevant to know that the hypothetical algorithm library protects it's invariants by using the term "encapsulate"?
+      </p>
+      <p>
+         Abstraction, under the light of Robert C. Martin's definition of it, makes much more sense in that context: "a specialized library that abstracts algorithms relevant to your application".
+         It amplifies the essential (by providing a clear API), but eliminates the irrelevant (by hiding the alogirthm's implementation details).
+      </p>
+      <p>
+         Granted, there is some overlap between encapsulation and abstraction, specially when you bundle data and operations together (rich domain models), but they are not the same thing, you just use one to achieve another sometimes.
+      </p>
+      <p>
+         Would it be correct to say that the .NET Framework encapsulates math algorithms in the System.Math class? Is there any state there to be preserved? They're all static methods and constants.
+         On the other hand, they're surely eliminating some pretty irrelevant (from a consumer POV) trigonometric algorithms.
+      </p>
+      <p>
+         Thanks.
+      </p>
+   </div>
+   <div class="comment-date">2022-12-04 02:35 UTC</div>
+</div>
+
+	<div class="comment" id="5af1535933bf4b28bb5c2fc14ce0a01a">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Alexandre, thank you for writing. How do I distinguish between abstraction and encapsulation?
+			</p>
+			<p>
+				There's much overlap, to be sure.
+			</p>
+			<p>
+				As I write, my view on encapsulation is influenced by Bertrand Meyer's notion of contract. Likewise, I do use Robert C. Martin's notion of amplifying the essentials while hiding the irrelevant details as a guiding light when discussing abstraction.
+			</p>
+			<p>
+				While these concepts may seem synonymous, they're not quite the same. I can't say that I've spent too much time considering how these two words relate, but shooting from the hip I think that <em>abstraction</em> is a wider concept.
+			</p>
+			<p>
+				You don't need to read much of Robert C. Martin before he'll tell you that the <a href="https://en.wikipedia.org/wiki/Dependency_inversion_principle">Dependency Inversion Principle</a> is an important part of abstraction:
+			</p>
+			<blockquote>
+				<p>
+					"Abstractions should not depend on details. Details should depend on abstractions."
+				</p>
+				<footer><cite>Robert C. Martin, <a href="/ref/appp">Agile Principles, Patterns, and Practices in C#</a></cite></footer>
+			</blockquote>
+			<p>
+				It's possible to implement a code base where this isn't true, even if classes have good encapsulation. You could imagine a domain model that depends on database details like a particular ORM. I've seen plenty of those in my career, although I grant that most of them have had poor encapsulation as well. It is not, however, impossible to imagine such a system with good encapsulation, but suboptimal abstraction.
+			</p>
+			<p>
+				Does it go the other way as well? Can we have good abstraction, but poor encapsulation?
+			</p>
+			<p>
+				An example doesn't come immediately to mind, but as I wrote, it's not an ontology that I've given much thought.
+			</p>
+		</div>
+		<div class="comment-date">2022-12-06 22:11 UTC</div>
+	</div>
+</div>

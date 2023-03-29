@@ -1,0 +1,116 @@
+---
+layout: post
+title: "Where to put unit tests"
+description: "This article provides arguments for (and against) putting unit tests in libraries different from the production code."
+date: 2013-06-17 09:22 UTC
+tags: [Unit Testing]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		One of my readers ask me "whether unit tests should be done in separate assemblies or if they should be done in [...] the production assemblies?" As he puts it, he "always took for granted that the test should go into separate assemblies," but is this really true, and if it is: what are the arguments?
+	</p>
+	<p>
+		Despite the fundamental nature of this question, I haven't seen much explicit treatment of it, and to answer it, I had to pause and think. The key to the answer, I think, is to first understand <em>why</em> you write automated tests at all. (This way of thinking about questions and answers is closely related to the (Lean) technique of <a href="http://en.wikipedia.org/wiki/5_Whys">5 whys</a>.)
+	</p>
+	<p>
+		As always, the short answer is that <em>it depends</em>, but that's not very helpful, so here are some common reasons.
+	</p>
+	<h3 id="8c1119b05daf4e1db8d2043895495ebd">
+		Regression testing <a href="#8c1119b05daf4e1db8d2043895495ebd" title="permalink">#</a>
+	</h3>
+	<p>
+		In my experience, most people focus on the <em>quality control</em> aspect of automated testing. If your only purpose of having automated tests is to have a good <a href="http://en.wikipedia.org/wiki/Regression_testing">regression test</a> suite, then it seems that it doesn't really matter where the tests go.
+	</p>
+	<p>
+		Still, even if that's your only reason for unit testing, I think putting the unit tests in a separate library is the best choice:
+		<ul>
+			<li>
+				It gives you a clearer separation of concerns. If you put unit tests in your production library, it will blur the distinction between production code and test code. How do you know which code to test? How do you know what not to test? There are different ways to address these concerns (namespaces, TDD), but I think the <em>simplest</em> way to deal with such issues is to put the tests in a separate library. (This argument reminds me a little of <a href="http://en.wikipedia.org/wiki/Occam's_razor">Occam's razor</a>.)
+			</li>
+			<li>
+				Putting unit tests in your production code will make your compiled libraries bigger. It will take (slightly) more time to load the libraries into memory, and they will take up more memory. This probably doesn't matter at all on a big server, but may be important if your production code runs on a (small) mobile device. Once again, it depends.
+			</li>
+			<li>
+				The more code you put in your production software, the larger the potential attack surface becomes. Have you performed a security analysis of your unit tests? It's much easier to put the tests in a separate library that you never deploy to production, because it means that you don't have to waste valuable time and resources doing a security analysis of your test code.
+			</li>
+		</ul>
+	</p>
+	<p>
+		In short, if you put unit tests in the same library as your production code, all that unit test <em>must</em> adhere to the same standards as your production code. Obviously, if you have no standards for your production code, this doesn't apply, but then you probably have bigger problems.
+	</p>
+	<h3 id="d39d4478d256490c88936f0cfd96cdfe">
+		API design feedback <a href="#d39d4478d256490c88936f0cfd96cdfe" title="permalink">#</a>
+	</h3>
+	<p>
+		While I find regression testing useful in itself, I find Test-Driven Development (TDD) particularly valuable because it provides feedback about the API I'm building. In the spirit of <a href="http://amzn.to/VI81bP">GOOS</a>, if the test is difficult to write, it's probably because the API is difficult to use. You'll only get this feedback if you test against the public API of your code; the unit test is <a href="/2011/11/10/TDDimprovesreusability">the first client of your API</a>.
+	</p>
+	<p>
+		However, if your unit tests reside in the same library as your production code, you can easily invoke internal classes and members from your unit tests. You simply lose the opportunity to get valuable feedback about the usability of your code. (Note that this argument also applies to the use of the <a href="http://msdn.microsoft.com/en-us/library/system.runtime.compilerservices.internalsvisibletoattribute.aspx">[InternalsVisibleTo] attribute</a>, which means that you should never use it.)
+	</p>
+	<p>
+		For me, this reason alone is enough that I always prefer putting unit tests in separate libraries.
+	</p>
+	<h3 id="f723099dc8bc4059b31f435f3e2e1e05">
+		Shipping production code with tests <a href="#f723099dc8bc4059b31f435f3e2e1e05" title="permalink">#</a>
+	</h3>
+	<p>
+		Although I think that there are strong arguments against putting unit tests in production code, there may also be reasons in favor. As <a href="http://stackoverflow.com/a/554732/126014">one answer on Stack Overflow</a> describes, shipping your production code with a test suite can be valuable as a self-diagnostics tool. This might be particularly valuable if you deploy your production code to heterogeneous environments, and you're unable to predict and test the configuration of all environments before you ship your code.
+	</p>
+	<h3 id="df26561d1944421180503e2e9f193d05">
+		Summary <a href="#df26561d1944421180503e2e9f193d05" title="permalink">#</a>
+	</h3>
+	<p>
+		In the end, the answer depends on your context. If you understand why you (want to) have unit tests, you'll be able to answer the initial question: <em>should unit tests go in a separate library, or can they go in the same library as the production code?</em> In <em>mainstream scenarios</em> I will strongly recommend putting tests in a separate library, but you may have special circumstances where it makes sense to put the tests together with the production code. As long as you understand the pros and cons, you can make your own informed decision.
+	</p>
+</div>
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">Comments</h2>
+	<div class="comment" id="bf054f135342493aa939fbeb7ce29443">
+		<div class="comment-author">Stefan Olofsson</div>
+		<div class="comment-content">Hello Mark,<br>
+		<br>
+		Another big issue with having tests in your production code is that you will drag along depencencies to test libraries. You mention this in the second issue above but I think it would be a good idea to state it more explicitly.
+		</div>
+		<div class="comment-date">2013-06-17 14:28</div>
+	</div>
+	<div class="comment" id="5381530a7d9c4d4fabb15644aefe9a91">
+		<div class="comment-author">Anthony Leatherwood</div>
+		<div class="comment-content">
+		I had always put my unit tests in another assembly.  But recently a colleague and I started to dislike the fact that the unit tests weren't in close enough proximity to the class they tested.  As well you might not know tests even existed unless you went digging around in the solution.  As a result, we've started putting our tests behind the cs file they are testing (like the code-behind of a winform).  All you have to do is expand the cs to see the tests behind it.  I know the reasons for not putting the tests in production are sound, but I have not regretted putting them behind the class once.  As for the dependencies, if they aren't invoked, they are never loaded and don't even have to exist in the production environment.  For us, this hasn't presented any problems.  For what it's worth, we are "zookeepers" and not "rangers".  If it were the other way around, it's possible we would reconsider.
+		</div>
+		<div class="comment-date">2013-06-19 17:28</div>
+	</div>
+	<div class="comment" id="48f77cee86584137a0d7a1de23a8e78f">
+		<div class="comment-author">Jeff Soper</div>
+		<div class="comment-content">
+			<p>Could you share your opinion on bundling test projects with their target projects in source control repositories? I use Git, but I would imagine this is applicable in many source control implementations.</p>
+			<p>I currently keep my tests in their own projects, as you generally recommend here, and also track them in their own Git repository, separately from the tested project. However, I'm finding that when I create a new branch to add a new feature in the project, I create the same branch in the test project. This is critical especially in situations where the new behavior necessarily causes existing tests to fail. If I forget to create a new branch in the test project to match the new branch in the project under test, it can sometimes lead to annoying clean-up work that was preventable.</p>
+			<p>I am beginning to question why I'm not combining the test project and the tested project in the same Git repository, so that when I branch out on a new idea, I only need to do it once, and my tests are forever in sync with my tested code. I haven't come across a scenario where that would cause problems - can you think of any compelling reason not to keep the projects in the same source control repository?</p>
+		</div>
+		<div class="comment-date">2013-12-04 09:30</div>
+	</div>
+	<div class="comment" id="66e12b4d8dd94478ac747b04a7bc8323">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Jeff, thank you for writing.
+			</p>
+			<p>
+				If I were to exaggerate a bit, I would claim that I've used Test-Driven Development (TDD) longer than I've used source control systems, so it has never occurred to me to keep tests in a separate repository. It sounds really... inconvenient, but I've never tried it, so I don't <em>know</em> if it's a good or bad idea. Yet, in all that time, I've never had any problems keeping tests and production code in the same version control repository.
+			</p>
+			<p>
+				With TDD, <a href="/2011/11/10/TDDimprovesreusability">the tests are such an integral part of the code base</a> that I wouldn't like to experiment with keeping them in a different repository. Additionally, when you use a test suite as a regression test suite, it's important that you version tests and production code together. This also means tagging them together.
+			</p>
+			<p>
+				If you take a look at the <a href="https://github.com/ploeh">various code bases I maintain on GitHub</a>, you will also see that all of them include unit tests as part of each repository.
+			</p>
+		</div>
+		<div class="comment-date">2013-12-04 06:28 UTC</div>
+	</div>
+</div>

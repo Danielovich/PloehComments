@@ -1,0 +1,369 @@
+---
+layout: post
+title: "Monad laws"
+description: "An article for object-oriented programmers."
+date: 2022-04-11 6:57 UTC
+tags: [Software Design, Functional Programming]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is an instalment in <a href="/2022/03/28/monads">an article series about monads</a>.
+	</p>
+	<p>
+		Just as <a href="/2018/03/22/functors">functors</a> must obey the functor laws, monads must follow the monad laws. When looked at from the right angle, these are intuitive and reasonable rules: <a href="https://en.wikipedia.org/wiki/Identity_element">identity</a> and <a href="https://en.wikipedia.org/wiki/Associative_property">associativity</a>.
+	</p>
+	<p>
+		That sounds almost like a <a href="/2017/10/06/monoids">monoid</a>, but the rules are more relaxed. For monoids, we require a <a href="https://en.wikipedia.org/wiki/Binary_operation">binary operation</a>. That's not the case for functors and monads. Instead of binary operations, for monads we're going to use <a href="/2022/04/04/kleisli-composition">Kleisli composition</a>.
+	</p>
+	<p>
+		This article draws heavily on the <a href="https://wiki.haskell.org/Monad_laws">Haskell wiki on monad laws</a>.
+	</p>
+	<p>
+		In short, the monad laws comprise three rules:
+	</p>
+	<ul>
+		<li>Left identity</li>
+		<li>Right identity</li>
+		<li>Associativity</li>
+	</ul>
+	<p>
+		The article describes each in turn, starting with left identity.
+	</p>
+	<h3 id="2589cde8994b4e3db81ef821d8f346ba">
+		Left identity <a href="#2589cde8994b4e3db81ef821d8f346ba" title="permalink">#</a>
+	</h3>
+	<p>
+		A left identity is an element that, when applied to the left of an operator, doesn't change the other element. When used with the <a href="/2022/04/04/kleisli-composition">fish operator</a> it looks like this:
+	</p>
+	<p>
+		<pre>id &gt;=&gt; h ≡ h</pre>
+	</p>
+	<p>
+		For monads, <code>id</code> turns out to be <code>return</code>, so more specifically:
+	</p>
+	<p>
+		<pre>return &gt;=&gt; h ≡ h</pre>
+	</p>
+	<p>
+		In C# we can illustrate the law as a parametrised test:
+	</p>
+	<p>
+		<pre>[Theory]
+[InlineData(-1)]
+[InlineData(42)]
+[InlineData(87)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;<span style="color:#74531f;">LeftIdentityKleisli</span>(<span style="color:blue;">int</span>&nbsp;<span style="color:#1f377f;">a</span>)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">int</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">@return</span>&nbsp;=&nbsp;Monad.Return;
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">int</span>,&nbsp;Monad&lt;<span style="color:blue;">string</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">h</span>&nbsp;=&nbsp;<span style="color:#1f377f;">i</span>&nbsp;=&gt;&nbsp;Monad.Return(i.ToString());
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">int</span>,&nbsp;Monad&lt;<span style="color:blue;">string</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">composed</span>&nbsp;=&nbsp;@return.Compose(h);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Assert.Equal(composed(a),&nbsp;h(a));
+}</pre>
+	</p>
+	<p>
+		Recall that we can implement the fish operators as <code>Compose</code> overloads. The above test demonstrates the notion that <code>@return</code> composed with <code>h</code> should be indistinguishable from <code>h</code>. Such a test should pass.
+	</p>
+	<p>
+		Keep in mind, however, that Kleisli composition is <em>derived</em> from the definition of a monad. The direct definition of monads is that they come with a <code>return</code> and <code>bind</code> functions (or, alternatively <code>return</code> and <code>join</code>). If we <a href="https://refactoring.com/catalog/inlineFunction.html">inline</a> the implementation of <code>Compose</code>, the test instead looks like this:
+	</p>
+	<p>
+		<pre>[Theory]
+[InlineData(-1)]
+[InlineData(42)]
+[InlineData(87)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;<span style="color:#74531f;">LeftIdentityInlined</span>(<span style="color:blue;">int</span>&nbsp;<span style="color:#1f377f;">a</span>)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">int</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">@return</span>&nbsp;=&nbsp;Monad.Return;
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">int</span>,&nbsp;Monad&lt;<span style="color:blue;">string</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">h</span>&nbsp;=&nbsp;<span style="color:#1f377f;">i</span>&nbsp;=&gt;&nbsp;Monad.Return(i.ToString());
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">int</span>,&nbsp;Monad&lt;<span style="color:blue;">string</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">composed</span>&nbsp;=&nbsp;<span style="color:#1f377f;">x</span>&nbsp;=&gt;&nbsp;@return(x).SelectMany(h);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Assert.Equal(composed(a),&nbsp;h(a));
+}</pre>
+	</p>
+	<p>
+		or, more succinctly:
+	</p>
+	<p>
+		<pre>Assert.Equal(@return(a).SelectMany(h),&nbsp;h(a));</pre>
+	</p>
+	<p>
+		This is also the way the left identity law is usually presented in <a href="https://www.haskell.org">Haskell</a>:
+	</p>
+	<p>
+		<pre>return a &gt;&gt;= h = h a</pre>
+	</p>
+	<p>
+		In Haskell, <em>monadic bind</em> is represented by the <code>&gt;&gt;=</code> operator, while in C# it's the <code>SelectMany</code> method. Thus, the Haskell and the C# representations are equivalent.
+	</p>
+	<h3 id="b74cccb66945471d8b28e40e4e90516d">
+		Right identity <a href="#b74cccb66945471d8b28e40e4e90516d" title="permalink">#</a>
+	</h3>
+	<p>
+		Right identity starts out similar to left identity. Using the fish operator, the Haskell wiki describes it as:
+	</p>
+	<p>
+		<pre>f &gt;=&gt; return ≡ f</pre>
+	</p>
+	<p>
+		Translated to a C# test, an example of that law might look like this:
+	</p>
+	<p>
+		<pre>[Theory]
+[InlineData(<span style="color:#a31515;">&quot;foo&quot;</span>)]
+[InlineData(<span style="color:#a31515;">&quot;ploeh&quot;</span>)]
+[InlineData(<span style="color:#a31515;">&quot;lawful&quot;</span>)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;<span style="color:#74531f;">RightIdentityKleisli</span>(<span style="color:blue;">string</span>&nbsp;<span style="color:#1f377f;">a</span>)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">string</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">f</span>&nbsp;=&nbsp;<span style="color:#1f377f;">s</span>&nbsp;=&gt;&nbsp;Monad.Return(s.Length);
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">int</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">@return</span>&nbsp;=&nbsp;Monad.Return;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">string</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">composed</span>&nbsp;=&nbsp;f.Compose(@return);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Assert.Equal(composed(a),&nbsp;f(a));
+}</pre>
+	</p>
+	<p>
+		Again, if we inline <code>Compose</code>, the test instead looks like this:
+	</p>
+	<p>
+		<pre>[Theory]
+[InlineData(<span style="color:#a31515;">&quot;foo&quot;</span>)]
+[InlineData(<span style="color:#a31515;">&quot;ploeh&quot;</span>)]
+[InlineData(<span style="color:#a31515;">&quot;lawful&quot;</span>)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;<span style="color:#74531f;">RightIdentityInlined</span>(<span style="color:blue;">string</span>&nbsp;<span style="color:#1f377f;">a</span>)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">string</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">f</span>&nbsp;=&nbsp;<span style="color:#1f377f;">s</span>&nbsp;=&gt;&nbsp;Monad.Return(s.Length);
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">int</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">@return</span>&nbsp;=&nbsp;Monad.Return;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">string</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">composed</span>&nbsp;=&nbsp;<span style="color:#1f377f;">x</span>&nbsp;=&gt;&nbsp;f(x).SelectMany(@return);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Assert.Equal(composed(a),&nbsp;f(a));
+}</pre>
+	</p>
+	<p>
+		Now explicitly call the <code>f</code> function and assign it to a variable <code>m</code>:
+	</p>
+	<p>
+		<pre>[Theory]
+[InlineData(<span style="color:#a31515;">&quot;foo&quot;</span>)]
+[InlineData(<span style="color:#a31515;">&quot;ploeh&quot;</span>)]
+[InlineData(<span style="color:#a31515;">&quot;lawful&quot;</span>)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;<span style="color:#74531f;">RightIdentityInlinedIntoAssertion</span>(<span style="color:blue;">string</span>&nbsp;<span style="color:#1f377f;">a</span>)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">string</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">f</span>&nbsp;=&nbsp;<span style="color:#1f377f;">s</span>&nbsp;=&gt;&nbsp;Monad.Return(s.Length);
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">int</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">@return</span>&nbsp;=&nbsp;Monad.Return;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&nbsp;<span style="color:#1f377f;">m</span>&nbsp;=&nbsp;f(a);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Assert.Equal(m.SelectMany(@return),&nbsp;m);
+}</pre>
+	</p>
+	<p>
+		The assertion is now the C# version of the normal Haskell definition of the right identity law:
+	</p>
+	<p>
+		<pre>m &gt;&gt;= return = m</pre>
+	</p>
+	<p>
+		In other words, <code>return</code> is the identity element for monadic composition. It doesn't really 'do' anything in itself.
+	</p>
+	<h3 id="3d323da500cc4405ac4768b1108cfdf9">
+		Associativity <a href="#3d323da500cc4405ac4768b1108cfdf9" title="permalink">#</a>
+	</h3>
+	<p>
+		The third monad law is the associativity law. Keep in mind that an operator like <code>+</code> is associative if it's true that
+	</p>
+	<p>
+		<pre>(x + y) + z = x + (y + z)</pre>
+	</p>
+	<p>
+		Instead of <code>+</code>, the operator in question is the fish operator, and since values are functions, we typically call them <code>f</code>, <code>g</code>, and <code>h</code> rather than <code>x</code>, <code>y</code>, and <code>z</code>:
+	</p>
+	<p>
+		<pre>(f &gt;=&gt; g) &gt;=&gt; h ≡ f &gt;=&gt; (g &gt;=&gt; h)</pre>
+	</p>
+	<p>
+		Translated to a C# test as an example, the law looks like this:
+	</p>
+	<p>
+		<pre>[Theory]
+[InlineData(0)]
+[InlineData(1)]
+[InlineData(2)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;<span style="color:#74531f;">AssociativityKleisli</span>(<span style="color:blue;">double</span>&nbsp;<span style="color:#1f377f;">a</span>)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">double</span>,&nbsp;Monad&lt;<span style="color:blue;">bool</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">f</span>&nbsp;=&nbsp;<span style="color:#1f377f;">i</span>&nbsp;=&gt;&nbsp;Monad.Return(i&nbsp;%&nbsp;2&nbsp;==&nbsp;0);
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">bool</span>,&nbsp;Monad&lt;<span style="color:blue;">string</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">g</span>&nbsp;=&nbsp;<span style="color:#1f377f;">b</span>&nbsp;=&gt;&nbsp;Monad.Return(b.ToString());
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">string</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">h</span>&nbsp;=&nbsp;<span style="color:#1f377f;">s</span>&nbsp;=&gt;&nbsp;Monad.Return(s.Length);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">double</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">left</span>&nbsp;=&nbsp;(f.Compose(g)).Compose(h);
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">double</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">right</span>&nbsp;=&nbsp;f.Compose(g.Compose(h));
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Assert.Equal(left(a),&nbsp;right(a));
+}</pre>
+	</p>
+	<p>
+		The outer brackets around <code>(f.Compose(g))</code> are actually redundant; we should remove them. Also, inline <code>Compose</code>:
+	</p>
+	<p>
+		<pre>[Theory]
+[InlineData(0)]
+[InlineData(1)]
+[InlineData(2)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;<span style="color:#74531f;">AssociativityInlined</span>(<span style="color:blue;">double</span>&nbsp;<span style="color:#1f377f;">a</span>)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">double</span>,&nbsp;Monad&lt;<span style="color:blue;">bool</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">f</span>&nbsp;=&nbsp;<span style="color:#1f377f;">i</span>&nbsp;=&gt;&nbsp;Monad.Return(i&nbsp;%&nbsp;2&nbsp;==&nbsp;0);
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">bool</span>,&nbsp;Monad&lt;<span style="color:blue;">string</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">g</span>&nbsp;=&nbsp;<span style="color:#1f377f;">b</span>&nbsp;=&gt;&nbsp;Monad.Return(b.ToString());
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">string</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">h</span>&nbsp;=&nbsp;<span style="color:#1f377f;">s</span>&nbsp;=&gt;&nbsp;Monad.Return(s.Length);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">double</span>,&nbsp;Monad&lt;<span style="color:blue;">string</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">fg</span>&nbsp;=&nbsp;<span style="color:#1f377f;">x</span>&nbsp;=&gt;&nbsp;f(x).SelectMany(g);
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">double</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">left</span>&nbsp;=&nbsp;<span style="color:#1f377f;">x</span>&nbsp;=&gt;&nbsp;fg(x).SelectMany(h);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">bool</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">gh</span>&nbsp;=&nbsp;<span style="color:#1f377f;">x</span>&nbsp;=&gt;&nbsp;g(x).SelectMany(h);
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">double</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">right</span>&nbsp;=&nbsp;<span style="color:#1f377f;">x</span>&nbsp;=&gt;&nbsp;f(x).SelectMany(gh);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Assert.Equal(left(a),&nbsp;right(a));
+}</pre>
+	</p>
+	<p>
+		If there's a way in C# to inline the local compositions <code>fg</code> and <code>gh</code> directly into <code>left</code> and <code>right</code>, respectively, I don't know how. In any case, the above is just an intermediate step.
+	</p>
+	<p>
+		For both <code>left</code> and <code>right</code>, notice that the first step involves invoking <code>f</code> with <code>x</code>. If, instead, we call that value <code>m</code>, we can rewrite the test like this:
+	</p>
+	<p>
+		<pre>[Theory]
+[InlineData(0)]
+[InlineData(1)]
+[InlineData(2)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;<span style="color:#74531f;">AssociativityInlinedIntoAssertion</span>(<span style="color:blue;">double</span>&nbsp;<span style="color:#1f377f;">a</span>)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">double</span>,&nbsp;Monad&lt;<span style="color:blue;">bool</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">f</span>&nbsp;=&nbsp;<span style="color:#1f377f;">i</span>&nbsp;=&gt;&nbsp;Monad.Return(i&nbsp;%&nbsp;2&nbsp;==&nbsp;0);
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">bool</span>,&nbsp;Monad&lt;<span style="color:blue;">string</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">g</span>&nbsp;=&nbsp;<span style="color:#1f377f;">b</span>&nbsp;=&gt;&nbsp;Monad.Return(b.ToString());
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;<span style="color:blue;">string</span>,&nbsp;Monad&lt;<span style="color:blue;">int</span>&gt;&gt;&nbsp;<span style="color:#1f377f;">h</span>&nbsp;=&nbsp;<span style="color:#1f377f;">s</span>&nbsp;=&gt;&nbsp;Monad.Return(s.Length);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Monad&lt;<span style="color:blue;">bool</span>&gt;&nbsp;<span style="color:#1f377f;">m</span>&nbsp;=&nbsp;f(a);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;Assert.Equal(m.SelectMany(g).SelectMany(h),&nbsp;m.SelectMany(<span style="color:#1f377f;">x</span>&nbsp;=&gt;&nbsp;g(x).SelectMany(h)));
+}</pre>
+	</p>
+	<p>
+		The above assertion corresponds to the way the associativity law is usually represented in Haskell:
+	</p>
+	<p>
+		<pre>(m &gt;&gt;= g) &gt;&gt;= h = m &gt;&gt;= (\x -&gt; g x &gt;&gt;= h)</pre>
+	</p>
+	<p>
+		Once more, keep in mind that <code>&gt;&gt;=</code> in Haskell corresponds to <code>SelectMany</code> in C#.
+	</p>
+	<h3 id="d43cb529320e4dc2ab2003e68918ae92">
+		Conclusion <a href="#d43cb529320e4dc2ab2003e68918ae92" title="permalink">#</a>
+	</h3>
+	<p>
+		A proper monad must satisfy the three monad laws: left identity, right identity, and associativity. Together, left identity and right identity are know as simply <em>identity</em>. What's so special about identity and associativity?
+	</p>
+	<p>
+		As <a href="https://bartoszmilewski.com/2014/11/04/category-the-essence-of-composition/">Bartosz Milewski explains</a>, a <em>category</em> must satisfy associativity and identity. When it comes to monads, the category in question is the <a href="https://bartoszmilewski.com/2014/12/23/kleisli-categories/">Kleisli category</a>. Or, as the Haskell wiki puts it:
+	</p>
+	<blockquote>
+		<p>Monad axioms:<br/>
+Kleisli composition forms<br/>
+a category.</p>
+		<footer><cite><a href="https://wiki.haskell.org/Monad_laws">Haskell wiki</a></cite></footer>
+	</blockquote>
+	<p>
+		Subsequent articles in this article series will now proceed to give examples of concrete monads, and what the laws look like for each of these.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2022/04/19/the-list-monad">The List monad</a>.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	<div class="comment" id="8e777ae4b3c64f5ab244b0e4d0f0d263">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<blockquote>
+				That sounds almost like a <a href="/2017/10/06/monoids">monoid</a>, but the rules are more relaxed. For monoids, we require a <a href="https://en.wikipedia.org/wiki/Binary_operation">binary operation</a>. That's not the case for functors and monads. Instead of binary operations, for monads we're going to use <a href="/2022/04/04/kleisli-composition">Kleisli composition</a>.
+			</blockquote>
+			<p>
+				I am confused by this paragraph.  A monoid requries a binary operation (that is also closed), and Kleisli composition is (closed) binary operation.
+			</p>
+			<p>
+				As you said in the <a href="https://blog.ploeh.dk/2022/03/28/monads/">introductory article to this monad series</a>, there are three pieces to a monad: a generic type <code>M&lt;&gt;</code>, a function with type <code>a -&gt; M&lt;a&gt;</code> (typically called "return"), and a function with signature <code>(a -&gt; M&lt;b&gt;) -&gt; M&lt;a&gt; -&gt; M&lt;b&gt;</code> (sometimes called "bind").  Then <code>(M&lt;&gt;, return, bind)</code> is a monad if those three items satisfy the monad laws.
+			</p>
+			<p>
+				I think the following is true.  Let <code>M&lt;&gt;</code> be a generic type, and let <code>S</code> be the set of all functions with signature <code>a -&gt; M&lt;a&gt;</code>.  Then <code>(M&lt;&gt;, return, bind)</code> is a monad if only only if <code>(S, &gt;=&gt;, return)</code> is a monoid.
+			</p>
+		</div>
+		<div class="comment-date">2022-04-18 16:17 UTC</div>
+	</div>
+
+	<div class="comment" id="2bf9e517fa744a89928ae3d9f08fedd2">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Tyson, thank you for writing. To address the elephant in the room first: A monad <em>is</em> a monoid (<a href="https://bartoszmilewski.com/2016/12/27/monads-categorically/">in the category of endofunctors</a>), but as far as I can tell, you have to look more abstractly at it than allowed by the static type systems we normally employ.
+			</p>
+			<p>
+				<a href="https://bartoszmilewski.com/2016/12/27/monads-categorically/">Bartosz Milewski describes</a> a <a href="/2022/03/28/monads">nested functor</a> as the tensor product of two monadic types: <code>M ⊗ M</code>. The binary operation in question is then <code>M ⊗ M -> M</code>, or <em>join/flatten</em> (from here on just <em>join</em>). In this very abstract view, monads <em>are</em> monoids. It does require an abstract view of functors as objects in a category. At that level of abstraction, so many details are lost that <em>join</em> looks like a binary operation.
+			</p>
+			<p>
+				So, to be clear, if you want to look at a monad as a monoid, it's not the monadic <em>bind</em> function that's the binary operation; it's <em>join</em>. (That's another reason I prefer explaining monads in terms of <em>join</em> rather than leading with <em>bind</em>.)
+			</p>
+			<p>
+				When you zoom in on the details, however, <a href="https://hackage.haskell.org/package/base/docs/Control-Monad.html#v:join">join</a> doesn't look like a regular binary operation: <code>m (m a) -&gt; m a</code>. A binary operation, on the other hand, should look like this: <code>m a -&gt; m a -&gt; m a</code>.
+			</p>
+			<p>
+				The Kleisli composition operator unfortunately doesn't fix this. Let's look at the C# method signature, since it may offer a way out:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;Func&lt;T,&nbsp;Monad&lt;T2&gt;&gt;&nbsp;<span style="color:#74531f;">Compose</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">T1</span>,&nbsp;<span style="color:#2b91af;">T2</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;T,&nbsp;Monad&lt;T1&gt;&gt;&nbsp;<span style="color:#1f377f;">action1</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;T1,&nbsp;Monad&lt;T2&gt;&gt;&nbsp;<span style="color:#1f377f;">action2</span>)
+</pre>
+			</p>
+			<p>
+				Notice that the types don't match: <code>action1</code> has a type different from <code>action2</code>, which is again different from the return type. Thus, it's not a binary operation, because the elements don't belong to the same <a href="/2021/11/15/types-as-sets">set</a>.
+			</p>
+			<p>
+				As Bartosz Milewski wrote, though, if we squint a little, we may make it work. C# allows us to 'squint' because of its object hierarchy:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;Func&lt;object,&nbsp;Monad&lt;object&gt;&gt;&nbsp;<span style="color:#74531f;">Compose</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;object,&nbsp;Monad&lt;object&gt;&gt;&nbsp;<span style="color:#1f377f;">action1</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;Func&lt;object,&nbsp;Monad&lt;object&gt;&gt;&nbsp;<span style="color:#1f377f;">action2</span>)
+</pre>
+			</p>
+			<p>
+				I'm not sure how helpful that is, though, so I didn't want to get into these weeds in the above article itself. It's fine here in the comments, because I expect only very dedicated readers to consult them. This, thus, serves more like a footnote or appendix.
+			</p>
+		</div>
+		<div class="comment-date">2022-04-23 11:29 UTC</div>
+	</div>
+
+	<div class="comment" id="2b7a3b85cfec410c8213adbfa3b7d33f">
+		<div class="comment-author"><a href="https://about.me/tysonwilliams">Tyson Williams</a></div>
+		<div class="comment-content">
+			<p>
+				Thanks very much for you reply.  It helped me to see where I was wrong.  <code>(S, &gt;=&gt;, return)</code> is not a monoid because <code>&gt;=&gt;</code> is not total over <code>S</code>, which is another condition the binary operation must satisfy, but I overlooked that.  Furthremore, I meant to define <code>S</code> as the set of all functions with signature <code>a -&gt; M&lt;b&gt;</code>.  The same problem still exists though.  The second code block in your comment has this same problem.  There is not a natural choice for the implementation unless the types of the objects satisfy the constraints implied by the use of type parameters in the first code block in your comment.  I will keep thinking about this.
+			</p>
+			<p>
+				In the meantime, keep up the great work.  I am loving your monad content.
+			</p>
+		</div>
+		<div class="comment-date">2022-04-23 19:47 UTC</div>
+	</div>
+</div>

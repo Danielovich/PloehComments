@@ -1,0 +1,788 @@
+---
+layout: post
+title: "DI-Friendly Framework"
+description: "How to create a Dependency Injection-friendly software framework."
+date: 2014-05-19 9:10 UTC
+tags: [Software Design, Dependency Injection]
+image: "/content/binary/framework-sequence-diagram.png"
+image_alt: "Framework sequence diagram"
+---
+{% include JB/setup %}
+
+<div id="post">
+  <p>
+    <em>{{ page.description }}</em>
+  </p>
+  <p>
+    It seems to me that every time a development organisation wants to add 'Dependency Injection support' to a framework, all too often, the result is a <a href="/2014/05/19/conforming-container">Conforming Container</a>. In this article I wish to describe good alternatives to this anti-pattern.
+  </p>
+  <p>
+    In a previous article I covered <a href="/2014/05/19/di-friendly-library">how to design a Dependency Injection-friendly library</a>; in this article, I will deal with frameworks. The <a href="http://stackoverflow.com/a/2190658/126014">distinction I usually make</a> is:
+    <ul>
+      <li>A <strong>Library</strong> is a reusable set of types or functions you can use from a wide variety of applications. The application code initiates communication with the library and invokes it.</li>
+      <li>A <strong>Framework</strong> consists of one or more libraries, but the difference is that <a href="http://stackoverflow.com/a/3227404/126014">Inversion of Control</a> applies. The application registers with the framework (often by implementing one or more interfaces), and the framework calls into the application, which may call back into the framework. A framework often exists to address a particular general-purpose Domain (such as web applications, mobile apps, workflows, etc.).</li>
+    </ul>
+    In my article about the <a href="/2014/05/19/conforming-container">Conforming Container anti-pattern</a>, I already covered some general reason why attempting to create an abstraction over DI Containers is a bad idea, but when it comes to frameworks, some extra concerns arise.
+  </p>
+  <h3 id="15b8d9b2820a4ad698061c92d42f0ddd">
+    The composition challenge <a href="#15b8d9b2820a4ad698061c92d42f0ddd" title="permalink">#</a>
+  </h3>
+  <p>
+    One of the most challenging aspects of writing a framework is that the framework designers can't predict what users will want to do. Often, a framework defines a way for you to interact with it:
+    <ul>
+      <li>Implement an interface</li>
+      <li>Derive from a base class</li>
+      <li>Adorn your classes or methods with a particular attribute</li>
+      <li>Name your classes according to some naming convention</li>
+    </ul>
+    Common for all these approaches is, however, that the user of the framework develops some classes, and the framework then has to create instances of those classes. Obviously, the framework doesn't know anything about custom user classes, so it'll need some way of creating those instances.
+  </p>
+  <p>
+    <img src="/content/binary/framework-sequence-diagram.png" alt="Framework sequence diagram">
+  </p>
+  <p>
+    Once the framework has an instance of the custom user class, it can easily start using it by invoking methods defined by the interface the class implements, etc. The difficult part is creating the instance. By default, most frameworks require that a custom class has a default (parameterless) constructor, but <a href="/2011/05/30/DesignSmellDefaultConstructor">that may be a design smell</a>, and doesn't fit with the Constructor Injection pattern. Such a requirement is a sensible default, but isn't Dependency Injection-friendly; in fact, it's an example of the Constrained Construction anti-pattern, which you can read about in <a href="http://amzn.to/12p90MG">my book</a>.
+  </p>
+  <p>
+    Most framework designers realize this and resolve to add Dependency Injection support to the framework. Often, in the first few iterations, they get it right!
+  </p>
+  <h3 id="e7496d9d45cd4140a8fd60729068cef4">
+    Abstractions and ownership <a href="#e7496d9d45cd4140a8fd60729068cef4" title="permalink">#</a>
+  </h3>
+  <p>
+    If you examine the sequence diagram above, you should realize one thing: the framework is the <em>client</em> of the custom user code; the custom user code provides the services for the framework. In most cases, the custom user code exposes itself as a service to the framework. Some examples may be in order:
+    <ul>
+      <li>In ASP.NET MVC, user code implements the <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.icontroller.aspx">IController</a> interface, although this is most commonly done by deriving from the abstract <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.controller.aspx">Controller</a> base class.</li>
+      <li>In ASP.NET Web API, user code implements the <a href="http://msdn.microsoft.com/en-us/library/system.web.http.controllers.ihttpcontroller.aspx">IHttpController</a> interface, although this is most commonly done by deriving from the abstract <a href="http://msdn.microsoft.com/en-us/library/system.web.http.apicontroller.aspx">ApiController</a> class.</li>
+      <li>In Windows Presentation Foundation, user code derives from the <a href="http://msdn.microsoft.com/en-us//library/System.Windows.Window.aspx">Window</a> class.</li>
+    </ul>
+    The framework code doesn't know anything about custom user classes, but when they implement the appropriate interface, the framework talks to those interfaces.
+  </p>
+  <p>
+    There's an extremely important point hidden here: although it looks like a framework has to deal with the unknown, all the <em>requirements</em> of the framework are known:
+    <ul>
+      <li>The <em>framework</em> defines the interface or base class</li>
+      <li>The <em>framework</em> creates instances of the custom user classes</li>
+      <li>The <em>framework</em> invokes methods on the custom user objects</li>
+    </ul>
+    The <em>framework</em> is the client, and the framework defines the interface. That's exactly how it should be. In <a href="http://amzn.to/19W4JHk">Agile Principles, Patterns, and Practices</a>, Robert C. Martin defines interface ownership as
+    <blockquote>
+      "clients [...] own the abstract interfaces"
+    </blockquote>
+    This is a quote from chapter 11, which is about the <a href="http://en.wikipedia.org/wiki/Dependency_inversion_principle">Dependency Inversion Principle</a>, so it all fits.
+  </p>
+  <p>
+    Notice what the framework <em>does</em> in the list above. Not only does it <em>use</em> the custom user objects, it also <em>creates</em> instances of the custom user classes. This is the tricky part, where many framework designers have a hard time seeing past the fact that the custom user code is unknown. However, from the perspective of the framework, the concrete type of a custom user class is irrelevant; it just needs to create an instance of it, but treat it as the well-known interface it implements.
+    <ul>
+      <li>The client owns the interface</li>
+      <li>The <em>framework</em> is the client</li>
+      <li>The framework knows what <em>it</em> needs, not what user code needs</li>
+      <li>Thus, framework interfaces should be defined by what the framework needs, not as a general-purpose interface to deal with user code</li>
+      <li>Users know much better what user code needs than the framework can ever hope to do</li>
+    </ul>
+    The framework owns the interface for creating those objects, and it shouldn't be complicated; in essence, it should look like this:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IFrameworkControllerFactory</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IFrameworkController</span>&nbsp;Create(<span style="color:#2b91af;">Type</span>&nbsp;controllerType);
+}</pre>
+  </p>
+  <p>
+    assuming that the interface that the user code must implement is called IFrameworkController.
+  </p>
+  <p>
+    The custom user class may contain one or more disposable objects, so in order to prevent resource leaks, the framework must also provide a hook for decommissioning:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IFrameworkControllerFactory</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IFrameworkController</span>&nbsp;Create(<span style="color:#2b91af;">Type</span>&nbsp;controllerType);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Release(<span style="color:#2b91af;">IFrameworkController</span>&nbsp;controller);
+}</pre>
+  </p>
+  <p>
+    In this expanded iteration of the Abstract Factory, the contract is that the framework will invoke the Release method when it's finished with a particular IFrameworkController instance.
+  </p>
+  <p>
+    <img src="/content/binary/framework-sequence-diagram-with-release-hook.png" alt="Framework sequence diagram with release hook">
+  </p>
+  <p>
+    Some framework designers attempt to introduce a 'more sophisticated' lifetime model, but there's no reason for that. This Create/Release design is simple, easy to understand, works very well, and fits perfectly into the <a href="/2010/09/29/TheRegisterResolveReleasepattern">Register Resolve Release</a> pattern, since it provides hooks for the Resolve and Release phases.
+  </p>
+  <p>
+    ASP.NET MVC 1 and 2 provided <em>flawless</em> examples of such Abstract Factories in the form of the <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.icontrollerfactory(v=vs.100).aspx">IControllerFactory</a> interface:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IControllerFactory</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IController</span>&nbsp;CreateController(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">RequestContext</span>&nbsp;requestContext,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">string</span>&nbsp;controllerName);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;ReleaseController(<span style="color:#2b91af;">IController</span>&nbsp;controller);
+}</pre>
+  </p>
+  <p>
+    Unfortunately, in ASP.NET MVC 3, a completely unrelated third method was added to that interface; it's still useful, but not as clean as before.
+  </p>
+  <p>
+    Framework designers ought to stop here. With such an Abstract Factory, they have <em>perfect</em> Dependency Injection support. If a user wants to hand-code the composition, he or she can implement the Abstract Factory interface. Here's an ASP.NET 1 example:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">PoorMansCompositionRoot</span>&nbsp;:&nbsp;<span style="color:#2b91af;">DefaultControllerFactory</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">Dictionary</span>&lt;<span style="color:#2b91af;">IController</span>,&nbsp;<span style="color:#2b91af;">IEnumerable</span>&lt;<span style="color:#2b91af;">IDisposable</span>&gt;&gt;&nbsp;disposables;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:blue;">object</span>&nbsp;syncRoot;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;PoorMansCompositionRoot()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.syncRoot&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:blue;">object</span>();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.disposables&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Dictionary</span>&lt;<span style="color:#2b91af;">IController</span>,&nbsp;<span style="color:#2b91af;">IEnumerable</span>&lt;<span style="color:#2b91af;">IDisposable</span>&gt;&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">protected</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:#2b91af;">IController</span>&nbsp;GetControllerInstance(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">RequestContext</span>&nbsp;requestContext,&nbsp;<span style="color:#2b91af;">Type</span>&nbsp;controllerType)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(controllerType&nbsp;==&nbsp;<span style="color:blue;">typeof</span>(<span style="color:#2b91af;">HomeController</span>))
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;connStr&nbsp;=&nbsp;<span style="color:#2b91af;">ConfigurationManager</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.ConnectionStrings[<span style="color:#a31515;">&quot;postings&quot;</span>].ConnectionString;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;ctx&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PostingContext</span>(connStr);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;sqlChannel&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">SqlPostingChannel</span>(ctx);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;sqlReader&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">SqlPostingReader</span>(ctx);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;validator&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DefaultPostingValidator</span>();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;validatingChannel&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ValidatingPostingChannel</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;validator,&nbsp;sqlChannel);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;controller&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">HomeController</span>(sqlReader,&nbsp;validatingChannel);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">lock</span>&nbsp;(<span style="color:blue;">this</span>.syncRoot)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.disposables.Add(controller,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">IDisposable</span>[]&nbsp;{&nbsp;sqlChannel,&nbsp;sqlReader&nbsp;});
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;controller;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">base</span>.GetControllerInstance(requestContext,&nbsp;controllerType);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:blue;">void</span>&nbsp;ReleaseController(<span style="color:#2b91af;">IController</span>&nbsp;controller)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">lock</span>&nbsp;(<span style="color:blue;">this</span>.syncRoot)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">foreach</span>&nbsp;(<span style="color:blue;">var</span>&nbsp;d&nbsp;<span style="color:blue;">in</span>&nbsp;<span style="color:blue;">this</span>.disposables[controller])
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d.Dispose();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+  </p>
+  <p>
+    In this example, I derive from <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.defaultcontrollerfactory(v=vs.100).aspx">DefaultControllerFactory</a>, which implements the IControllerFactory interface - it's a little bit easier than implementing the interface directly.
+  </p>
+  <p>
+    In this example, the Composition Root only handles a single user Controller type (HomeController), but I'm sure you can extrapolate from the example.
+  </p>
+  <p>
+    If a developer rather prefers using a DI Container, that's also perfectly possible with the Abstract Factory approach. Here's another ASP.NET 1 example, this time with Castle Windsor:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">WindsorCompositionRoot</span>&nbsp;:&nbsp;<span style="color:#2b91af;">DefaultControllerFactory</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IWindsorContainer</span>&nbsp;container;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;WindsorCompositionRoot(<span style="color:#2b91af;">IWindsorContainer</span>&nbsp;container)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(container&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;container&quot;</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.container&nbsp;=&nbsp;container;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">protected</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:#2b91af;">IController</span>&nbsp;GetControllerInstance(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">RequestContext</span>&nbsp;requestContext,&nbsp;<span style="color:#2b91af;">Type</span>&nbsp;controllerType)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;(<span style="color:#2b91af;">IController</span>)<span style="color:blue;">this</span>.container.Resolve(controllerType);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:blue;">void</span>&nbsp;ReleaseController(<span style="color:#2b91af;">IController</span>&nbsp;controller)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.container.Release(controller);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+  </p>
+  <p>
+    Notice how seamless the framework's Dependency Injection support is: the framework has no knowledge of Castle Windsor, and Castle Windsor has no knowledge of the framework. The small WindsorCompositionRoot class acts as an <a href="http://en.wikipedia.org/wiki/Adapter_pattern">Adapter</a> between the two.
+  </p>
+  <h3 id="89661e776ccd4707b53c5925caed5413">
+    Resist the urge to generalize <a href="#89661e776ccd4707b53c5925caed5413" title="permalink">#</a>
+  </h3>
+  <p>
+    If frameworks would only come with the appropriate hooks in the form of Abstract Factories with Release methods, they'd be perfect.
+  </p>
+  <p>
+    Unfortunately, as a framework becomes successful and grows, more and more types are added to it. Not only (say) Controllers, but Filters, Formatters, Handlers, and whatnot. A hypothetical XYZ framework would have to define Abstract Factories for each of these extensibility points:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IXyzControllerFactory</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IXyzController</span>&nbsp;Create(<span style="color:#2b91af;">Type</span>&nbsp;controllerType);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Release(<span style="color:#2b91af;">IXyzController</span>&nbsp;controller);
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IXyzFilterFactory</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IXyzFilter</span>&nbsp;Create(<span style="color:#2b91af;">Type</span>&nbsp;fiterType);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Release(<span style="color:#2b91af;">IXyzFilter</span>&nbsp;filter);
+}
+ 
+<span style="color:green;">//&nbsp;etc.</span></pre>
+  </p>
+  <p>
+    Clearly, that seems repetitive, so it's no wonder that framework designers look at that repetition and wonder if they can generalize. The appropriate responses to this urge, are, in prioritised order:
+    <ol>
+      <li>Resist the urge to generalise, and define each Abstract Factory as a separate interface. That design is easy to understand, and users can implement as many or as few of these Abstract Factories as they want. In the end, frameworks are designed for the framework users, not for the framework developers.</li>
+      <li>If absolutely unavoidable, define a generic Abstract Factory.</li>
+    </ol>
+    Under no circumstance is a <a href="/2014/05/19/conforming-container">Conforming Container</a> the appropriate response.
+  </p>
+  <p>
+    Many distinct, but similar Abstract Factory interfaces may be repetitive, but that's unlikely to hurt the user. A good framework provides optional extensibility points - it doesn't force users to relate to all of them at once. As an example, I'm a fairly satisfied user of the <a href="http://www.asp.net/web-api">ASP.NET Web API</a>, but while I create lots of Controllers, and the occasional Exception Filter, I've yet to write my first custom Formatter. I only <a href="/2012/09/28/DependencyInjectionandLifetimeManagementwithASP.NETWebAPI">add a custom IHttpControllerActivator</a> for my Controllers. Although (unfortunately) ASP.NET Web API has had a Conforming Container in the form of the <a href="http://msdn.microsoft.com/en-us/library/system.web.http.dependencies.idependencyresolver.aspx">IDependencyResolver</a> interface since version 1, I've never used it. In a properly designed framework, a Conforming Container is utterly redundant.
+  </p>
+  <p>
+    If the framework <em>must</em> address the apparent DRY violation of multiple similar Abstract Factory definitions, an acceptable solution is a generic interface:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IFactory</span>&lt;T&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;T&nbsp;Create(<span style="color:#2b91af;">Type</span>&nbsp;itemType);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Release(T&nbsp;item);
+}</pre>
+  </p>
+  <p>
+    This type of generic Factory is <a href="/2010/11/01/PatternRecognitionAbstractFactoryorServiceLocator">generally benign</a>, although it may hurt discoverability, because a generic type looks as though you can use anything for the type argument T, where, in fact, the framework only needs a finite set of Abstract Factories, like
+    <ul>
+      <li>IFactory&lt;IXyzController&gt;</li>
+      <li>IFactory&lt;IXyzFilter&gt;</li>
+      <li>IFactory&lt;IXyzFormatter&gt;</li>
+      <li>IFactory&lt;IXyzHandler&gt;</li>
+    </ul>
+  </p>
+  <p>
+    In the end, though, users will need to inform the framework about their custom factories, so this discoverability issue can be addressed. A framework usually defines an extensibility point where users can tell it about their custom extensions. An example of that is ASP.NET MVC's <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.controllerbuilder.aspx">ControllerBuilder</a> class. Although I'm not too happy about the use of a Singleton, it's hard to do something wrong:
+  </p>
+  <p>
+    <pre><span style="color:blue;">var</span>&nbsp;controllerFactory&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">PoorMansCompositionRoot</span>();
+<span style="color:#2b91af;">ControllerBuilder</span>.Current.SetControllerFactory(controllerFactory);</pre>
+  </p>
+  <p>
+    Unfortunately, some frameworks attempt to generalize this extensibility point. As an example, in ASP.NET Web API, you'll have to use <a href="http://msdn.microsoft.com/en-us/library/system.web.http.controllers.servicescontainer.replace.aspx">ServicesContainer.Replace</a>:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;Replace(<span style="color:#2b91af;">Type</span>&nbsp;serviceType,&nbsp;<span style="color:blue;">object</span>&nbsp;service)
+</pre>
+  </p>
+  <p>
+    Although it's easy enough to <em>use</em>:
+  </p>
+  <p>
+    <pre>configuration.Services.Replace(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">typeof</span>(<span style="color:#2b91af;">IHttpControllerActivator</span>),
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">CompositionRoot</span>(<span style="color:blue;">this</span>.eventStore,&nbsp;<span style="color:blue;">this</span>.eventStream,&nbsp;<span style="color:blue;">this</span>.imageStore));</pre>
+  </p>
+  <p>
+    It's not particularly discoverable, because you'll have to resort to the documentation, or trawl through the (fortunately open source) code base, in order to discover that there's an IHttpControllerActivator interface you'd like to replace. The Replace method gives the impression that you can replace any Type, but in practice, it only makes sense to replace a few well-known interfaces, like IHttpControllerActivator.
+  </p>
+  <p>
+    Even with a generic Abstract Factory, a much more discoverable option would be to expose all extensible services as strongly-typed members of a configuration object. As an example, the hypothetical XYZ framework could define its configuration API like this:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">XyzConfiguration</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IFactory</span>&lt;<span style="color:#2b91af;">IXyzController</span>&gt;&nbsp;ControllerFactory&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IFactory</span>&lt;<span style="color:#2b91af;">IXyzFilter</span>&gt;&nbsp;FilterFactory&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;etc.</span>
+}</pre>
+  </p>
+  <p>
+    Such use of Property Injection enables users to override only those Abstract Factories they care about, and leave the rest at their defaults. Additionally, it's easy to enumerate all extensibility options, because the XyzConfiguration class provides a one-stop place for all extensibility points in the framework.
+  </p>
+  <h3 id="8a46865eec2e4194a326ddee5a1c47dd">
+    Define attributes without behaviour <a href="#8a46865eec2e4194a326ddee5a1c47dd" title="permalink">#</a>
+  </h3>
+  <p>
+    Some frameworks provide extensibility points in the form of attributes. ASP.NET MVC, for example, defines various <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.filterattribute.aspx">Filter</a> attributes, such as <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.authorizeattribute.aspx">[Authorize]</a>, <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.handleerrorattribute.aspx">[HandleError]</a>, <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.outputcacheattribute.aspx">[OutputCache]</a>, etc. Some of these attributes contain <em>behaviour</em>, because they implement interfaces such as <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.iauthorizationfilter.aspx">IAuthorizationFilter</a>, <a href="http://msdn.microsoft.com/en-us/library/system.web.mvc.iexceptionfilter.aspx">IExceptionFilter</a>, and so on.
+  </p>
+  <p>
+    Attributes with behaviour is a bad idea. Due to compiler limitations (at least in both C# and F#), you can only provide constants and literals to an attribute. That effectively rules out Dependency Injection, but if an attribute contains behaviour, it's guaranteed that some user comes by and wants to add some custom behaviour in an attribute. The only way to add 'Dependency Injection support' to attributes is through a <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern">static Service Locator</a> - an exceptionally toxic design. Attribute designers should avoid this. This <a href="http://www.infoq.com/articles/Succeeding-Dependency-Injection">is not Dependency Injection support; it's Service Locator support</a>. There's no reason to bake in Service Locator support in a framework. People who deliberately want to hurt themselves can always add a static Service Locator by themselves.
+  </p>
+  <p>
+    Instead, attributes should be designed without behaviour. Instead of putting the behaviour in the attribute itself, a custom attribute should only provide <em>metadata</em> - after all, that's the original raison d'être of attributes.
+  </p>
+  <p>
+    Attributes with metadata can then be detected and handled by normal services, which enable normal Dependency Injection. See <a href="http://stackoverflow.com/a/7194467/126014">this Stack Overflow answer</a> for an ASP.NET MVC example, or my article on <a href="/2014/06/13/passive-attributes">Passive Attributes</a> for a Web API example.
+  </p>
+  <h3 id="fdf370973a4b4a02b04224950d4bfd3b">
+    Summary <a href="#fdf370973a4b4a02b04224950d4bfd3b" title="permalink">#</a>
+  </h3>
+  <p>
+    A framework must expose appropriate extensibility points in order to be useful. The best way to support Dependency Injection is to <strong>provide an Abstract Factory with a corresponding Release method</strong> for each custom type users are expected to create. This is the simplest solution. It's extremely versatile. It has few moving parts. It's easy to understand. It enables gradual customisation.
+  </p>
+  <p>
+    Framework users who don't care about Dependency Injection at all can simply ignore the whole issue and use the framework with its default services. Framework users who <a href="http://stackoverflow.com/a/23312402/126014">prefer to hand-code object composition</a>, can implement the appropriate Abstract Factories by writing custom code. Framework users who prefer to use their DI Container of choice can implement the appropriate Abstract Factories as Adapters over the container.
+  </p>
+  <p>
+    That's all. There's no reason to make it more complicated than that. There's particularly no reason to force a <a href="/2014/05/19/conforming-container">Conforming Container</a> upon the users.
+  </p>
+</div>
+
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+<div class="comment" id="2b7096ad0cc14321ac0d258b167b49be">
+	<div class="comment-author"><a href="http://www.shiningtreasures.com/">Shad Storhaug</a></div>
+	<div class="comment-content">This is a very good post, and I am glad you finally created it because after reading your book on how to configure applications, it was still unclear how to tackle the task of creating a DI-friendly framework. I ended up creating a Conforming Container of some sort. Although it is not required because there is an internal poor man's DI container, when you replace the internal container, you must provide the entire DI configuration using a 3rd party DI container. Although this article is helping to steer me back on track, there are a few things that are still unclear that your post didn't address.<br>
+<br>
+1. A framework generally must have some sort of initializer, particularly if it  must do something like add route values to MVC (which must be done during a particular point in the application lifecycle). This startup code must be placed in the composition root of the application. Considering that the framework should have no knowledge of the composition root of the application, how best can this requirement be met? The only thing I have come up with is to add a static method that must be in the application startup code and using WebActivator to get it running.<br>
+2. Sort of related to the first issue, how would it be possible to address the extension point where abstract factories can be injected without providing a static method? I am considering expanding the static method from #1 to include an overload that accepts an Action&lt;IConfiguration&gt; as a parameter. The developer can then use that overload to create a method Configure(IConfiguration configuration) in their application to set the various abstract factory (in the IConfiguration instance, of course). The IConfiguration interface would contain well named members to set specific factories, so it is easy to discover what factory types can be provided. Could this idea be improved upon?<br>
+3. Considering that my framework relies on the .NET garbage collector to dispose of objects that were created by a given abstract factory, what pattern can I adapt to ensure the framework always calls Release() at the right time? A concrete example would seem to be in order.</div>
+	<div class="comment-date">2014-08-10 08:54 UTC</div>
+</div>
+  <div class="comment" id="628da205902e43658d41cc56d55f0fb6">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Shad, thank you for writing. From your questions it's a bit unclear to me whether you're writing a framework or a library. Although you write <em>framework</em>, your questions sound like it's a library... or at least, <em>if</em> you're writing a framework, it sounds like you're writing a sub-framework for another framework (MVC). Is that correct?
+      </p>
+      <p>
+        Re: <strong>1</strong>. It's true that a framework needs some sort of initializer. In the ideal world, it would look something like <code>new MyFrameworkRunner().Run();</code>, and you would put this single line of code in the entry point of your application (its Main method). Unfortunately, ASP.NET doesn't work that way, so we have to work with the cards we're dealt. Here, the entry point is Application_Start, so if you need to initialise something, this is where you do it.
+      </p>
+      <p>
+        The initialisation method can be a static or instance method.
+      </p>
+      <p>
+        Re: <strong>2</strong>. That sounds reasonable, but it depends upon where your framework stores the custom configuration. If you add a method overload to a static method, it almost indicates to me that the framework's configuration is stored in shared state, which is never attractive. An alternative is to utilise the Dependency Inversion Principle, and instead inject any custom configuration into the root of the framework itself: <code>new MyFrameworkRunner(someCustomCoonfiguration).Run();</code>
+      </p>
+      <p>
+        Re: <strong>3</strong>. A framework is responsible for the lifetime of the objects it creates. If it creates objects, it must also provide an extensibility point for decommissioning them after use. This is the reason I strongly recommend (in this very article) that an Abstract Factory for a framework must always have a Release method in addition to the Create method.
+      </p>
+      <p>
+        A concrete example is difficult to provide when the question is abstract...
+      </p>
+    </div>
+    <div class="comment-date">2014-08-14 14:35 UTC</div>
+  </div>
+  <div class="comment" id="d567c4eb624a4f32b316118221c962c2">
+    <div class="comment-author"><a href="http://www.shiningtreasures.com/">Shad Storhaug</a></div>
+    <div class="comment-content">
+      <p>
+	If you want to take a look, the framework I am referring to is called <a href="https://github.com/maartenba/MvcSiteMapProvider/">MvcSiteMapProvider</a>. I would definitely categorize it as a sub-framework of MVC because it <em>can</em> rely on the host application to provide service instances (although it doesn't <em>have</em> to). It has a static entry point to launch it's composition root (primarily because WebActivator requires there to be a static method, and WebActivator can launch the application without the need for the NuGet package to modify the Global.asax file directly), but the inner workings rely (almost) entirely on instances and constructor injection. There is still some refactoring to be done on the HTML helpers to put all of the logic into replaceable instances, which I plan to do in a future major version.
+      </p>
+	  <p>
+        Since it is about 90% of the way there already, my plan is to modify the internal poor-man's DI container to accept injected factory instances to provide the alternate implementations. A set of default factories will be created during initialization, and then it will pass these instances (through the IConfiguration variable) out to the host application where it can replace or wrap the factories. After the host does what it needs to, the services will be wired up in the poor man's DI container and then its off to the races. I think this can be done <em>without</em> dropping support for the existing Conforming Container, meaning I don't need to wait for a major release to implement it.
+      </p>
+      <p>
+        Anyway, you have adequately answered my 2 questions about initialization and I think I am now on the right track. You also gave me some food for thought as how to accomplish this without making it static (although ultimately <em>some</em> wrapper method will need to be static in order to make it work with WebActivator).
+      </p>
+      <p>
+        As for my 3rd question, you didn't provide a sufficient answer. However, I took a peek at the MVC source code to see how the default IControllerFactory ReleaseController() method was implemented, and it is similar to your PoorMansCompositionRoot example above (sort of). They just check to see if IController will cast to IDisposable and call Dispose() if it does. I guess that was the general pattern I was asking for, and from your example it looks like you are in agreement with Microsoft on the approach.
+      </p>
+    </div>
+    <div class="comment-date">2015-08-14 20:27 UTC</div>
+  </div>
+  <div class="comment" id="e3c321a38f1949fbb52f30c8648c62d2">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Shad, I don't exactly recall how DefaultControllerFactory.ReleaseController is implemented, but in general, only type-checking for IDisposable and calling Dispose may be too simplistic a view to take in the general case. As I explain in chapter 8 in <a href="http://amzn.to/12p90MG">my book</a>, <em>releasing</em> an object graph isn't always equivalent to disposal. In the general case, you also need to take into account the extra dimension of the various lifetimes of objects in an object graph. Some object may have a longer lifetime scope, so even when you invoke Release on them, their time isn't up yet, and therefore it would be a bug to dispose of them.
+      </p>
+      <p>
+        This is one of the reasons a properly design Abstract Factory interface (for use with .NET) must have a Release method paired with its Create method. Only the factory knows if it actually created an object (as opposed to reused an existing object), so only the factory knows when it's appropriate to dispose of it again.
+      </p>
+    </div>
+    <div class="comment-date">2014-08-17 14:41 UTC</div>
+  </div>
+  <div class="comment" id="cb55955aec824c578093a303a112cf31">
+    <div class="comment-author"><a href="http://rpajak.com">Robert Pajak</a></div>
+    <div class="comment-content">
+      <p>
+  	Dear Mark,
+      </p>
+      <p>
+  	Concering the the type of generic IFactory, I think that aplying a Marker Interface for T whould make the implementation very discoverable and also type-safe. 
+      </p>
+      <p>
+  	What is your opinion about it?
+      </p>
+    </div>
+    <div class="comment-date">2014-09-25 21:14 UTC</div>
+  </div>
+  <div class="comment" id="9f94abd030554c65b0c9523a59fd2ee7">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Robert, thank you for writing. What advantage would a Marker Interface provide?
+      </p>
+    </div>
+    <div class="comment-date">2014-09-26 14:27 UTC</div>
+  </div>
+  <div class="comment" id="3ca0e32a9cd042f08c4b919ff95395dd">
+    <div class="comment-author"><a href="http://rpajak.com">Robert Pajak</a></div>
+    <div class="comment-content">
+      <p>
+        1. From framework perspective - less code.
+        2. From client perspective - more consistent API. We can see all the possible hooks just by investigating which interfaces of the Framwork implements the marker interface  - even the IntelliSence would show the possibilities of the factories which can be implemented.
+        As I write the comment, I see also some drawbacks - the IFactory should generally not work with generic which is the marker interface itself and also for some client interfaces that would implement the marker interface.
+        However still I find it much better ans safer than just having a generic IFactory without ANY constraints.
+      </p>
+      <p>  
+        Additionally maybe you could also enchance this post with information how to Bootstrap the framwork? For example I extremely like <a href="https://github.com/thecodejunkie">thecodejunkie's</a> way which he presented on his <a href="http://www.youtube.com/watch?v=7jg0u-YaRxQ#t=1915">Guerilla Framework Design presentation</a>.
+      </p>
+      <p>
+        Or also maybe you could give some examples how could the framework developers use the container? Personally the only way I see that it could be done is to use some "embedded" container like TinyIoC. This is the way how <a href="http://nancyfx.org/">Nancy</a> is done. 
+      </p>
+    </div>
+    <div class="comment-date">2014-09-26 20:48 UTC</div>
+  </div>
+  <div class="comment" id="6ce7f33a54bf437aaa6ae824578f473a">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        How does a Marker Interface lead to less framework code? It has no behaviour, so it's hard for me to imagine how it leads to less code. From a client perspective, it also sounds rather redundant to me. How can we see the possible hooks in the framework by looking for a Marker Interface? Aren't all public interfaces defined by a framework hooks?
+      </p>
+      <p>
+        What do you mean: "how could the framework developers use the container"? Which container? The whole point of this very post is to explain to programmers how to design a DI Friendly framework without relying on a container - any container.
+      </p>
+    </div>
+    <div class="comment-date">2014-09-30 17:08 UTC</div>
+  </div>
+  <div class="comment" id="14ae6a78a6a0488287f0df22d15e0cea">
+    <div class="comment-author"><a href="https://twitter.com/bitbonk">bitbonk</a></div>
+    <div class="comment-content">
+      <p>
+        Hi Mark, thank you for this very helpful blog post. I still have two questions though:
+        <ol type="1">
+          <li>To create the default implementations (that are provided with the framework) of the factories exposed in XyzConfiguration, it might be necessary to compose a complex dependency graph first, because the the default implementations of the factories themselves have dependencies. So there must be code in the 
+          <i>framework</i> that does this composition. At the same time this composition code should be extensible and it should be possible let the DI container of the customers choice to this composition. Can you sektch out how one would design for such a scenario or are you aware of a framework that does this well?</li>
+          <li>Once the factories in XyzConfiguration are configured and initialized, it seems that all framework classes that need one of those factories get a dependency on the XyzConfiguration, because that's the place where to get the factories from. This would be <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern/">Service Locator antipattern</a> how would I avoid this?</li>
+        </ol>
+      </p>
+    </div>
+    <div class="comment-date">2015-09-04 13:40 UTC</div>
+  </div>
+  <div class="comment" id="4d58dec423fc49d09c924a9876d0fbbf">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        bitbonk, thank you for writing.
+      </p>
+      <p>
+        <strong>Re 1:</strong> A framework can compose any default complex object graph it wants to. If a framework developer is worried about performance, he or she can always make the default configuration a lazily initialized Singleton:
+      </p>
+      <p>
+        <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">XyzConfiguration</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IFactory</span>&lt;<span style="color:#2b91af;">IXyzController</span>&gt;&nbsp;ControllerFactory&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IFactory</span>&lt;<span style="color:#2b91af;">IXyzFilter</span>&gt;&nbsp;FilterFactory&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;etc.</span>
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">Lazy</span>&lt;<span style="color:#2b91af;">XyzConfiguration</span>&gt;&nbsp;defaultConfiguration&nbsp;=
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Lazy</span>&lt;<span style="color:#2b91af;">XyzConfiguration</span>&gt;(()&nbsp;=&gt;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">XyzConfiguration</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ControllerFactory&nbsp;=&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">XyzControllerFactory</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Foo</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Bar</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Baz</span>(<span style="color:green;">/*&nbsp;Etc.&nbsp;*/</span>)))),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Assign&nbsp;FilterFactory&nbsp;in&nbsp;the&nbsp;same&nbsp;manner</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;});
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">XyzConfiguration</span>&nbsp;Default
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">get</span>&nbsp;{&nbsp;<span style="color:blue;">return</span>&nbsp;defaultConfiguration.Value;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+      </p>
+      <p>
+        Since the default value is only initialized if it's used, there's no cost associated with it. The XyzConfiguration class still has a public constructor, so if a framework user doesn't want to use the default, he or she can always create a new instance of the class, and pass that configuration to the framework when it's bootstrapping. The user can even use XyzConfiguration.Default as a starting point, and only tweak the properties he or she wants to tweak.
+      </p>
+      <p>
+        While XyzConfiguration.Default defines default graphs, all the constituent elements (XyzControllerFactory, Foo, Bar, Baz, etc.) are public classes with public constructors, so a framework user can always duplicate the graph him- or herself. If the framework developers want to make it easier to tweak the default graph, they can supply a facade using one of the options outlines in my <a href="/2014/05/19/di-friendly-library">companion article about DI-friendly libraries</a>.
+      </p>
+      <p>
+        <strong>Re 2:</strong> Such an XyzConfiguration class <a href="/2010/11/01/PatternRecognitionAbstractFactoryorServiceLocator">isn't a Service Locator</a>. It's a concrete, well-known, <em>finite</em> collection of Abstract Factories, whereas <a href="/2014/05/15/service-locator-violates-solid">a Service Locator is an unknown, <em>infinite</em> set of Abstract Factories</a>.
+      </p>
+      <p>
+        Still, I would recommend that framework developers adhere to the <a href="https://en.wikipedia.org/wiki/Interface_segregation_principle">Interface Segregation Principle</a> and only take dependencies on those Abstract Factories they need. If a framework feature needs an IFactory&lt;IXyzController&gt;, then that's what it should take in via its constructor. The framework should pass to that constructor <code>configuration.ControllerFactory</code> instead of the entire <code>configuration</code> object.
+      </p>
+    </div>
+    <div class="comment-date">2015-09-06 14:41 UTC</div>
+  </div>
+  <div class="comment" id="7262eaa446f5410f8c1ede769be15ef2">
+    <div class="comment-author"><a href="https://twitter.com/bitbonk">bitbonk</a></div>
+    <div class="comment-content">
+      <p>
+        Thanks Mark for your answer, it all makes sense to me but my first question was more geared towards the DI container. For the composition of the default dependency graphs, the (my) framework needs to provide three things <i>at the same time</i>:
+        <ol type="1">
+          <li>Means that helps the user build default combination(s) of dependencies for common scenarios without forcing the user to use (or depend on) <i>any</i> DI container. I can see how this can easily be achieved by using the factory approach you mentioned or by using facade or constructor chaining as you mentioned and in your <a href="/2014/05/19/di-friendly-library">companion article about DI-friendly libraries</a></li>
+          <li>Means that helps the user build the default combination(s) of dependencies for common scenarios using the DI container of the user's choice (i.e. an existing container instance that was already created and is used for the rest of the application dependencies too). The user might want to do this because she wants to resolve some the dependencies that have been registered by the framework using the DI container of her application. I can see how this could be achieved by introducing some sort of framework-specific DI container abstraction and provide implementations for common containers (like XyzFramework.Bootstrappers.StructureMap or XyzFramework.Bootstrappers.SimpleInjector ...). It looks like this is how it is done in <a href="https://github.com/NancyFx/Nancy.Bootstrappers.StructureMap">NancyFx</a>.</li>
+          <li>Means that helps the user modify and adapt the default combination(s) of dependencies for common scenarios using that DI container. The user might want to modify just parts of a default dependency graph or wants to intercept just some of the default dependencies. The user should be able to do this without having to reimplement the whole construction logic. Again NancyFx seems to do this by introducing a <a href="https://github.com/NancyFx/Nancy/blob/master/src/Nancy/Bootstrapper/ContainerRegistration.cs">DI container abstraction</a>.</li>
+        </ol>
+        </p>
+        <p>
+          I find it particularly challenging to come up with a good design that meets all three of these requirements. I don't really have a question for you here, because the answer will most likely have to be: "it depends". But feel free to comment, if you have any additional thoughts that are worth sharing.
+        </p>
+    </div>
+    <div class="comment-date">2015-09-07 13:45 UTC</div>
+  </div>
+  <div class="comment" id="e8e68fc2c9584546bbd396cfdd0e9b33">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Before we continue this discussion, I find myself obliged to point out that you ought have a compelling reason to create a <em>framework</em>. Tomas Petricek has a great article that explains why you should <a href="http://tomasp.net/blog/2015/library-frameworks">favour libraries over frameworks</a>. The article uses F# for code examples, but the arguments apply equally to C# and Object-Oriented Design.
+      </p>
+      <p>
+        I have a hard time coming up with a single use case where a framework would be the correct design decision, but perhaps your use case is a genuine case for making a framework...
+      </p>
+      <p>
+        That said, I don't understand your second bullet point. If all the classes involved in building those default object graphs are public, a user can always register them with their DI Container of choice. Why would you need a container abstraction (which is <a href="/2014/05/19/conforming-container">a poor idea</a>) for that?
+      </p>
+      <p>
+        The third bullet point makes me uneasy as well. It seems to me that the entire premise in this, and your previous, comment is that the default object graphs are deep and complex. Is that really necessary?
+      </p>
+      <p>
+        Still, if you want to make it easy for a user to modify the default factories, you can supply a Facade or Fluent Builder as <a href="/2014/05/19/di-friendly-library">already outlined</a>. The user can use that API to tweak the defaults. Why would the user even wish to involve a DI Container in that process?
+      </p>
+      <p>
+        For the sake of argument, let's assume that this is somehow necessary. The user can still hook into the provided API and combine that with a DI Container. Here's a Castle Windsor example:
+      </p>
+      <p>
+        <pre>container.Register(<span style="color:#2b91af;">Component</span>
+&nbsp;&nbsp;&nbsp;&nbsp;.For&lt;<span style="color:#2b91af;">IFactory</span>&lt;<span style="color:#2b91af;">IXyzController</span>&gt;&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;.UsingFactoryMethod(k&nbsp;=&gt;&nbsp;k
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.Resolve&lt;<span style="color:#2b91af;">XyzControllerFactoryBuilder</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.WithBar(k.Resolve&lt;<span style="color:#2b91af;">IBar</span>&gt;())
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.Build()));</pre>
+      </p>
+      <p>
+        This utilises the API provided by the framework, but still enables you to resolve a custom IBar instance with the DI Container. All other objects built by XyzControllerFactoryBuilder are still handled by that Fluent Builder.
+      </p>
+    </div>
+    <div class="comment-date">2015-09-09 10:52 UTC</div>
+  </div>
+  
+  
+  <div class="comment" id="6f2ce92f95fd45a8aeb570286fdc30b2">
+    <div class="comment-author"><a href="https://www.cuttingedge.it/blogs/steven/">Steven van Deursen</a></div>
+    <div class="comment-content">
+      <p>
+        I like to respond to bitbonk's comment where he states that "this could be achieved by introducing some sort of framework-specific DI container abstraction" where he mentions that NancyFx takes this approach.
+      </p>
+	
+      <p>
+        It is important to note that NancyFx does not contain an adapter for Simple Injector and it has proven to be impossible to create an adapter for NancyFx's Conforming Container. The Conforming Container always expects certain behavior of the underlying container, and there will always be at least one container that fails to comply to this contract. In the case of NancyFx, it is Simple Injector. This is proof that the Conforming Container <em>is</em> an anti-pattern.
+      </p>
+	  
+      <p>
+        Besides the Conforming Container design, Nancy does however contain the right abstractions to intercept the creation of Nancy's root types (modules). This has actually made it <a href="https://github.com/NancyFx/Nancy/issues/1227#issuecomment-163279040">very straightforward</a> to plugin Simple Injector into NancyFx. It's just a matter of implementing a custom <code>INancyModuleCatalog</code> and optionally an <code>INancyContextFactory</code>.
+      </p>
+	  
+	  <p>
+        Although we might think that the Conforming Container and having proper abstractions can live side-by-side, there is a serious downside. In the case of NancyFx for instance, the designers were so focussed on their Conforming Container design, that they had a hard time imagining that anyone would want to do without it. This lead to the situation that they <a href="https://github.com/NancyFx/Nancy/issues/1227#issuecomment-163020810">themselves didn't even realize</a> that a container could actually be plugged-in without the use of the Conforming Container. This caused me figure this out by myself.
+	  </p>
+	  
+      <p>
+        So the risk is that the focus on the Conforming Container causes the designers of the framework to forget about developers that can't comply with their Conforming Container abstraction. This makes working without such adapter an afterthought to the designers. We are seeing this exact thing happening within Microsoft with their new .NET Core framework. Although at the moment of writting (which is 6 months after .NET Core has been released) only one of the leading DI containers has official support for the .NET Core Conforming Container, Microsoft makes little efforts in trying to improve the situation for the rest of the world, because, as the lead architect behind their Conforming Container <a href="https://github.com/aspnet/Mvc/issues/5403#issuecomment-254769973">quite accurately described</a> it himself: "it's just my bias towards conforming containers clouding my vision".
+      </p>
+    </div>
+    <div class="comment-date">2016-12-04 10:21 UTC</div>
+  </div>
+   
+  <div class="comment" id="5d2ce92f75ed45a8beb570286fdc30b2">
+    <div class="comment-author">John Softmore</div>
+    <div class="comment-content">
+        <p>
+            Dear Mark, all,
+                <br>
+           I would appreciate some advice. Thanks in advance.
+                <br>
+            I am refactoring a small real-time graphics framework, and am unsure the best way to structure the code at the top level.
+                <br>
+            I doubt I have described things very well, but fingers crossed...
+                <br>
+            I provide a bit of background on how I got to this point, but ultimately my question is one about where exact a framework's own internal wiring happens, particularly the registering or creation of internal components that the USER should not have knowledge of.
+                <br>
+        </p>
+ 
+        <p>
+            Framework or Library?:
+                <br>
+            The first advice I read was actually to avoid using a FRAMEWORK structure where possible. However, although it is not of sufficient breadth to describe my code as an "Engine", it needs to control the looping of the application (and entire lifetime). I do NOT deem it realistic to refactor into a LIBRARY. I particularly do not believe the "solution" to structuring the update() part of a game engine, as described here, is simple to use or elegant.
+                <br>
+            <a href="http://tomasp.net/blog/2015/library-frameworks/">Article Advocating Libraries over Frameworks</a>
+                <br>
+            Therefore, I decided to stick with the FRAMEWORK approach.
+                <br>
+        </p>
+ 
+        <p>
+            Framework Aims:
+                <br>
+            The Framework Accepts (or will Create, as per your recommendation) an object implementating IApplication
+                <br>
+            The Framework calls methods in IApplication such as Load(), Update(), Draw()
+                <br>
+            The Framework provides Functions to the Application via a number of interfaces: IGraphics, IInput etc
+                <br>
+            The Framework should follow DI principles to ease Testing
+                <br>
+            The USER should NOT be required to wire-up the internal components of the framework.
+                <br>
+            The API / Interface usage be simple for the USER: i.e. Framework.Run(Application);
+                <br>
+            The API should be clean - i.e. I would prefer if the USER were unable to see / instantiate internal framework objects (i.e. preference is for INTERNAL rather than PUBLIC preference)
+                <br>
+            I would like to use an IOC container
+                <br>
+        </p>
+ 
+        <p>
+            My Initial Approach:
+                <br>
+            My approach before finding this article was therefore to have something like:
+                <br>
+            Assembly0: Application
+                <br>
+            Assembly1: Contains Interfaces, & Framework incl. a Static Loader Method
+                <br>
+            Assembly2: Framework Tests
+                <br>
+ 
+            The application would create IApplication interface, and feed it via the Static Loader Method into Assembly1
+                <br>
+            In Assembly1 (the framework), there would be a framework composition root that would spool up the engine, either by using an IOC container and registering components, or manual DI
+                <br>
+        </p>
+ 
+        <p>
+            Problems Encountered First, in relation to testing (how I got to the issue, rather than the issuer itself):
+                <br>
+            It was at this point, whilst trying to ensure the API was clean, that I realised I was unable to use INTERNAL only classes and still test them without add "Internals Visible Attribute". This felt a bit dirty (BUT might be the right solution). I thought I could pull out the interface to another third assembly, but given the references needed i always ended up being visible to the user. Anyway, that's besides the point slightly...
+                <br>
+            It was at this point I started to look for some advice on how to structure a framework, and I ran across this article...
+                <br>
+            So it became clear that I should make the Framework Create the Application via a Factory... which OK is fine
+                <br>
+            but i get stuck when trying to figure out how to adhere too
+            - DI containers / composition roots should only exist in the application. There should only be one container / composition root. It should not live in the framework
+                <br>
+            Where i am now stuck:
+                <br>
+            I don't have any clue how the approach presented in your article solves the internal setup and wiring of the framework itself?
+                <br>
+            I do not see how I can rely on the FRAMEWORK USER to choose either simple DI or using an IOC container, without them needing to know how to wire up different components inside my framework. This does NOT seem EASY to me. Should the user really have to register things like the Graphics Implementation against the IGraphics interface, etc?
+                <br>
+            Is it really that bad to use two IOCs? One only internal to the framework itself, used in a static set up method? Am I missing something obvious about how I should structure my code?
+                <br>
+            It seems one option (at least on the Library-form side) is to use a facade that offers default wiring options. I assume this sits in the framework assembly, containers a factory method, and is OK to use a DI container within? I am then unsure exactly how that would pair with the abstract factories in this advice that create the applications. 
+                <br>
+            Perhaps there is a good example of a framework (or trivial example) that can be pointed too? 
+                <br>
+            Thanks again. I assume there is no perfect solution but appreciate your advice.
+        </p>
+     </div>
+    <div class="comment-date">2019-01-20 16:34 UTC</div>
+  </div>
+
+   <div class="comment" id="5d5ce62f85ec45a8beb570286fdc40b2">
+    <div class="comment-author">John Softmore</div>
+    <div class="comment-content">
+        <p>
+
+Dear Mark,<br><br>
+
+My apologies for the somewhat rambled query above. <br><br>
+
+I believe it might be more simple if I show you my simplified version of a proposed structure for a framework,  that takes a user defined application.<br><br>
+
+<a href="https://github.com/quietjohn/frameworkstructuring">Repo With Simple Framework Example</a><br><br>
+
+The Assemblies involved are (named more simply in the repo):<br>
+UserApplication<br>
+ApiInterface<br>
+Framework<br>
+FrameworkTesting<br><br>
+
+I would be very interested to know if you see this framework structure as misguided or plain smelly.<br><br>
+
+I am finding this topic quite interesting, and would be facinated to see an improved approach. <br><br>
+
+If it turns out not to stink too badly, I will press on and use this structure<br><br>
+
+I have read your DI book (potentially missing some key points given I am asking these questions...), and so would really appreciate and respect your opinion. <br><br>
+
+This structure features:<br>
+- A user created application object inheriting the application interface <br>
+- A static method in a Facade class to help wire up the framework (is a static compoisiton route that could include an IoC container)<br>
+- Allows application -side composition root by user NOT using the Facade helper<br>
+- A somewhat 'clean' public interface / API whereby internal framework components are atleast deeper in the namespace tree<br>
+- Full testability of internal components and external services<br>
+- Constructor injection to achieve DI<br><br>
+
+How this structure breaks advice:<br>
+- Using the Helper Facade could result in any IoC container not being in only composition route (and perhaps the application employs another container)<br>
+- The Framework does not instantiate the Custom Application Objects<br><br>
+
+For the latter, I am unsure how to create something Framework Side that is a factory to create a custom user class without referencing the application namespace and adding bi-drectional dependency on App -> Framework<br><br>
+
+I am sure I am missing some obvious stuff.<br><br>
+
+Thanks again<br><br>
+
+John<br><br>
+
+     </p>
+     </div>
+    <div class="comment-date">2019-01-23 22:11 UTC</div>
+  </div>
+
+  <div class="comment" id="bb2028866881498c91a06ba622b16497">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        John, thank you for writing. When I look at your GitHub repository, I think that it looks fine. I particularly like that if I had to work with something like this, I get to control the lifetime of all my object graphs. I just have to implement <code>IApp</code> and call <code>CompositionFacade.Run</code> with it.
+      </p>
+      <p>
+        This makes it more like a library than a framework, although I do understand that the intent is that <code>Run</code> executes for the lifetime of the application.
+      </p>
+      <p>
+        This means that if I need to implement <code>IApp</code> with a complex graph of objects, I can do that. In my <code>Main</code> method, I can compose my object graph with <a href="/2014/06/10/pure-di">Pure DI</a>, or I can leverage a DI Container if I so choose.
+      </p>
+      <p>
+        What happens inside of <code>CompositionFacade.Run</code> is completely opaque to me, which implies good encapsulation.
+      </p>
+      <p>
+        I do, however, consider a separate <code>interface</code> library redundant. What purpose does it serve?
+      </p>
+    </div>
+    <div class="comment-date">2019-01-27 12:45 UTC</div>
+  </div>  
+</div>

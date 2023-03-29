@@ -1,0 +1,148 @@
+---
+layout: post
+tags: [ASP.NET MVC, REST, Services, ASP.NET Web API]
+date: 2012-04-17 14:46:42 UTC
+title: "Hyperlinking With the ASP.NET Web API"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		When creating resources with the <a href="http://www.asp.net/web-api">ASP.NET Web API</a> (beta) it's important to be able to create correct hyperlinks (you know, <a href="http://martinfowler.com/articles/richardsonMaturityModel.html">if it doesn't have hyperlinks, it's not REST</a>). These hyperlinks may link to other resources in the same API, so it's important to keep the links consistent. A client following such a link should hit the desired resource.
+	</p>
+	<p>
+		This post describes an refactoring-safe approach to creating hyperlinks using the Web API RouteCollection and Expressions.
+	</p>
+	<h3 id="e8d1b3bc70b442378806dbea1b0a902c">
+		The Problem <a href="#e8d1b3bc70b442378806dbea1b0a902c" title="permalink">#</a>
+	</h3>
+	<p>
+		Obviously hyperlinks can be hard-coded, but since incoming requests are matched based on the Web API's RouteCollection, there's a risk that hard-coded links become disconnected from the API's incoming routes. In other words, hard-coding links is probably not a good idea.
+	</p>
+	<p>
+		For reference, the default route in the Web API looks like this:
+	</p> 
+	<p>
+		<pre style="margin: 0px">routes.MapHttpRoute(
+&nbsp;&nbsp;&nbsp; name: <span style="color: #a31515">"DefaultApi"</span>,
+&nbsp;&nbsp;&nbsp; routeTemplate: <span style="color: #a31515">"{controller}/{id}"</span>,
+&nbsp;&nbsp;&nbsp; defaults: <span style="color: blue">new</span>
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; controller = <span style="color: #a31515">"Catalog"</span>,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; id = <span style="color: #2b91af">RouteParameter</span>.Optional
+&nbsp;&nbsp;&nbsp; }
+);</pre>
+	</p>
+	<p>
+		A sample action fitting that route might look like this:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: #2b91af">Artist</span> Get(<span style="color: blue">string</span> id)</pre>
+	</p>
+	<p>
+		where the Get method is defined by the ArtistController class.
+	</p>
+	<h3 id="1f8d43fecacb40d6a5e07b7878aa7e76">
+		Desired Outcome <a href="#1f8d43fecacb40d6a5e07b7878aa7e76" title="permalink">#</a>
+	</h3>
+	<p>
+		In order to provide a refactoring-safe way to create links to e.g. the artist resource, the <a href="http://joseoncode.com/2011/03/18/wcf-web-api-strongly-typed-resource-linker/">strongly typed Resource Linker</a> approach outlined by <a href="http://joseoncode.com/">José F. Romaniello</a> can be adopted. The IResourceLinker interface looks like this:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">interface</span> <span style="color: #2b91af">IResourceLinker</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Uri</span> GetUri&lt;T&gt;(<span style="color: #2b91af">Expression</span>&lt;<span style="color: #2b91af">Action</span>&lt;T&gt;&gt; method);
+}</pre>
+	</p>
+	<p>
+		This makes it possible to create links like this:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: blue">var</span> artist = <span style="color: blue">new</span> <span style="color: #2b91af">Artist</span>
+{
+&nbsp;&nbsp;&nbsp; Name = artistName,
+&nbsp;&nbsp;&nbsp; Links = <span style="color: blue">new</span>[]
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">new</span> <span style="color: #2b91af">Link</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Href = <span style="color: blue">this</span>.resourceLinker.GetUri&lt;<span style="color: #2b91af">ArtistController</span>&gt;(r =&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; r.Get(artistsId)).ToString(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Rel = <span style="color: #a31515">"self"</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; },
+&nbsp;&nbsp;&nbsp; <span style="color: green">// More crap goes here...</span>
+};</pre>
+	</p>
+	<p>
+		In this example, the <em>resourceLinker</em> field is an injected instance of IResourceLinker.
+	</p>
+	<p>
+		Since the input to the GetUri method is an Expression, it's being checked at compile time. It's refactoring-safe because a refactoring tool will be able to e.g. change the name of the method call in the Expression if the name of the method changes.
+	</p>
+	<h3 id="dbfcc19b06074b28953632f2df12331c">
+		Example Implementation <a href="#dbfcc19b06074b28953632f2df12331c" title="permalink">#</a>
+	</h3>
+	<p>
+		It's possible to implement IResourceLinker over a Web API RouteCollection. Here's an example implementation:
+	</p>
+	<p>
+		<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">RouteLinker</span> : <span style="color: #2b91af">IResourceLinker</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: #2b91af">Uri</span> baseUri;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">readonly</span> <span style="color: #2b91af">HttpControllerContext</span> ctx;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> RouteLinker(<span style="color: #2b91af">Uri</span> baseUri, <span style="color: #2b91af">HttpControllerContext</span> ctx)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.baseUri = baseUri;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.ctx = ctx;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: #2b91af">Uri</span> GetUri&lt;T&gt;(<span style="color: #2b91af">Expression</span>&lt;<span style="color: #2b91af">Action</span>&lt;T&gt;&gt; method)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">if</span> (method == <span style="color: blue">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">throw</span> <span style="color: blue">new</span> <span style="color: #2b91af">ArgumentNullException</span>(<span style="color: #a31515">"method"</span>);
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> methodCallExp = method.Body <span style="color: blue">as</span> <span style="color: #2b91af">MethodCallExpression</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">if</span> (methodCallExp == <span style="color: blue">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">throw</span> <span style="color: blue">new</span> <span style="color: #2b91af">ArgumentException</span>(<span style="color: #a31515">"The expression's body must be a MethodCallExpression. The code block supplied should invoke a method.\nExample: x =&gt; x.Foo()."</span>, <span style="color: #a31515">"method"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> routeValues = methodCallExp.Method.GetParameters()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .ToDictionary(p =&gt; p.Name, p =&gt; GetValue(methodCallExp, p));
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> controllerName = methodCallExp.Method.ReflectedType.Name
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .ToLowerInvariant().Replace(<span style="color: #a31515">"controller"</span>, <span style="color: #a31515">""</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; routeValues.Add(<span style="color: #a31515">"controller"</span>, controllerName);
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> relativeUri = <span style="color: blue">this</span>.ctx.Url.Route(<span style="color: #a31515">"DefaultApi"</span>, routeValues);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> <span style="color: blue">new</span> <span style="color: #2b91af">Uri</span>(<span style="color: blue">this</span>.baseUri, relativeUri);
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">static</span> <span style="color: blue">object</span> GetValue(<span style="color: #2b91af">MethodCallExpression</span> methodCallExp,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">ParameterInfo</span> p)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> arg = methodCallExp.Arguments[p.Position];
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> lambda = <span style="color: #2b91af">Expression</span>.Lambda(arg);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> lambda.Compile().DynamicInvoke().ToString();
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+	</p>
+	<p>
+		This isn't much different from José F. Romaniello's example, apart from the fact that it creates a dictionary of route values and then uses the UrlHelper.Route method to create a relative URI.</p>
+	<p>
+		Please note that this is just an example implementation. For instance, the call to the Route method supplies the hard-coded string "DefaultApi" to indicate which route (from Global.asax) to use. I'll leave it as an exercise for the interested reader to provide a generalization of this implementation.
+	</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="e4d448ff7d93408ebce060b340ccbf10">
+	<div class="comment-author"><a href="http://gorodinski.com/">Lev Gorodinski</a></div>
+	<div class="comment-content">This is very helpful! I'm currently exploring a solution that injects links into representations via filter based on some sort of state machine for the resource, though I might be leading myself down a DSL path.</div>
+	<div class="comment-date">2012-04-17 23:07 UTC</div>
+</div>
+</div>

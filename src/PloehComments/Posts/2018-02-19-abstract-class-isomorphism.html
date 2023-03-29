@@ -1,0 +1,1005 @@
+---
+layout: post
+title: "Abstract class isomorphism"
+description: "Abstract classes are isomorphic to Dependency Injection."
+date: 2018-02-19 13:10 UTC
+tags: [Software Design, Dependency Injection]
+image: "/content/binary/abstract-class-to-interfaces-isomorphism.png"
+image_alt: "Abstract class on the left, concrete class with injected interfaces on the right; arrow between boxes."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is part of <a href="/2018/01/08/software-design-isomorphisms">a series of articles about software design isomorphisms</a>.
+	</p>
+	<p>
+		The introduction to <a href="http://amzn.to/XBYukB">Design Patterns</a> states:
+		<blockquote>
+			Program to an interface, not an implementation.
+		</blockquote>
+		When I originally read that, I took it quite literally, so I wrote all my C# code using interfaces instead of abstract classes. There are several reasons why, in general, that turns out to be a good idea, but that's not the point of this article. It turns out that it doesn't really matter.
+	</p>
+	<p>
+		If you have an abstract class, you can refactor to an object model composed from interfaces without loss of information. You can also refactor back to an abstract class. These two refactorings are each others' inverses, so together, they form an isomorphism.
+	</p>
+	<p>
+		<img src="/content/binary/abstract-class-to-interfaces-isomorphism.png" alt="Abstract class on the left, concrete class with injected interfaces on the right; arrow between boxes.">
+	</p>
+	<p>
+		When refactoring an abstract class, you extract all its pure virtual members to an interface, each of its virtual members to other interfaces, and inject them into a concrete class. The inverse refactoring involves going back to an abstract class.
+	</p>
+	<p>
+		This is an important result, because upon closer inspection, the Gang of Four didn't have C# or Java interfaces in mind. The book pre-dates both Java and C#, and its examples are mostly in C++. Many of the examples involve abstract classes, but more than ten years of experience has taught me that I can always write a variant that uses C# interfaces. That is, I believe, not a coincidence.
+	</p>
+	<h3 id="d7a0264c0f134c30a15963ee8216e518">
+		Abstract class <a href="#d7a0264c0f134c30a15963ee8216e518" title="permalink">#</a>
+	</h3>
+	<p>
+		An abstract class in C# has this general shape:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Class1</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Data1</span>&nbsp;Data&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:#2b91af;">OutPureVirt1</span>&nbsp;PureVirt1(<span style="color:#2b91af;">InPureVirt1</span>&nbsp;arg);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:#2b91af;">OutPureVirt2</span>&nbsp;PureVirt2(<span style="color:#2b91af;">InPureVirt2</span>&nbsp;arg);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:#2b91af;">OutPureVirt3</span>&nbsp;PureVirt3(<span style="color:#2b91af;">InPureVirt3</span>&nbsp;arg);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;More&nbsp;pure&nbsp;virtual&nbsp;members...</span>
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">virtual</span>&nbsp;<span style="color:#2b91af;">OutVirt1</span>&nbsp;Virt1(<span style="color:#2b91af;">InVirt1</span>&nbsp;arg)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Do&nbsp;stuff&nbsp;with&nbsp;this,&nbsp;Data,&nbsp;and&nbsp;arg;&nbsp;return&nbsp;an&nbsp;OutVirt1&nbsp;value.</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">virtual</span>&nbsp;<span style="color:#2b91af;">OutVirt2</span>&nbsp;Virt2(<span style="color:#2b91af;">InVirt2</span>&nbsp;arg)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Do&nbsp;stuff&nbsp;with&nbsp;this,&nbsp;Data,&nbsp;and&nbsp;arg;&nbsp;return&nbsp;an&nbsp;OutVirt2&nbsp;value.</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">virtual</span>&nbsp;<span style="color:#2b91af;">OutVirt3</span>&nbsp;Virt3(<span style="color:#2b91af;">InVirt3</span>&nbsp;arg)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Do&nbsp;stuff&nbsp;with&nbsp;this,&nbsp;Data,&nbsp;and&nbsp;arg;&nbsp;return&nbsp;an&nbsp;OutVirt3&nbsp;value.</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;More&nbsp;virtual&nbsp;members...</span>
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">OutConc1</span>&nbsp;Op1(<span style="color:#2b91af;">InConc1</span>&nbsp;arg)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Do&nbsp;stuff&nbsp;with&nbsp;this,&nbsp;Data,&nbsp;and&nbsp;arg;&nbsp;return&nbsp;an&nbsp;OutConc1&nbsp;value.</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">OutConc2</span>&nbsp;Op2(<span style="color:#2b91af;">InConc2</span>&nbsp;arg)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Do&nbsp;stuff&nbsp;with&nbsp;this,&nbsp;Data,&nbsp;and&nbsp;arg;&nbsp;return&nbsp;an&nbsp;OutConc2&nbsp;value.</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">OutConc3</span>&nbsp;Op3(<span style="color:#2b91af;">InConc3</span>&nbsp;arg)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Do&nbsp;stuff&nbsp;with&nbsp;this,&nbsp;Data,&nbsp;and&nbsp;arg;&nbsp;return&nbsp;an&nbsp;OutConc3&nbsp;value.</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;More&nbsp;concrete&nbsp;members...</span>
+}</pre>
+	</p>
+	<p>
+		Like in <a href="/2018/02/12/object-isomorphisms">the previous article</a>, I've deliberately kept the naming abstract (but added a more concrete example towards the end). The purpose of this article series is to look at the shape of code, instead of what it does, or why. From <a href="/2018/01/29/argument-list-isomorphisms">argument list isomorphisms</a> we know that we can represent any method as taking a single input value, and returning a single output value.
+	</p>
+	<p>
+		An abstract class can have non-virtual members. In C#, this is the default, whereas in Java, you'd explicitly have to use the <code>final</code> keyword. In the above generalised representation, I've named these non-virtual members <code>Op1</code>, <code>Op2</code>, and so on.
+	</p>
+	<p>
+		An abstract class can also have virtual members. In C#, you must explicitly use the <code>virtual</code> keyword in order to mark a method as overridable, whereas this is the default for Java. In the above representation, I've called these methods <code>Virt1</code>, <code>Virt2</code>, etcetera.
+	</p>
+	<p>
+		Some virtual members are <em>pure virtual</em> members. These are members without an implementation. Any concrete (that is: non-abstract) class inheriting from an abstract class must provide an implementation for such members. In both C# and Java, you must declare such members using the <code>abstract</code> keyword. In the above representation, I've called these methods <code>PureVirt1</code>, <code>PureVirt2</code>, and so on.
+	</p>
+	<p>
+		Finally, an abstract class can contain data, which you can represent as a single data object, here of the type <code>Data1</code>.
+	</p>
+	<p>
+		The concrete and virtual members could, conceivably, call other members in the class - both concrete, virtual, and pure virtual. In fact, this is how many of the design patterns in the book work, for example <a href="https://en.wikipedia.org/wiki/Strategy_pattern">Strategy</a>, <a href="https://en.wikipedia.org/wiki/Template_method_pattern">Template Method</a>, and <a href="https://en.wikipedia.org/wiki/Builder_pattern">Builder</a>.
+	</p>
+	<h3 id="b22dc0035a4c44948369c7cda63646ad">
+		From abstract class to Dependency Injection <a href="#b22dc0035a4c44948369c7cda63646ad" title="permalink">#</a>
+	</h3>
+	<p>
+		Apart from its <code>Data</code>, an abstract class contains three types of members:
+		<ul>
+			<li>Those that <em>must</em> be implemented by derived classes: pure virtual members</li>
+			<li>Those that <em>optionally</em> can be overriden by derived classes: virtual members</li>
+			<li>Those that cannot be overridden by derived classes: concrete, sealed, or final, members</li>
+		</ul>
+		When refactoring to interfaces, you do the following:
+		<ol>
+			<li>Extract an interface from the pure virtual members.</li>
+			<li>Extract an interface from each of the virtual members.</li>
+			<li>Implement each of the 'virtual member interfaces' with the implementation from the virtual member.</li>
+			<li>Add a constructor to the abstract class that takes all these new interfaces as arguments. Save the arguments as class fields.</li>
+			<li>Change all code in the abstract class to talk to the injected interfaces instead of direct class members.</li>
+			<li>Remove the virtual and pure virtual members from the class, or make them non-virtual. If you keep them around, their implementation should be one line of code, delegating to the corresponding interface.</li>
+			<li>Change the class to a concrete (non-abstract) class.</li>
+		</ol>
+		If you apply this refactoring to the above class, you should arrive at something like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Class1</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IInterface1</span>&nbsp;pureVirts;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IVirt1</span>&nbsp;virt1;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IVirt2</span>&nbsp;virt2;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IVirt3</span>&nbsp;virt3;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;More&nbsp;virt&nbsp;fields...</span>
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Data1</span>&nbsp;Data&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;<span style="color:blue;">set</span>;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;Class1(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IInterface1</span>&nbsp;pureVirts,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IVirt1</span>&nbsp;virt1,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IVirt2</span>&nbsp;virt2,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IVirt3</span>&nbsp;virt3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">/*&nbsp;More&nbsp;virt&nbsp;arguments...&nbsp;*/</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.pureVirts&nbsp;=&nbsp;pureVirts;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.virt1&nbsp;=&nbsp;virt1;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.virt2&nbsp;=&nbsp;virt2;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.virt3&nbsp;=&nbsp;virt3;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;More&nbsp;field&nbsp;assignments</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">OutConc1</span>&nbsp;Op1(<span style="color:#2b91af;">InConc1</span>&nbsp;arg)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Do&nbsp;stuff&nbsp;with&nbsp;this,&nbsp;Data,&nbsp;and&nbsp;arg;&nbsp;return&nbsp;an&nbsp;OutConc1&nbsp;value.</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">OutConc2</span>&nbsp;Op2(<span style="color:#2b91af;">InConc2</span>&nbsp;arg)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Do&nbsp;stuff&nbsp;with&nbsp;this,&nbsp;Data,&nbsp;and&nbsp;arg;&nbsp;return&nbsp;an&nbsp;OutConc2&nbsp;value.</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">OutConc3</span>&nbsp;Op3(<span style="color:#2b91af;">InConc3</span>&nbsp;arg)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;Do&nbsp;stuff&nbsp;with&nbsp;this,&nbsp;Data,&nbsp;and&nbsp;arg;&nbsp;return&nbsp;an&nbsp;OutConc3&nbsp;value.</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;More&nbsp;concrete&nbsp;members...</span>
+}</pre>
+	</p>
+	<p>
+		While not strictly necessary, I've marked the class <code>sealed</code> (<code>final</code> in Java) in order to drive home the point that this is no longer an abstract class.
+	</p>
+	<p>
+		This is an example of the Constructor Injection design pattern. (This is not a Gang of Four pattern; you can find a description in <a href="http://amzn.to/12p90MG">my book about Dependency Injection</a>.)
+	</p>
+	<p>
+		Since it's optional to override virtual members, any class originally inheriting from an abstract class can choose to override only one, or two, of the virtual members, while leaving other virtual members with their default implementations. In order to support such piecemeal redefinition, you can extract each virtual member to a separate interface, like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IVirt1</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">OutVirt1</span>&nbsp;Virt1(<span style="color:#2b91af;">InVirt1</span>&nbsp;arg);
+}</pre>
+	</p>
+	<p>
+		Notice that each of these 'virtual interfaces' are injected into <code>Class1</code> as a separate argument. This enables you to pass your own implementation of exactly those you wish to change, while you can pass in the default implementation for the rest. The default implementations are the original code from the virtual members, but moved to a class that implements the interfaces:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">DefaultVirt</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IVirt1</span>,&nbsp;<span style="color:#2b91af;">IVirt2</span>,&nbsp;<span style="color:#2b91af;">IVirt3</span>
+</pre>
+	</p>
+	<p>
+		When inheriting from the original abstract class, however, you must implement all the pure virtual members, so you can extract a single interface from all the pure virtual members:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IInterface1</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">OutPureVirt1</span>&nbsp;PureVirt1(<span style="color:#2b91af;">InPureVirt1</span>&nbsp;arg);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">OutPureVirt2</span>&nbsp;PureVirt2(<span style="color:#2b91af;">InPureVirt2</span>&nbsp;arg);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">OutPureVirt3</span>&nbsp;PureVirt3(<span style="color:#2b91af;">InPureVirt3</span>&nbsp;arg);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;More&nbsp;pure&nbsp;virtual&nbsp;members...</span>
+}</pre>
+	</p>
+	<p>
+		This forces anyone who wants to use the refactored (sealed) <code>Class1</code> to provide an implementation of all of those members. There's an edge case where you inherit from the original <code>Class1</code> in order to create a new <em>abstract</em> class, and implement only one or two of the pure virtual members. If you want to support that edge case, you can define an interface for each pure virtual member, instead of one big interface, similar to <code>IVirt1</code>, <code>IVirt2</code>, and so on.
+	</p>
+	<h3 id="7647f5cced134b24b4df7ec37d61fbf7">
+		From Dependency Injection to abstract class <a href="#7647f5cced134b24b4df7ec37d61fbf7" title="permalink">#</a>
+	</h3>
+	<p>
+		I hope it's clear how to perform the inverse refactoring. Assume that the above sealed <code>Class1</code> is the starting point:
+		<ol>
+			<li>Mark <code>Class1</code> as <code>abstract</code>.</li>
+			<li>For each of the members of <code>IInterface1</code>, add a pure virtual member.</li>
+			<li>For each of the members of <code>IVirt1</code>, <code>IVirt2</code>, and so on, add a virtual member.</li>
+			<li>Move the code from the default implementation of the 'virtual interfaces' to the new virtual members.</li>
+			<li>Delete the dependency fields and remove the corresponding arguments from the constructor.</li>
+			<li>Clean up orphaned interfaces and implementations.</li>
+		</ol>
+		This refactoring assumes a class using Dependency Injection like the one shown in this article, above. The example code is the same as the above example code, although the order is reversed: you start with the Dependency Injection class and end with the abstract class.
+	</p>
+	<h3 id="6dae326271714421b35d3acb4c08b99d">
+		Example: Gang of Four maze Builder as an abstract class <a href="#6dae326271714421b35d3acb4c08b99d" title="permalink">#</a>
+	</h3>
+	<p>
+		As an example, consider the original Gang of Four example of the <a href="https://en.wikipedia.org/wiki/Builder_pattern">Builder</a> pattern. The example in the book is based on an abstract class called <code>MazeBuilder</code>. Translated to C#, it looks like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MazeBuilder</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">virtual</span>&nbsp;<span style="color:blue;">void</span>&nbsp;BuildMaze()&nbsp;{&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">virtual</span>&nbsp;<span style="color:blue;">void</span>&nbsp;BuildRoom(<span style="color:blue;">int</span>&nbsp;room)&nbsp;{&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">virtual</span>&nbsp;<span style="color:blue;">void</span>&nbsp;BuildDoor(<span style="color:blue;">int</span>&nbsp;roomFrom,&nbsp;<span style="color:blue;">int</span>&nbsp;roomTo)&nbsp;{&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:#2b91af;">Maze</span>&nbsp;GetMaze();
+}</pre>
+	</p>
+	<p>
+		In the book, all four methods are virtual, because:
+		<blockquote>
+			"They're not declared pure virtual to let derived classes override only those methods in which they're interested."
+		</blockquote>
+		When it comes to the <code>GetMaze</code> method, this means that the method in the book returns a null reference by default. Since this seems like poor API design, and also because the example becomes more illustrative if the class has both abstract and virtual members, I changed it to be abstract (i.e. pure virtual).
+	</p>
+	<p>
+		In general, there are various other issues with this design, the most glaring of which is the implied <a href="/2011/05/24/DesignSmellTemporalCoupling">sequence coupling</a> between members: you're expected to call <code>BuildMaze</code> before any of the other methods. A better design would be to remove that explicit step entirely, or else turn it into a factory that you have to call in order to be able to call the other methods. That's not the topic of the present article, so I'll leave the API like this.
+	</p>
+	<p>
+		The book also shows a simple usage example of the abstract <code>MazeBuilder</code> class:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MazeGame</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Maze</span>&nbsp;CreateMaze(<span style="color:#2b91af;">MazeBuilder</span>&nbsp;builder)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;builder.BuildMaze();
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;builder.BuildRoom(1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;builder.BuildRoom(2);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;builder.BuildDoor(1,&nbsp;2);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;builder.GetMaze();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		You use it with e.g. a <code>StandardMazeBuilder</code> like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;game&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MazeGame</span>();
+<span style="color:blue;">var</span>&nbsp;builder&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">StandardMazeBuilder</span>();
+ 
+<span style="color:blue;">var</span>&nbsp;maze&nbsp;=&nbsp;game.CreateMaze(builder);</pre>
+	</p>
+	<p>
+		You could also, again following the book's example as closely as possible, use it with a <code>CountingMazeBuilder</code>, like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;game&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MazeGame</span>();
+<span style="color:blue;">var</span>&nbsp;builder&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">CountingMazeBuilder</span>();
+ 
+game.CreateMaze(builder);
+ 
+<span style="color:blue;">var</span>&nbsp;msg&nbsp;=&nbsp;<span style="color:#a31515;">$&quot;The&nbsp;maze&nbsp;has&nbsp;</span>{builder.RoomCount}<span style="color:#a31515;">&nbsp;rooms&nbsp;and&nbsp;</span>{builder.DoorCount}<span style="color:#a31515;">&nbsp;doors.&quot;</span>;</pre>
+	</p>
+	<p>
+		This would produce <code>"The maze has 2 rooms and 1 doors."</code>.
+	</p>
+	<p>
+		Both <code>StandardMazeBuilder</code> and <code>CountingMazeBuilder</code> are concrete classes that derive from the abstract <code>MazeBuilder</code> class.
+	</p>
+	<h3 id="dffe775a502b4e0eb55ec6d9705c3dcb">
+		Maze Builder refactored to interfaces <a href="#dffe775a502b4e0eb55ec6d9705c3dcb" title="permalink">#</a>
+	</h3>
+	<p>
+		If you follow the refactoring outline in this article, you can refactor the above <code>MazeBuilder</code> class to a set of interfaces. The first should be an interface extracted from all the pure virtual members of the class. In this example, there's only one such member, so the interface becomes this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IMazeBuilder</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Maze</span>&nbsp;GetMaze();
+}</pre>
+	</p>
+	<p>
+		The three virtual members each get their own interface, so that you can pick and choose which of them you want to override, and which of them you prefer to keep with their default implementation (which, in this particular case, is to do nothing).
+	</p>
+	<p>
+		The first one was difficult to name:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IMazeInitializer</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;BuildMaze();
+}</pre>
+	</p>
+	<p>
+		An interface with a single method called <code>BuildMaze</code> would naturally have a name like <code>IMazeBuilder</code>, but unfortunately, I just used that name for the previous interface. The reason I named the above interface <code>IMazeBuilder</code> is because this is an interface extracted from the <code>MazeBuilder</code> abstract class, and I consider the pure virtual API to be the core API of the abstraction, so I think it makes most sense to keep the name for that interface. Thus, I had to come up with a <a href="/2011/05/24/DesignSmellTemporalCoupling">smelly</a> name like <code>IMazeInitializer</code>.
+	</p>
+	<p>
+		Fortunately, the two remaining interfaces are a little better:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IRoomBuilder</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;BuildRoom(<span style="color:blue;">int</span>&nbsp;room);
+}
+
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IDoorBuilder</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;BuildDoor(<span style="color:blue;">int</span>&nbsp;roomFrom,&nbsp;<span style="color:blue;">int</span>&nbsp;roomTo);
+}</pre>
+	</p>
+	<p>
+		The three virtual members all had default implementations, so you need to keep those around. You can do that by moving the methods' code to a new class that implements the new interfaces:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">DefaultMazeBuilder</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IMazeInitializer</span>,&nbsp;<span style="color:#2b91af;">IRoomBuilder</span>,&nbsp;<span style="color:#2b91af;">IDoorBuilder</span>
+</pre>
+	</p>
+	<p>
+		In this example, there's no reason to show the implementation of the class, because, as you may recall, all three methods are no-ops.
+	</p>
+	<p>
+		Instead of inheriting from <code>MazeBuilder</code>, implementers now implement the appropriate interfaces:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">StandardMazeBuilder</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IMazeBuilder</span>,&nbsp;<span style="color:#2b91af;">IMazeInitializer</span>,&nbsp;<span style="color:#2b91af;">IRoomBuilder</span>,&nbsp;<span style="color:#2b91af;">IDoorBuilder</span>
+</pre>
+	</p>
+	<p>
+		This version of <code>StandardMazeBuilder</code> implements all four interfaces, since, before, it overrode all four methods. <code>CountingMazeBuilder</code>, on the other hand, never overrode <code>BuildMaze</code>, so it doesn't have to implement <code>IMazeInitializer</code>:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">CountingMazeBuilder</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IRoomBuilder</span>,&nbsp;<span style="color:#2b91af;">IDoorBuilder</span>,&nbsp;<span style="color:#2b91af;">IMazeBuilder</span>
+</pre>
+	</p>
+	<p>
+		All of these changes leaves the original <code>MazeBuilder</code> class defined like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MazeBuilder</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IMazeBuilder</span>,&nbsp;<span style="color:#2b91af;">IMazeInitializer</span>,&nbsp;<span style="color:#2b91af;">IRoomBuilder</span>,&nbsp;<span style="color:#2b91af;">IDoorBuilder</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IMazeBuilder</span>&nbsp;mazeBuilder;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IMazeInitializer</span>&nbsp;mazeInitializer;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IRoomBuilder</span>&nbsp;roomBuilder;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IDoorBuilder</span>&nbsp;doorBuilder;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;MazeBuilder(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IMazeBuilder</span>&nbsp;mazeBuilder,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IMazeInitializer</span>&nbsp;mazeInitializer,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IRoomBuilder</span>&nbsp;roomBuilder,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IDoorBuilder</span>&nbsp;doorBuilder)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.mazeBuilder&nbsp;=&nbsp;mazeBuilder;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.mazeInitializer&nbsp;=&nbsp;mazeInitializer;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.roomBuilder&nbsp;=&nbsp;roomBuilder;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.doorBuilder&nbsp;=&nbsp;doorBuilder;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;BuildMaze()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.mazeInitializer.BuildMaze();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;BuildRoom(<span style="color:blue;">int</span>&nbsp;room)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.roomBuilder.BuildRoom(room);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;BuildDoor(<span style="color:blue;">int</span>&nbsp;roomFrom,&nbsp;<span style="color:blue;">int</span>&nbsp;roomTo)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.doorBuilder.BuildDoor(roomFrom,&nbsp;roomTo);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Maze</span>&nbsp;GetMaze()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">this</span>.mazeBuilder.GetMaze();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>		
+	</p>
+	<p>
+		At this point, you may decide to keep the old <code>MazeBuilder</code> class around, because you may have other code that relies on it. Notice, however, that it's now a concrete class that has dependencies injected into it via its constructor. All four members only delegate to the relevant dependencies in order to do actual work.
+	</p>
+	<p>
+		<code>MazeGame</code> looks like before, but calling <code>CreateMaze</code> looks more complicated:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;game&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MazeGame</span>();
+<span style="color:blue;">var</span>&nbsp;builder&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">StandardMazeBuilder</span>();
+ 
+<span style="color:blue;">var</span>&nbsp;maze&nbsp;=&nbsp;game.CreateMaze(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MazeBuilder</span>(builder,&nbsp;builder,&nbsp;builder,&nbsp;builder));</pre>
+	</p>
+	<p>
+		Notice that while you're passing four dependencies to the <code>MazeBuilder</code> constructor, you can reuse the same <code>StandardMazeBuilder</code> object for all four roles.
+	</p>
+	<p>
+		If you want to count the rooms and doors, however, <code>CountingMazeBuilder</code> doesn't implement <code>IMazeInitializer</code>, so for that role, you'll need to use the default implementation:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;game&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MazeGame</span>();
+<span style="color:blue;">var</span>&nbsp;builder&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">CountingMazeBuilder</span>();
+ 
+game.CreateMaze(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MazeBuilder</span>(builder,&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DefaultMazeBuilder</span>(),&nbsp;builder,&nbsp;builder));
+ 
+<span style="color:blue;">var</span>&nbsp;msg&nbsp;=&nbsp;<span style="color:#a31515;">$&quot;The&nbsp;maze&nbsp;has&nbsp;</span>{builder.RoomCount}<span style="color:#a31515;">&nbsp;rooms&nbsp;and&nbsp;</span>{builder.DoorCount}<span style="color:#a31515;">&nbsp;doors.&quot;</span>;</pre>
+	</p>
+	<p>
+		If, at this point, you're beginning to wonder what value <code>MazeBuilder</code> adds, then I think that's a legitimate concern. What often happens, then, is that you simply remove that extra layer.
+	</p>
+	<h3 id="dbb69051eeb1482c9a2bee079df977ab">
+		Mazes without MazeBuilder <a href="#dbb69051eeb1482c9a2bee079df977ab" title="permalink">#</a>
+	</h3>
+	<p>
+		When you delete the <code>MazeBuilder</code> class, you'll have to adjust <code>MazeGame</code> accordingly:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MazeGame</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Maze</span>&nbsp;CreateMaze(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IMazeInitializer</span>&nbsp;initializer,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IRoomBuilder</span>&nbsp;roomBuilder,&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IDoorBuilder</span>&nbsp;doorBuilder,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IMazeBuilder</span>&nbsp;mazeBuilder)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;initializer.BuildMaze();
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;roomBuilder.BuildRoom(1);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;roomBuilder.BuildRoom(2);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;doorBuilder.BuildDoor(1,&nbsp;2);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;mazeBuilder.GetMaze();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		The <code>CreateMaze</code> method now simply takes the four interfaces on which it relies as individual arguments. This simplifies the client code as well:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;game&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MazeGame</span>();
+<span style="color:blue;">var</span>&nbsp;builder&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">StandardMazeBuilder</span>();
+ 
+<span style="color:blue;">var</span>&nbsp;maze&nbsp;=&nbsp;game.CreateMaze(builder,&nbsp;builder,&nbsp;builder,&nbsp;builder);</pre>
+	</p>
+	<p>
+		You can still reuse a single <code>StandardMazeBuilder</code> in all roles, but again, if you only want to count the rooms and doors, you'll have to rely on <code>DefaultMazeBuilder</code> for the behaviour that <code>CountingMazeBuilder</code> doesn't define:
+	</p>
+	<p>
+		<pre><span style="color:blue;">var</span>&nbsp;game&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MazeGame</span>();
+<span style="color:blue;">var</span>&nbsp;builder&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">CountingMazeBuilder</span>();
+ 
+game.CreateMaze(<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">DefaultMazeBuilder</span>(),&nbsp;builder,&nbsp;builder,&nbsp;builder);
+ 
+<span style="color:blue;">var</span>&nbsp;msg&nbsp;=&nbsp;<span style="color:#a31515;">$&quot;The&nbsp;maze&nbsp;has&nbsp;</span>{builder.RoomCount}<span style="color:#a31515;">&nbsp;rooms&nbsp;and&nbsp;</span>{builder.DoorCount}<span style="color:#a31515;">&nbsp;doors.&quot;</span>;</pre>
+	</p>
+	<p>
+		The order in which dependencies are passed to <code>CreateMaze</code> is different than the order they were passed to the now-deleted <code>MazeBuilder</code> constructor, so you'll have to pass a <code>new DefaultMazeBuilder()</code> as the first argument in order to fill the role of <code>IMazeInitializer</code>. Another way to address this issue is to supply various overloads of the <code>CreateMaze</code> method that uses <code>DefaultMazeBuilder</code> for the behaviour that you don't want to override.
+	</p>
+	<h3 id="011d61051d3c4340bbd3d9582b6dc482">
+		Summary <a href="#011d61051d3c4340bbd3d9582b6dc482" title="permalink">#</a>
+	</h3>
+	<p>
+		Many of the original design patterns in <em>Design Patterns</em> are described with examples in C++, and many of these examples use abstract classes as the programming interfaces that the Gang of Four really had in mind when they wrote that we should be programming to interfaces instead of implementations.
+	</p>
+	<p>
+		The most important result of this article is that you can reinterpret the original design patterns with C# or Java interfaces and Dependency Injection, instead of using abstract classes. I've done this in C# for more than ten years, and in my experience, you never need abstract classes in a greenfield code base. There's always an equivalent representation that involves composition of interfaces.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2018/02/26/inheritance-composition-isomorphism">Inheritance-composition isomorphism</a>.
+	</p>
+</div>
+<div id="comments">
+	<hr />
+	<h2 id="comments-header">Comments</h2>
+	<div class="comment" id="b8cb5baf6ccd4cc98412c229d3dadb06">
+		<div class="comment-author">
+			<a href="https://github.com/MaxKot">Max Kiselev</a>
+		</div>
+		<div class="comment-content">
+			<p>
+				While the idea is vey interesting I think it is not exactly an isomorphism.
+			</p>
+			<p>
+				The first reason I think it is not an isomorphism is language-specific since Java and C#
+				allow implementing multiple interfaces but not multiple abstract classes. It can make a
+				reverse transformation from interfaces back to an abstract class non-trivial.
+			</p>
+			<p>
+				The second reason is that abstract class guarantees that whatever class implements the pure
+				virtual members and overrides virtual members share the same state between all its methods
+				and also with the abstract base class. With the maze Builder example there must be a state
+				shared between GetMaze, BuildMaze, BuildRoom and BuildDoor methods but the dependency
+				injection does not seem to reflect it.
+			</p>
+			<p>
+				Perhaps there should be some kind of Data parameter passed to all injected interfaces.
+			</p>
+		</div>
+		<div class="comment-date">2018-03-05 19:03 UTC</div>
+	</div>
+
+	<div class="comment" id="13cc2c9a28114b52add8942d3ac3c94d">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Max, thank you for writing, and particularly for applying critique to this post. One of my main motivations for writing <a href="/2017/10/04/from-design-patterns-to-category-theory">the entire article series</a> is that I need to subject my thoughts to peer review. I've been thinking about these things for years, but in order to formalise them, I need to understand whether I'm completely wrong (I hope not), of, if I'm not, what are the limits of my findings.
+			</p>
+			<p>
+				I think you've just pointed at one such limit, and for that I'm grateful. The rest of this answer, then, is not an attempt to refute your comment, but rather an effort to identify some <em>constraints</em> within which what I wrote may still hold.
+			</p>
+			<p>
+				Your second objection doesn't worry me that much, because you also suggest a way around it. I admit that I faked the Maze Builder code somewhat, so that the state isn't explicit. I feel that fudging the code example is acceptable, as the Gang of Four code example is also clearly incomplete. In any case, you're right that an abstract class could easily contain some shared state. When refactoring to interfaces, the orchestrating class could instead pass around that state as an argument to all methods, as you suggest. Would it be reasonable to conclude that this, then, doesn't prevent the translations from being isomorphic?
+			</p>
+			<p>
+				There's still your first objection, which I think is significant. That's the reason I decided to cover your second objection first, because I think it'll require more work to address the first objection.
+			</p>
+			<p>
+				First, I think we need to delimit the problem, since your comment slightly misrepresents my article. The claim in the article is that you can refactor an abstract class to a concrete class with injected dependencies. Furthermore, the article claims that this translation is isomorphic; i.e. that you can refactor a concrete class with injected dependencies to an abstract class.
+			</p>
+			<p>
+				If I read your comment right, you're saying that a class can implement more than one interface, like this:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MyClass</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IFoo</span>,&nbsp;<span style="color:#2b91af;">IBar</span><br/></pre>
+			</p>
+			<p>
+				I agree that you can't use the transformations described in this article to refactor <code>MyClass</code> to an abstract class, because that's not the transformation that the article describes.
+			</p>
+			<p>
+				That doesn't change that your comment is uncomfortably close to an inconvenient limitation.	You're right that there seems to be a limitation when it comes to C#'s and Java's lack of multiple inheritance. As your comment implies, if a translation is isomorphic, one has to be able to start at either end, and round-trip to the other end and back. Thus, one has to be able to start with a concrete class with injected dependencies, and refactor to an abstract class; for example:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MyClass</span><br/>{<br/>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;MyClass(<span style="color:#2b91af;">IFoo</span>&nbsp;foo,&nbsp;<span style="color:#2b91af;">IBar</span>&nbsp;bar)<br/>&nbsp;&nbsp;&nbsp;&nbsp;{<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;...</span><br/>&nbsp;&nbsp;&nbsp;&nbsp;}<br/>}</pre>				
+			</p>
+			<p>
+				As far as I can tell, that's exactly the shape of the <code>sealed</code> version of <code>Class1</code>, above, so I'm not convinced that that's a problem, but something like the following does look like a problem to me:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MyClass</span><br/>{<br/>&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;MyClass(<span style="color:#2b91af;">IFoo</span>&nbsp;foo1,&nbsp;<span style="color:#2b91af;">IFoo</span>&nbsp;foo2)<br/>&nbsp;&nbsp;&nbsp;&nbsp;{<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;...</span><br/>&nbsp;&nbsp;&nbsp;&nbsp;}<br/>}</pre>
+			</p>
+			<p>
+				It's not clear to me how one can refactor something like that to an abstract class, and still retain the distinction between <code>foo1</code> and <code>foo2</code>. My claim is not that this is impossible, but only that it's not immediately clear to me how to do that. Thus, we may have to put a constraint on the original claim, and instead say something like this:
+				<blockquote>
+					An abstract class is isomorphic to a concrete class with injected dependencies, given that all the injected dependencies are of different types.
+				</blockquote>
+				We can attempt to illustrate the claim like this:
+			</p>
+			<p>
+				<img src="/content/binary/abstract-class-to-constrained-dependency-injection-isomorphism.png" alt="The set of abstract classes juxtaposed with the set of dependency injection, the latter with a subset for which arrows go both ways between the subset and the set of abstract classes.">
+			</p>
+			<p>
+				This is still an isomorphism, I think, although I invite further criticism of that claim. <a href="http://amzn.to/13tGJ0f">Conceptual Mathematics</a> defines an isomorphism in terms of categories <em>A</em> and <em>B</em>, and as far as I can tell, <em>A</em> and <em>B</em> can be as specific as we want them to be. Thus, we can say that <em>A</em> is the set of abstract classes, and <em>B</em> is the subset of concrete classes with injected dependencies, for which no dependency share the same type.
+			</p>
+			<p>
+				If we have to constrain the isomorphism in this way, though, is it still interesting? Why should we care?
+			</p>
+			<p>
+				To be perfectly honest, what motivated me to write this particular article is that I wanted to describe the translation from an abstract class to dependency injection. The inverse interests me less, but I thought that if the inverse translation exists, I could fit this article in with the other articles in this article series about software design isomorphisms.
+			</p>
+			<p>
+				The reason I care about the translation from abstract class to dependency injection is that I often see code where the programmers misuse inheritance. My experience with C# is that one can completely avoid inheritance. The way to do that is to use dependency injection instead. This article shows how to do that.
+			</p>
+			<p>
+				The result that one can write real, complex code bases in C# without inheritance is important to me, because one of my current goals is to teach people the advantages of functional programming, and one barrier I run into is that people who come from object-oriented programming run into problems when they no longer can use inheritance. Thus, this article shows an object-oriented alternative to inheritance, so that people can get used to the idea of designing without inheritance, even before they start looking at functional programming.
+			</p>
+			<p>
+				Another motivation for this article is that it's part of <a href="/2017/10/04/from-design-patterns-to-category-theory">a much larger article series</a> about design patterns, and how they relate to fundamental abstractions. In <em>Design Patterns</em>, all the (C++) patterns are described in terms of inheritance, so I wrote this article series on isomorphisms in order to be able to represent various design patterns in other forms than they appear in the book.
+			</p>
+		</div>
+		<div class="comment-date">2018-03-08 9:57 UTC</div>
+	</div>
+
+    <div class="comment" id="93410202470d4406a698fa4ffb6d3c27">
+        <div class="comment-author">
+            Ciprian Vilcan
+        </div>
+        <div class="comment-content">
+            <p>
+                This idea is a very interesting and useful one, but as I found out in one of my toy projects and as Max stated above, it is unfortunately not language agnostic.<br />
+                As far as C# is concerned, you can have operator overloading in an abstract class, which is a bit of logic that I see no way of extracting to an interface and thus remove the need for inheritance. Example below.<br />
+                (You could define Add, Subtract, Multiply and Divide methods, but to me they seem like reinventing the square wheel. They seem much less convenient than +-*/)
+            </p>
+            <p>
+                I tried creating some nice Temperature value objects, similar to <a href="/2017/10/16/money-monoid/">the money monoid you presented</a> and I came up with 5 classes:<br />
+                Temperature, Kelvin, Celsius, Fahrenheit and TemperatureExpression.<br />
+                Temperature is the abstract class and its +Temperature and -Temperature operators are overloaded so that they return a TemperatureExpression, which can then be evaluated to a Maybe&lt;TTemperature&gt; where TTemperature : Temperature. <br />
+                A TemperatureExpression is nothing more than a lazily evaluated mathematical expression (for example: 12K + 24C - 32F).<br />
+                Also, it's a Maybe because 0K - 1C won't be a valid temperature, so we have to also take this case into consideration. <br />
+            </p>
+            <p>
+                For further convenience, the Kelvin class has its own overloaded + operator, because no matter what you do, when adding together two Kelvin values you'll always end up with something that is greater than 0.
+            </p>
+            <p>
+                These being said, if you want to leverage the C# operators there are some limitations regarding this transformation that keep you from having this abstract class -> DI isomorphism. <br />
+                That is, unless you're willing to add the methods I've spoken of in the first paragraph. <br />
+                But, in an ideal programming language, IMHO, arithmetic and boolean operators should be part of some public interfaces like, ISubtractable, IDivideable and thus allow for a smooth transition between abstract classes and interface DI.
+            </p>
+        </div>
+        <div class="comment-date">2018-03-08 10:16 UTC</div>
+    </div>
+
+    <div class="comment" id="7aac063a684047ae9561c6666a42f908">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Ciprian, thank you for writing. I agree that this isn't language agnostic. It's possible that we need to add further constraints to the conjecture, but I still anticipate that, with appropriate constraints, it holds for statically typed 'mainstream' object-oriented languages (i.e. C# and Java). It may also hold for other languages, but it requires detailed knowledge of a language to claim that it does. For instance, it's been too long since I wrote C++ code, and I can't remember how its object-oriented language features work. Likewise, it'd be interesting to investigate if the conjecture holds when applied to JavaScript, Ruby, Python, etc., but I've been careful not to claim that, as I know too little about those languages.
+			</p>
+			<p>
+				Regarding your temperature example, I <em>think</em> that perhaps I understand what the issue is, but I'm not sure I've guessed right. In the interest of being able to have an unambiguous discussion about a code example, could you please post the pertinent code that illustrates your point?
+			</p>
+		</div>
+		<div class="comment-date">2018-03-09 8:07 UTC</div>
+	</div>
+    <div class="comment" id="52d98574756f471482303e34dc02df33">
+        <div class="comment-author">Ciprian Vilcan</div>
+        <div class="comment-content">
+            <p>
+                I've added the code to <a href="https://github.com/ciprian-vilcan/CQRS.CoffeeMaker">github</a>. I think it's better than copy-pasting here as you can gain some extra context. 
+            </p>
+            <p>
+                It's a playground project where I put to practice various ideas I find on the web (so if you see something you consider should be done otherwise, I don't mind you saying it). I've added a few comments to make it a bit easier to understand and also removed anything that doesn't pertain to the issue with abstract class -> DI.<br />
+            </p>
+            <p>
+                In short, the bit of logic that I can't see a way of extracting to some sort of injectable dependency are the +- operators on the Temperature class due to the fact that they are static methods, thus cannot be part of an interface (at least in C#, I don't know about programming languages).
+            </p>
+        </div>
+        <div class="comment-date">2018-03-09 11:14 UTC</div>
+    </div>
+
+    <div class="comment" id="b9a9d7e657804832b4adcc6e71aa0d7f">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Ciprian, thank you for elaborating. I'd forgotten about C#'s ability to overload arithmetic operators, which is, I believe, what you're referring to. To be clear, I do believe that it's a fair enough critique, so that we'll have to once again restrict this article's conjecture to something like:
+				<blockquote>
+					There exists a subset <em>A</em> of all abstract classes, and a subset of all concrete classes with injected dependencies <em>I</em>, such that an isomorphism <em>A &lt;-&gt; I</em> exists.
+				</blockquote>
+				In diagram form, it would look like this:
+			</p>
+			<p>
+				<img src="/content/binary/subset-of-abstract-classes-to-subset-of-dependency-injection-isomorphism.png" alt="">
+			</p>
+			<p>
+				By its shape, the diagram suggests that the size of abstract classes <em>not</em> isomorphic with Dependency Injection is substantial, but that's not really my intent; I just had to leave room for the text.
+			</p>
+			<p>
+				My experience suggests to me that most abstract classes can be refactored as I've described in this article, but clearly, as you've shown, there are exceptions. C#'s support for operator overloading is one such exception, but there may be others of which I'm currently ignorant.
+			</p>
+			<p>
+				That said, I would like to make the case that arithmetic operators aren't object-oriented in the first place. Had the language been purely object-oriented from the outset, addition would more appropriately have had a syntax like <code>40.Add(2)</code>. This would imply that the language would have been based on the concept of objects as data with behaviour, and the behaviour would exclusively have been defined by class members.
+			</p>
+			<p>
+				Even at the beginning, though, C# was a hybrid language. It had (and still has) a subset of language features focused on more low-level programming. It has value types in addition to reference types, it has arithmetic operators, it has special support for bitwise Boolean operators, and it even has pointers.
+			</p>
+			<p>
+				There are practical reasons that all of those features exist, but I would claim that none of those features have anything to do with object-orientation.
+			</p>
+			<p>
+				Specifically when it comes to arithmetic operators, the operators are all special cases baked into the language. The selection of operators is sensible, but when you get to the bottom of it, arbitrary. For instance, there's a modulo operator, but no power operator. Why?
+			</p>
+			<p>
+				As an aside, languages do exist where arithmetic is an abstraction instead of a language feature. The one I'm most familiar with is <a href="https://www.haskell.org">Haskell</a>, where arithmetic is defined in terms of type classes. It's worth noting that the operators <code>+</code>, <code>*</code>, and <code>-</code> are defined in an abstraction called <a href="http://hackage.haskell.org/package/base/docs/Prelude.html#t:Num">Num</a>, whereas the 'fourth' arithmetic operator <code>/</code> is defined in a more specialised abstraction called <a href="http://hackage.haskell.org/package/base/docs/Prelude.html#t:Fractional">Fractional</a>.
+			</p>
+			<p>
+				Not that Haskell's model of arithmetic is perfect, but there's a rationale behind this distinction. Division is special, because it can translate two integers (e.g. <code>2</code> and <code>3</code>) into a rational number (e.g. <code>2/3</code>), while both addition and multiplication are <a href="/2017/10/06/monoids">monoids</a>. This is where Haskell starts to fall apart itself, though, because subtraction can also translate two numbers out of the set in which they originally belonged. For example, given two <em>natural</em> numbers <code>2</code> and <code>3</code>, <code>2 - 3</code> is no longer a natural number, since it's negative.
+			</p>
+			<p>
+				But all of that is an aside. Even in C#, one has to deal with low-level exceptional cases such as integer overflow, so even addition isn't truly monoidal, unless you use <a href="https://msdn.microsoft.com/en-us/library/system.numerics.biginteger">BigInteger</a>.
+			</p>
+		</div>
+		<div class="comment-date">2018-03-11 9:35 UTC</div>
+	</div>
+
+  	<div class="comment" id="5b00a6edefbf4a82925083eeac5d7768">
+		<div class="comment-author"><a href="https://github.com/MaxKot">Max Kiselev</a></div>
+		<div class="comment-content">
+			<p>
+        Mark, thank you for the detailed response. I didn't mean to refute the usefulness of the
+        refactoring you described. I now see how I tried to apply the refactoring of DI to abstact
+        class where it was not claimed to be possible.
+			</p>
+			<p>
+        I've been thinking about the example with the injection of distinct instances of the same
+        type. I think we can use simple wrapper types for this kind of problem:
+			</p>
+			<p>
+<pre style="font-family:Consolas;font-size:13;color:black;background:white;"><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Foo1</span>&nbsp;:&nbsp;IFoo
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;IFoo&nbsp;impl_;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;Foo1&nbsp;(IFoo&nbsp;impl)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;impl_&nbsp;=&nbsp;impl;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;Out1&nbsp;Op1&nbsp;(In1&nbsp;in1)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;impl_.Op1&nbsp;(in1);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+			</p>
+      <p>
+        Foo1 implements IFoo to keep the ability to e.g. create a list of foo1 and foo2.
+      </p>
+      <p>
+        Given such wrappers are created for all dependencies of type IFoo, MyClass can be rewritten
+        like this:
+      </p>
+      <p>
+<pre style="font-family:Consolas;font-size:13;color:black;background:white;"><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MyClass</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;MyClass&nbsp;(Foo1&nbsp;foo1,&nbsp;Foo2&nbsp;foo2)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:green;">//&nbsp;...</span>
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+      </p>
+      <p>
+        Now MyClass can be refactored into an abstract class without losing the distinction between
+        foo1 and foo2.
+      </p>
+      <p>
+        I also belive that, given the wrappers are used only in the context of MyClass, the use
+        of wrappers and diffent fields or parameters is an isomorphism. While its usefulness as a
+        stand-alone refactoing is limited, it may come handy for reasoning similar to the one you
+        did in <a href="/2018/03/12/composite-as-a-monoid/">Composite as a monoid</a>.
+      </p>
+      <p>
+        Thin wrappers can be used to create an <em>almost</em> convenient way to define operators
+        on interfaces. Unfortunately C# does not allow user-defined conversions to or from an
+        interface so one have to explicitly wrap all instances of the interface in an expression
+        that do not have wrapper on one side of an expression. While it can be acceptable in some
+        cases (like <span>Wrap(a) + b + c + d ...</span>), it can make more complex expressions
+        very cumbersome (like <span>(Wrap(a) + b) + (Wrap(c) + d) ...</span> hence it does not
+        solve the problem that Ciprian described.
+      </p>
+		</div>
+		<div class="comment-date">2018-03-22 21:33 UTC</div>
+	</div>
+
+	<div class="comment" id="2e3ab0c8da334d5cb066eab2f492c50e">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Max, thank you for writing back. That's an ingenious resolution to some of the problems you originally pointed out. Thank you!
+			</p>
+			<p>
+				As far as I can tell, this seems to strengthen the original argument, although there's still some corner cases, like the one pointed out by Ciprian. We can use Decorators as <a href="/2012/08/31/ConcreteDependencies">concrete dependencies</a> as you point out, as an argument that even two (or <em>n</em>) identical polymorphic dependencies can be treated as though they were distinct dependencies.
+			</p>
+			<p>
+				What if we have an arbitrary number of dependencies? One example would be of a Composite, but it doesn't have to be. Consider the <code>ShippingCostCalculatorFactory</code> class from <a href="/2013/01/11/PartialTypeNameRoleHint">this example</a>. It depends on a list of <code>IBasketCalculator</code> candidates. Could such a class, too, be refactored to an abstract class?
+			</p>
+			<p>
+				I suppose it could, since the dependency then really isn't an arbitrary number of <code>IBasketCalculator</code>, but rather the dependency is on <em>a collection</em>. Would it be enough to refactor to an abstract class with a single <a href="https://en.wikipedia.org/wiki/Factory_method_pattern">Factory Method</a> that returns the candidates?
+			</p>
+		</div>
+		<div class="comment-date">2018-03-27 5:50 UTC</div>
+	</div>
+
+  <div class="comment" id="ae9139f637184901bd681f5a28ddecb4">
+    <div class="comment-author"><a href="https://github.com/MaxKot">Max Kiselev</a></div>
+    <div class="comment-content">
+      <p>
+        Mark, you're welcome! Admittedly, my solution is heavily inspired by the strong-typing
+        as promoted by "if a Haskell program compiles, it probably works" and the
+        <a href="https://www.joelonsoftware.com/2005/05/11/making-wrong-code-look-wrong/">original purpose of Hungarian notation</a>.
+      </p>
+      <p>
+        As for an abrbitrary number of dependencies, you have already pointed out that the
+        dependency is the collection itself, not its elements. So I think
+        ShippingCostCalculatorFactory can be refactored to an abstract class with an abstract
+        factory method to provide a collection of IBasketCalculator.
+      </p>
+      <p>
+        While abstract class would be more complex and less elegant than DI implementation, I find
+        the reversibility of refactorings very important. Reversability means that the changes to
+        the code are not changing the behavior of the compiled program. It allows to refactor even
+        obscure and undertested legacy code without fear of breaking it. I find the two-way nature
+        of changes to the code the most interesting about your concept of software isomorphisms.
+      </p>
+      <p>
+        I think the reason abstract classes are usually difficult to reason about and often
+        considered to be a bad choice is that an abstract class and it's inheritors create an
+        implicit composition and the relationships of the parts of this composition can be very
+        different. A base class can serve as a collection of helper methods, or derived classes
+        can serve as dependencies or specify dependencies like in the ShippingCostCalculatorFactory
+        example, or inheitors can serve as a configuration to the base class like custom
+        configuration element classes in .NET derived from ConfigurationElement. Abstract base
+        class can be even used to implement disciminated unions (and in fact F# compiler does).
+      </p>
+      <p>
+        Perhaps different kinds of hierarchies can be enumerated with some formal ways to recognize
+        a specific kind of hierarchy and refactor it into an explicit compistion?
+      </p>
+      <p>
+        P.S. One way to implement discriminated unions with C# abstract base classes and guarantee
+        exhaustive matching:
+      </p>
+      <pre style="font-family:Consolas;font-size:13;color:black;background:white;"><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IOptionVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Some(<span style="color:#2b91af;">T</span>&nbsp;value);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;None();
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Option</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">SomeImpl</span>&nbsp;:&nbsp;<span style="color:#2b91af;">Option</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:#2b91af;">T</span>&nbsp;_value;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;SomeImpl(<span style="color:#2b91af;">T</span>&nbsp;value)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_value&nbsp;=&nbsp;value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:blue;">void</span>&nbsp;AcceptVisitor(<span style="color:#2b91af;">IOptionVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;visitor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;visitor.Some(_value);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">NoneImpl</span>&nbsp;:&nbsp;<span style="color:#2b91af;">Option</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">override</span>&nbsp;<span style="color:blue;">void</span>&nbsp;AcceptVisitor(<span style="color:#2b91af;">IOptionVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;visitor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;visitor.None();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;Option&nbsp;()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">abstract</span>&nbsp;<span style="color:blue;">void</span>&nbsp;AcceptVisitor(<span style="color:#2b91af;">IOptionVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;visitor);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">Option</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;Some(<span style="color:#2b91af;">T</span>&nbsp;value)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">SomeImpl</span>(value);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">Option</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;None&nbsp;{&nbsp;<span style="color:blue;">get</span>;&nbsp;}&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">NoneImpl</span>();
+}
+</pre>
+      <p>
+        While I don't see how this kind of abstract base class can be refactored to DI, I can not
+        call this a constraint on the abstact class isomorphism because semantically it is not an
+        asbtract class in first place.
+      </p>
+    </div>
+    <div class="comment-date">2018-04-03 18:20 UTC</div>
+  </div>
+
+	<div class="comment" id="bbc66b98b21d438d98733bf264edba18">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Max, once again thank you for writing. I've never seen that article by Joel Spolsky before, but I particularly liked your enumeration of the various different roles an abstract class can have.
+			</p>
+			<p>
+				It's seems that we're generally in agreement about the constraints of the described refactoring.
+			</p>
+			<p>
+				When it comes to your <em>option</em> implementation, I think you could fairly easy split up <code>Option&lt;T&gt;</code> into an interface that defines the <code>AcceptVisitor</code> method, and two classes that implements that interface. This is, however, closely related to a series of articles I'll publish in the future.
+			</p>
+		</div>
+		<div class="comment-date">2018-04-04 19:20 UTC</div>
+	</div>
+
+  <div class="comment" id="72285cb33eb5424cb0c82f5239d02bfe">
+    <div class="comment-author"><a href="https://github.com/MaxKot">Max Kiselev</a></div>
+    <div class="comment-content">
+      <p>
+        Mark, thank you for pointing out the alternative option implementation.
+      </p>
+      <p>
+        The key trick in my Option implementation is the use of private constructor in an abstract
+        class with nested sealed implementation classes. Nested classes can access the private
+        contructor while any class "outside" Option would be unable to call the base constructor.
+        Now I think that enforcing that there are no implementation of Option except for SomeImpl
+        and NoneImpl is redundant as long as the implementations are correct.
+      </p>
+      <p>
+        Perhaps I should have made an example with public nested classes which can be matched by
+        their type but then it could be refactored into Visitor pattern too. Does it mean that
+        Visitor is isomorphic to discriminated unions then?
+      </p>
+    </div>
+    <div class="comment-date">2018-04-05 18:50 UTC</div>
+  </div>
+
+	<div class="comment" id="eea4079cf3794de2a3645fb68436eca9">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Max, I agree that using a nested, private, sealed class is a good way to ensure that no-one else can add rogue implementations of an interface like <code>IOptionVisitor&lt;T&gt;</code>.
+			</p>
+			<p>
+				Additionally, I think that you're correct that it isn't possible to lock down the API to the same degree if you redefine <code>Option&lt;T&gt;</code> to an interface. Just to be clear, I'm thinking about something like this:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IOptionVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Some(<span style="color:#2b91af;">T</span>&nbsp;value);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;None();
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IOption</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;AcceptVisitor(<span style="color:#2b91af;">IOptionVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;visitor);
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Option</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">IOption</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;Some&lt;<span style="color:#2b91af;">T</span>&gt;(<span style="color:#2b91af;">T</span>&nbsp;value)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">SomeImpl</span>&lt;<span style="color:#2b91af;">T</span>&gt;(value);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">SomeImpl</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;:&nbsp;<span style="color:#2b91af;">IOption</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:#2b91af;">T</span>&nbsp;value;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;SomeImpl(<span style="color:#2b91af;">T</span>&nbsp;value)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.value&nbsp;=&nbsp;value;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;AcceptVisitor(<span style="color:#2b91af;">IOptionVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;visitor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;visitor.Some(value);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">IOption</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;None&lt;<span style="color:#2b91af;">T</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">NoneImpl</span>&lt;<span style="color:#2b91af;">T</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">sealed</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">NoneImpl</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;:&nbsp;<span style="color:#2b91af;">IOption</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;AcceptVisitor(<span style="color:#2b91af;">IOptionVisitor</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;visitor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;visitor.None();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+			</p>
+			<p>
+				With a design like that, rogue implementations of <code>IOption&lt;T&gt;</code> are possible, and I admit that I can't think of a way to prevent that.
+			</p>
+			<p>
+				Usually, that doesn't concern me that much, but if one were to publish a type like that as, say, a public NuGet package, that degree of lock-down could, in fact, be desirable. So, it looks like you've identified another constraint on the isomorphism. I admit that I may have been too focused on the ability to implement <em>behaviour</em> in various different ways, whereas I haven't given too much thought to accessibility.
+			</p>
+			<p>
+				To be frank, one of the reasons for that is that I tend to not consider accessibility modifiers too much in C#, as I tend to design classes in such a way that they protect their invariants. When classes do that, I'm happy to make most methods <code>public</code>.
+			</p>
+			<p>
+				Another reason that I've been vague on accessibility is that this could easily get implementation-specific. The way C#'s access modifiers work is different from Java's and C++'s.
+			</p>
+			<p>
+				That doesn't change the fact, though, that it looks like you've identified another constraint on the isomorphism, and for that I'm very grateful. Perhaps we ought to say something like:
+				<blockquote>
+					Abstract classes are isomorphic with dependency injection up to accessibility.
+				</blockquote>
+				Again, there may be other constraints than that (and operator overloads), but I'm beholden to you for fleshing out those that you've already identified.
+			</p>
+			<p>
+				About the relationship between discriminated unions and the Visitor design pattern, then yes: those are isomorphic. That's a known property, but I'm going to publish a whole (sub-)series of articles about that particular topic in the future, so I think it'd be better to discuss that when we get there. I've already written those articles, but it'll take months before I publish them, according to the publishing schedule that I currently have in mind. Very prescient of you, though.
+			</p>
+		</div>
+		<div class="comment-date">2018-04-06 7:36 UTC</div>
+	</div>
+</div>

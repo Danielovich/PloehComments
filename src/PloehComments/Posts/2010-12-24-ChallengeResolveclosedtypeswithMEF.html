@@ -1,0 +1,267 @@
+---
+layout: post
+tags: [Dependency Injection]
+date: 2010-12-24 09:29:06 UTC
+title: "Challenge: Resolve closed types with MEF"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		For my international reader, a bit of context is in order for this post: Microsoft Denmark sponsors a series of Christmas challenges known as the Microsoft Christmas Calendar. Different bloggers alternate hosting a coding challenge for the day, and Microsoft sponsors the prizes.
+	</p>
+	<p>
+		Today I have the honor of hosting the last challenge for 2010. Contestants from the Danish .NET community have the opportunity to win a <a href="http://www.thinkgeek.com/homeoffice/kitchen/c2b1/">Molecular Gastronomy Starter Kit</a>  -  if any of my international readers feel like joining in, they are welcome, but (probably) not eligible for the prize.
+	</p>
+	<h3 id="4bf4ec32ba9a4aac9a4c02efe313d879">
+		The challenge <a href="#4bf4ec32ba9a4aac9a4c02efe313d879" title="permalink">#</a>
+	</h3>
+	<p>
+		The <a href="http://mef.codeplex.com/">Managed Extensibility Framework</a> (MEF) enables us to compose applications by annotating types and members with [Import] and [Export] attributes, but what can you do when you have types without these attributes and you can't add the attributes?
+	</p>
+	<p>
+		For example, how can we compose Mayonnaise from these three classes?
+	</p>
+	<p>
+		<pre style="margin: 0px;"><span style="color: blue;">public</span> <span style="color: blue;">sealed</span> <span style="color: blue;">class</span> <span style="color: rgb(43, 145, 175);">EggYolk</span> { }
+&nbsp;
+<span style="color: blue;">public</span> <span style="color: blue;">sealed</span> <span style="color: blue;">class</span> <span style="color: rgb(43, 145, 175);">OliveOil</span> { }
+&nbsp;
+<span style="color: blue;">public</span> <span style="color: blue;">sealed</span> <span style="color: blue;">class</span> <span style="color: rgb(43, 145, 175);">Mayonnaise</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">private</span> <span style="color: blue;">readonly</span> <span style="color: rgb(43, 145, 175);">EggYolk</span> eggYolk;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">private</span> <span style="color: blue;">readonly</span> <span style="color: rgb(43, 145, 175);">OliveOil</span> oil;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> Mayonnaise(<span style="color: rgb(43, 145, 175);">EggYolk</span> eggYolk, <span style="color: rgb(43, 145, 175);">OliveOil</span> oil)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">if</span> (eggYolk == <span style="color: blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">throw</span> <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ArgumentNullException</span>(<span style="color: rgb(163, 21, 21);">"eggYolk"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">if</span> (oil == <span style="color: blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">throw</span> <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ArgumentNullException</span>(<span style="color: rgb(163, 21, 21);">"oil"</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">this</span>.eggYolk = eggYolk;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">this</span>.oil = oil;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: rgb(43, 145, 175);">EggYolk</span> EggYolk
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">get</span> { <span style="color: blue;">return</span> <span style="color: blue;">this</span>.eggYolk; }
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: rgb(43, 145, 175);">OliveOil</span> Oil
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">get</span> { <span style="color: blue;">return</span> <span style="color: blue;">this</span>.oil; }
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+	</p>
+	<p>
+		The challenge is to come up with a good solution to that problem. Here are the formal rules:
+	</p>
+	<ul>
+		<li>
+			The unit test suite at the end of this post must pass.
+		</li>
+		<li>
+			You are not allowed to edit the unit tests.
+		</li>
+		<li>
+			You are only allowed to add <em>one</em> (1) <em>using</em> directive to the unit test file to reference the namespace of your proposed solution.
+		</li>
+		<li>
+			You must work from the Visual Studio 2010 solution attached to this post. Add a new project that contains your solution. Send me the solution in a .zip file to enter the contest.
+		</li>
+		<li>
+			You are allowed to implement your solution in <em>any language</em> you would like as long as it compiles and runs from Visual Studio 2010 Premium.
+		</li>
+		<li>
+			The winner is chosen by my subjective judgment, but I will emphasize clean code and design. A tip: attempt to get as good scores as possible from Visual Studio's <em>Code Analysis</em> and <em>Code Metrics</em>. Good scores does not guarantee that you win, but bad scores will most likely ensure that you don't.</li>
+		<li>
+			Since many of you are on Christmas vacation the deadline is this year. As long as you submit a solution in 2010 (Danish time) you're a contestant.
+		</li>
+	</ul>
+	<p>
+		There are lots of different ways to skin this cat, so I'm looking forward to your submissions to see all your creative solutions.
+	</p>
+	<p>
+		This unit test suite is the specification:
+	</p>
+	<p>
+		<pre style="margin: 0px;"><span style="color: blue;">using</span> System.ComponentModel.Composition.Hosting;
+<span style="color: blue;">using</span> Ploeh.Samples.MeffyXmas.MenuModel;
+<span style="color: blue;">using</span> Xunit;
+&nbsp;
+<span style="color: blue;">namespace</span> Ploeh.Samples.MeffyXmas.MefMenu.UnitTest
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">class</span> <span style="color: rgb(43, 145, 175);">ContainerBuilderFacts</span>
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> DefaultContainerCorrectlyResolvesOliveOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> oil = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">OliveOil</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.NotNull(oil);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> DefaultContainerCorrectlyResolvesEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> yolk = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">EggYolk</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.NotNull(yolk);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> DefaultContainerCorrectlyResolvesMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.NotNull(mayo);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> DefaultContainerReturnsSingletonMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.Same(mayo1, mayo2);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> WithTransientMayonnaiseReturnTransientMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.NotSame(mayo1, mayo2);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> TransientMayonnaiseByDefaultContainsSingletonEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.Same(mayo1.EggYolk, mayo2.EggYolk);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> TransientMayonnaiseByDefaultContainsSingletonOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.Same(mayo1.Oil, mayo2.Oil);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> TransientMayonnaiseCanHaveTransientEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.NotSame(mayo1.EggYolk, mayo2.EggYolk);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> TransientMayonnaiseCanHaveSingletonOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.Same(mayo1.Oil, mayo2.Oil);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> TransientMayonnaiseCanHaveTransientOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.NotSame(mayo1.Oil, mayo2.Oil);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> TransientMayonnaiseCanHaveSingletonEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.Same(mayo1.EggYolk, mayo2.EggYolk);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> PureTransientMayonnaiseIsTransient()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.NotSame(mayo1, mayo2);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> PureTransientMayonnaiseHasTransientEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.NotSame(mayo1.EggYolk, mayo2.EggYolk);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [<span style="color: rgb(43, 145, 175);">Fact</span>]
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">public</span> <span style="color: blue;">void</span> PureTransientMayonnaiseHasTransientOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">CompositionContainer</span> container = <span style="color: blue;">new</span> <span style="color: rgb(43, 145, 175);">ContainerBuilder</span>()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedMayonnaise()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedEggYolk()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .WithNonSharedOil()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; .Build();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo1 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue;">var</span> mayo2 = container.GetExportedValue&lt;<span style="color: rgb(43, 145, 175);">Mayonnaise</span>&gt;();
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: rgb(43, 145, 175);">Assert</span>.NotSame(mayo1.Oil, mayo2.Oil);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+	</p>
+	<p>
+		ContainerBuilder is the class you must implement, so the unit tests don't compile until you make them. Meffy xmas!
+	</p>
+	<p>
+		<img style="background-image: none; border-width: 0px; padding-left: 0px; padding-right: 0px; display: inline; padding-top: 0px;" title="clip_image002" alt="clip_image002" src="/content/binary/Windows-Live-Writer/ResolveclosedtypeswithMEF_BD03/clip_image002_3.jpg" border="0" height="182" width="640">
+	</p>
+</div>
+	

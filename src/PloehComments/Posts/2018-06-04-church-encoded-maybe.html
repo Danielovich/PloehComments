@@ -1,0 +1,365 @@
+---
+layout: post
+title: "Church-encoded Maybe"
+description: "Programming languages don't have to have a built-in notion of null values. Missing or optional values can be created from first principles. An introduction for object-oriented programmers."
+date: 2018-06-04 10:08 UTC
+tags: [Software Design]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is part of <a href="/2018/05/22/church-encoding">a series of articles about Church encoding</a>. In this series, you'll learn how to re-create various programming language features from first principles. In previous articles, you learned <a href="/2018/05/24/church-encoded-boolean-values">how to implement Boolean logic without Boolean primitives</a>, as well as <a href="/2018/05/28/church-encoded-natural-numbers">how to model natural numbers</a>. Through these examples, you'll learn how to model <a href="https://en.wikipedia.org/wiki/Tagged_union">sum types</a> without explicit language support.
+	</p>
+	<h3 id="2e26f3d3d84a43b790f7ee5e89dedbff">
+		The billion-dollar mistake <a href="#2e26f3d3d84a43b790f7ee5e89dedbff" title="permalink">#</a>
+	</h3>
+	<p>
+		All mainstream programming languages have a built-in notion of <em>null</em>: a value that isn't there. There's nothing wrong with the concept; you often run into situations where you need to return a value, but in certain cases, you'll have nothing to return. Division by zero would be one example. Attempting to retrieve the first element from an empty collection would be another.
+	</p>
+	<p>
+		Unfortunately, for fifty years, we've been immersed in environments where null references have been the dominant way to model the absence of data. This, despite the fact that even <a href="https://en.wikipedia.org/wiki/Tony_Hoare">Sir Antony Hoare</a>, the inventor of null references, has publicly called it his <em>billion-dollar mistake</em>.
+	</p>
+	<p>
+		You can, however, model the potential absence of data in saner ways. <a href="https://www.haskell.org">Haskell</a>, for example, has no built-in null support, but it does include a built-in <a href="/2018/03/26/the-maybe-functor">Maybe</a> type. In Haskell (as well as in <a href="http://fsharp.org">F#</a>, where it's called <code>option</code>), <code>Maybe</code> is defined as a sum type:
+	</p>
+	<p>
+		<pre><span style="color:blue;">data</span>&nbsp;Maybe&nbsp;a&nbsp;=&nbsp;Nothing&nbsp;|&nbsp;Just&nbsp;a&nbsp;<span style="color:blue;">deriving</span>&nbsp;(<span style="color:#2b91af;">Eq</span>,&nbsp;<span style="color:#2b91af;">Ord</span>)</pre>
+	</p>
+	<p>
+		If you're not familiar with Haskell syntax, this is a type declaration that states that the <a href="https://en.wikipedia.org/wiki/Parametric_polymorphism">parametrically polymorphic</a> (AKA <em>generic</em>) data type <code>Maybe</code> is inhabited by <code>Just</code> values that contain other values, plus the constant <code>Nothing</code>.
+	</p>
+	<p>
+		This article series, however, examines how to implement sum types with Church encoding.
+	</p>
+	<h3 id="b2a73bd4fc25450a8ba2e5e90f3319dc">
+		Lambda calculus maybe <a href="#b2a73bd4fc25450a8ba2e5e90f3319dc" title="permalink">#</a>
+	</h3>
+	<p>
+		Church encoding is based on the <a href="https://en.wikipedia.org/wiki/Lambda_calculus">lambda calculus</a>, which defines a universal model of computation based entirely on functions (lambda expressions) and recursion. In lambda calculus, the contract of <em>Maybe</em> is defined as an expression that takes two arguments. <a href="http://programmable.computer/posts/church_encoding.html">There's two fundamental 'implementations' of the contract</a>:
+	</p>
+	<p>
+		<pre>nothing =    λn.λj.n
+   just = λx.λn.λj.j x</pre>
+	</p>
+	<p>
+		The contract is that the first function argument (<code>n</code>) represents the <em>nothing</em> case, whereas the second argument (<code>j</code>) represents the <code>just</code> case.
+	</p>
+	<p>
+		The <code>nothing</code> function is a lambda expression that takes two arguments (<code>n</code> and <code>j</code>), and always returns the first, left-most argument (<code>n</code>).
+	</p>
+	<p>
+		The <code>just</code> function is a lambda expression that takes three arguments (<code>x</code>, <code>n</code>, and <code>j</code>), and always returns <code>j x</code>. Recall that in the lambda calculus, everything is a function, including <code>j</code>, so <code>j x</code> means that the function <code>j</code> is called with the argument <code>x</code>.
+	</p>
+	<p>
+		A few paragraphs above, I wrote that the contract of <em>maybe</em> is modelled as an expression that takes two arguments, yet <code>just</code> takes three arguments. How does that fit?
+	</p>
+	<p>
+		In the lambda calculus, expressions are always curried, so instead of viewing <code>just</code> as a function with three arguments, you can view it as a function that takes a single element (<code>x</code>) and returns a function that takes two arguments. This agrees with Haskell's <code>Just</code> data constructor:
+	</p>
+	<p>
+		<pre>Prelude&gt; :t Just
+Just :: a -&gt; Maybe a</pre>
+	</p>
+	<p>
+		Haskell tells us that <code>Just</code> is a function that takes an <code>a</code> value (corresponding to <code>x</code> in the above <code>just</code> lambda expression) and returns a <code>Maybe a</code> value.
+	</p>
+	<h3 id="01738cd9f37e4067947379b2aaf1735c">
+		Church-encoded Maybe in C# <a href="#01738cd9f37e4067947379b2aaf1735c" title="permalink">#</a>
+	</h3>
+	<p>
+		Both lambda calculus and Haskell rely on currying and partial application to make the contract fit. In C#, as you've <a href="/2018/01/08/software-design-isomorphisms">previously</a> seen, you can instead define an interface and rely on class fields for the 'extra' function arguments. Since Church-encoded Maybe is represented by a function that takes two arguments, we'll once again define an interface with a single method that takes two arguments:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">TResult</span>&nbsp;Match&lt;<span style="color:#2b91af;">TResult</span>&gt;(<span style="color:#2b91af;">TResult</span>&nbsp;nothing,&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;just);
+}</pre>
+	</p>
+	<p>
+		In the first article, about Church-encoded Boolean values, you saw how two mutually exclusive values could be modelled as a method that takes two arguments. Boolean values are simply constants (<em>true</em> and <em>false</em>), where the next example (natural numbers) included a case where one case (<em>successor</em>) contained data. In that example, however, the data was statically typed as another <code>INaturalNumber</code> value. In the current <code>IMaybe&lt;T&gt;</code> example, the data contained in the <em>just</em> case is generic (it's of the type <code>T</code>).
+	</p>
+	<p>
+		Notice that there's two levels of generics in play. <code>IMaybe&lt;T&gt;</code> itself is a container of the generic type <code>T</code>, whereas <code>Match</code> enables you to convert the container into the rank-2 polymorphic type <code>TResult</code>.
+	</p>
+	<p>
+		Once more, the contract of <code>IMaybe&lt;T&gt;</code> is that the first, left-hand argument represents the <em>nothing</em> case, whereas the second, right-hand argument represents the <em>just</em> case. The <em>nothing</em> implementation, then, is similar to the previous <code>ChurchTrue</code> and <code>Zero</code> classes:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Nothing</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;:&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">TResult</span>&nbsp;Match&lt;<span style="color:#2b91af;">TResult</span>&gt;(<span style="color:#2b91af;">TResult</span>&nbsp;nothing,&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;just)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;nothing;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		Again, the implementation unconditionally returns <code>nothing</code> while ignoring <code>just</code>. You may, though, have noticed that, as is appropriate for Maybe, <code>Nothing&lt;T&gt;</code> has a distinct type. In other words, <code>Nothing&lt;string&gt;</code> doesn't have the same type as <code>Nothing&lt;int&gt;</code>. This is not only 'by design', but is a fundamental result of how we define <em>Maybe</em>. The code simply wouldn't compile if you tried to remove the type argument from the class. This is in contrast to <a href="/2015/11/13/null-has-no-type-but-maybe-has">C# null, which has no type</a>.
+	</p>
+	<p>
+		You implement the <em>just</em> case like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">Just</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;:&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">T</span>&nbsp;value;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;Just(<span style="color:#2b91af;">T</span>&nbsp;value)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.value&nbsp;=&nbsp;value;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">TResult</span>&nbsp;Match&lt;<span style="color:#2b91af;">TResult</span>&gt;(<span style="color:#2b91af;">TResult</span>&nbsp;nothing,&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;just)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;just(value);
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		According to the contract, <code>Just&lt;T&gt;</code> ignores <code>nothing</code> and works exclusively with the <code>just</code> function argument. Notice that the <code>value</code> class field is <code>private</code> and not exposed as a public member. The only way you, as a caller, can potentially extract the value is by calling <code>Match</code>.
+	</p>
+	<p>
+		Here are some examples of using the API:
+	</p>
+	<p>
+		<pre>&gt; <span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Nothing</span>&lt;<span style="color:#2b91af;">Guid</span>&gt;().Match(nothing:&nbsp;<span style="color:#a31515;">&quot;empty&quot;</span>,&nbsp;just:&nbsp;g&nbsp;=&gt;&nbsp;g.ToString())
+"empty"
+&gt; <span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Just</span>&lt;<span style="color:blue;">int</span>&gt;(42).Match(nothing:&nbsp;<span style="color:#a31515;">&quot;empty&quot;</span>,&nbsp;just:&nbsp;i&nbsp;=&gt;&nbsp;i.ToString())
+"42"
+&gt; <span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Just</span>&lt;<span style="color:blue;">int</span>&gt;(1337).Match(nothing:&nbsp;0,&nbsp;just:&nbsp;i&nbsp;=&gt;&nbsp;i)
+1337</pre>
+	</p>
+	<p>
+		Notice that the third example shows how to extract the value contained in a <code>Nothing&lt;int&gt;</code> object without changing the output type. All you have to do is to supply a 'fall-back' value that can be used in case the value is <em>nothing</em>.
+	</p>
+	<h3 id="8af13110cd88473c97cc1cee28dd7ee9">
+		Maybe predicates <a href="#8af13110cd88473c97cc1cee28dd7ee9" title="permalink">#</a>
+	</h3>
+	<p>
+		You can easily implement the standard Maybe predicates <code>IsNothing</code> and <code>IsJust</code>:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">IChurchBoolean</span>&nbsp;IsNothing&lt;<span style="color:#2b91af;">T</span>&gt;(<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;m)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;m.Match&lt;<span style="color:#2b91af;">IChurchBoolean</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nothing&nbsp;:&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchTrue</span>(),&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;just&nbsp;:&nbsp;_&nbsp;=&gt;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchFalse</span>());
+}
+ 
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">IChurchBoolean</span>&nbsp;IsJust&lt;<span style="color:#2b91af;">T</span>&gt;(<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;m)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;m.Match&lt;<span style="color:#2b91af;">IChurchBoolean</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nothing&nbsp;:&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchFalse</span>(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;just&nbsp;:&nbsp;_&nbsp;=&gt;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ChurchTrue</span>());
+}</pre>
+	</p>
+	<p>
+		Here, I arbitrarily chose to implement <code>IsJust</code> 'from scratch', but I could also have implemented it by negating the result of calling <code>IsNothing</code>. Once again, notice that the predicates are expressed in terms of Church-encoded Boolean values, instead of the built-in <code>bool</code> primitives.
+	</p>
+	<h3 id="76561f015e4d4da0a590ba247eb4500d">
+		Functor <a href="#76561f015e4d4da0a590ba247eb4500d" title="permalink">#</a>
+	</h3>
+	<p>
+		From Haskell (and F#) we know that Maybe is a <a href="/2018/03/22/functors">functor</a>. In C#, you turn a container into a functor by implementing an appropriate <code>Select</code> method. You can do this with <code>IMaybe&lt;T&gt;</code> as well:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;Select&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;source,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;selector)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;source.Match&lt;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">TResult</span>&gt;&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nothing:&nbsp;&nbsp;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Nothing</span>&lt;<span style="color:#2b91af;">TResult</span>&gt;(),
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;just:&nbsp;x&nbsp;=&gt;&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Just</span>&lt;<span style="color:#2b91af;">TResult</span>&gt;(selector(x)));
+}</pre>
+	</p>
+	<p>
+		Notice that this method turns an <code>IMaybe&lt;T&gt;</code> object into an <code>IMaybe&lt;TResult&gt;</code> object, using nothing but the <code>Match</code> method. This is possible because <code>Match</code> has a generic return type; thus, among other types of values, you can make it return <code>IMaybe&lt;TResult&gt;</code>.
+	</p>
+	<p>
+		When <code>source</code> is a <code>Nothing&lt;T&gt;</code> object, <code>Match</code> returns the object in the <em>nothing</em> case, which here becomes a new <code>Nothing&lt;TResult&gt;</code> object.
+	</p>
+	<p>
+		When <code>source</code> is a <code>Just&lt;T&gt;</code> object, <code>Match</code> invokes <code>selector</code> with the value contained in the <em>just</em> object, packages the result in a new <code>Just&lt;TResult&gt;</code> object, and returns it.
+	</p>
+	<p>
+		Because the <code>Select</code> method has the correct signature, you can use it with query syntax, as well as with normal method call syntax:
+	</p>
+	<p>
+		<pre><span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:blue;">int</span>&gt;&nbsp;m&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Just</span>&lt;<span style="color:blue;">int</span>&gt;(42);
+<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:blue;">string</span>&gt;&nbsp;actual&nbsp;=&nbsp;<span style="color:blue;">from</span>&nbsp;i&nbsp;<span style="color:blue;">in</span>&nbsp;m
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">select</span>&nbsp;i.ToString();</pre>
+	</p>
+	<p>
+		This example simply creates a <em>just</em> value containing the number <code>42</code>, and then maps it to a string. Another way to write the same expression would be with method call syntax:
+	</p>
+	<p>
+		<pre><span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:blue;">int</span>&gt;&nbsp;m&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">Just</span>&lt;<span style="color:blue;">int</span>&gt;(42);
+<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:blue;">string</span>&gt;&nbsp;actual&nbsp;=&nbsp;m.Select(i&nbsp;=&gt;&nbsp;i.ToString());</pre>
+	</p>
+	<p>
+		In both cases, the result is a <em>just</em> case containing the string <code>"42"</code>.
+	</p>
+	<h3 id="4bdd2b27f1724e3198b95d86642c8a6c">
+		Summary <a href="#4bdd2b27f1724e3198b95d86642c8a6c" title="permalink">#</a>
+	</h3>
+	<p>
+		In this article, you saw how it's possible to define the <em>Maybe</em> container from first principles, using nothing but functions (and, for the C# examples, interfaces and classes in order to make the code easier to understand for object-oriented developers).
+	</p>
+	<p>
+		The code shown in this article is <a href="https://github.com/ploeh/ChurchEncoding/tree/8d1e7501f486351e748646c915f0bd334332e386">available on GitHub</a>.
+	</p>
+	<p>
+		Church-encoding enables you to model sum types as functions. So far in this article series, you've seen how to model Boolean values, natural numbers, and Maybe. Common to all three examples is that the data type in question consists of two mutually exclusive cases. There's at least one more interesting variation on that pattern.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2018/06/11/church-encoded-either">Church-encoded Either</a>.
+	</p>
+</div>
+<div id="comments">
+<hr>
+<h2 id="comments-header">Comments</h2>
+   <div class="comment" id="219468451d9a4af99be169a73af898bd">
+      <div class="comment-author"><a href="https://github.com/adleatherwood">Anthony Leatherwood</a></div>
+      <div class="comment-content">
+It's probably not your favorite thing to do anymore, but I thank you so much for continuing to provide C# examples for these concepts.  It's invaluable for 
+programmers wishing to adopt these concepts into the OOP languages they work with for a living.  It's also a tremendous aid in briding the
+gap of understanding between OOP and FP.
+      </div>
+      <div class="comment-date">2018-06-04 17:57 UTC</div>
+   </div>
+
+
+	<div class="comment" id="0d95b7b291b041a89fca0aa942c56189">
+		<div class="comment-author"><a href="https://ramblingamblings.wordpress.com/">Nathaniel Bond</a></div>
+		<div class="comment-content">
+			<p>
+				Hey Mark, thanks so much for writing.  Coming at this some 3 years later but it's been an insightful introduction to
+				functional programming.
+			</p>
+			<p>
+				I've been trying Church encoding and algebraic data types in general out for a little while now, and had a question
+				about a potential alternate implementation of <code>Select</code> and friends.  I had been reviewing
+				<a href="https://blog.ploeh.dk/2018/05/24/church-encoded-boolean-values/">Church-encoded Booleans</a> and really
+				appreciated the way the <code>And</code>/<code>Or</code>/<code>Not</code> <code>Match</code> implementations managed to
+				defer executing their operator's actual operation until needed.  So I figured there might be a way to do something similar
+				with <code>Select</code>.
+			</p>
+			<p>
+				Here's what I came up with:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MaybeSelected</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TSelectResult</span>&gt;&nbsp;:&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">TSelectResult</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;source;
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TSelectResult</span>&gt;&nbsp;selector;
+		 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;MaybeSelected(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;source,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TSelectResult</span>&gt;&nbsp;selector)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.source&nbsp;=&nbsp;source;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.selector&nbsp;=&nbsp;selector;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">TResult</span>&nbsp;Match&lt;<span style="color:#2b91af;">TResult</span>&gt;(<span style="color:#2b91af;">TResult</span>&nbsp;nothing,&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">TSelectResult</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;just)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;source.Match(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nothing:&nbsp;nothing,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;just:&nbsp;x&nbsp;=>&nbsp;just(selector(x)));
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+			</p>
+			<p>
+				Which resulted in the following <code>Select</code> refactoring:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">static</span>&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;Select&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;source,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;selector)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MaybeSelected</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;(source,&nbsp;selector);
+}</pre>
+			</p>
+			<p>
+				After ensuring the refactor passed unit tests, I went on to the monad:
+			</p>
+			<p>
+				<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MaybeFlattened</span>&lt;<span style="color:#2b91af;">T</span>&gt;&nbsp;:&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;&gt;&nbsp;source;
+		 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;MaybeFlattened(<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">IMaybe</span>&lt;<span style="color:#2b91af;">T</span>&gt;&gt;&nbsp;source)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.source&nbsp;=&nbsp;source;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">TResult</span>&nbsp;Match&lt;<span style="color:#2b91af;">TResult</span>&gt;(<span style="color:#2b91af;">TResult</span>&nbsp;nothing,&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">T</span>,&nbsp;<span style="color:#2b91af;">TResult</span>&gt;&nbsp;just)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;source.Match(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nothing:&nbsp;nothing,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;just:&nbsp;x&nbsp;=>&nbsp;x.Match(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;nothing:&nbsp;nothing,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;just:&nbsp;just));
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+			</p>
+			<p>
+				Which resulted in a similar refactoring of <code>Flatten</code>.  I'm pretty happy with the results, especially in the
+				case of <code>Select</code> not needing to execute its <code>selector</code> until <code>Match</code> is called.  This
+				seems to resemble the behavior of <code>IEnumerable</code> not actually enumerating until something like
+				<code>ToList</code> is called.  The unit tests pass, so I have some demonstration of correct behavior, though I suppose
+				being new to this I may have failed to understand something more essential than the demonstrated behavior they exercise.
+			</p>
+			<p>
+				That said, I am more interested in the nature of the refactoring itself.  It seems to be a kind of isomorphism similar to
+				that of <a href="https://blog.ploeh.dk/2018/01/29/argument-list-isomorphisms/">argument lists</a>, but extending beyond
+				the method's parameters to including its behavior as well.  In general, the process involved taking, e.g., the
+				<code>Select</code> method's parameters and making corresponding fields in the new <code>MaybeSelected</code> class; and
+				then taking the method's implementation and shuffling it off to some method in the new class (<code>Match</code>) that
+				would eventually perform the original execution.  I like seeing how the <code>x => x</code> "phrase" lines up between
+				the original <code>Flatten</code> and <code>MaybeFlattened.Match</code>.  So going beyond "it works," would you mind
+				sharing your thoughts on what kind of animal we've got here?
+			</p>
+				P.S. &mdash; I have included the above changes in
+				<a href="https://github.com/nabond251/ChurchEncoding/tree/feature/defurred-cat">this fork</a> of the post's repository.
+			<p>
+			</p>
+		</div>
+		<div class="comment-date">2021-07-02 21:03 UTC</div>
+	</div>
+
+	<div class="comment" id="b2a77193bcfa48ebb92033fb1dbae2e7">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Nathaniel, thank you for writing. If you're new to this, I tip my hat to you. As far as I can tell, you've arrived at the insight that lazy evaluation seems to be a 'toggle' you can turn on or off without affecting the lawfulness of the underlying concepts.
+			</p>
+			<p>
+				I admit that I haven't done a full, formal analysis of your approach, but it looks completely legit to me.
+			</p>
+			<p>
+				The reason I feel confident that this is still a lawful Maybe monad is that Haskell is lazy by default. I've learned much of what I know about functors and monads from Haskell. In Haskell, most of the monads are lazy, and you explicitly have to opt in if you want strict evaluation (in Haskell, the opposite of lazy is usually called <em>strict</em>, although <a href="https://wiki.haskell.org/Performance/Strictness">it's a little more complicated than that</a>.) In most other languages (C# included), expressions are usually eagerly evaluated, and you have to explicitly opt into laziness.
+			</p>
+			<p>
+				In those languages, you can use something like <code>Lazy&lt;T&gt;</code> to <a href="/2018/12/17/the-lazy-applicative-functor">form an applicative functor</a> (and monad, but I haven't written that article). You can also show that <a href="/2018/09/10/the-lazy-functor">it obeys the functor laws</a>. It also obeys the applicative functor and monad laws, but again, I haven't written those articles...
+			</p>
+			<p>
+				What you've done here is slightly different, since you haven't explicitly used <code>Lazy&lt;T&gt;</code>, but I'd expect your variation to be isomorphic to <code>Lazy&lt;Maybe&lt;T&gt;&gt;</code> (where <code>Maybe&lt;T&gt;</code> is an eagerly evaluated version of Maybe). If you're interested, you may consider this exercise:
+			</p>
+			<p>
+				<em>Write two functions that convert back and forth between the two representations, and demonstrate that the two implementations behave in the same way.</em>
+			</p>
+			<p>
+				In general, knowing how to enable lazy evaluation can be a useful tool to add to your toolkit, but as all Haskellers have learned, it comes with a disadvantage, too. Instead of evaluating values right away, you have to pass around <em>expressions</em>. Such expressions containing other expressions are called <em>thunks</em>, and they can grow quite large. In Haskell, which relies heavily on this mechanism, if you aren't careful, you can build up thunks that eat up all available memory.
+			</p>
+			<p>
+				In reality, I don't experience this to be a big problem as long as one stays aware of it, but the point is that you can't just forget about it. Laziness isn't a free ride to better performance. You trade more efficient <em>computation</em> for more inefficient <em>memory use</em>.
+			</p>
+		</div>
+		<div class="comment-date">2021-07-06 6:10 UTC</div>
+	</div>
+</div>

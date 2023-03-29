@@ -1,0 +1,302 @@
+---
+layout: post
+title: "Passive Attributes"
+description: "Passive Attributes are Dependency Injection-friendly."
+date: 2014-06-13 9:59 UTC
+tags: [Dependency Injection, ASP.NET Web API]
+---
+{% include JB/setup %}
+
+<div id="post">
+  <p>
+    <em>{{ page.description }}</em>
+  </p>
+  <p>
+    In my article about <a href="/2014/05/19/di-friendly-framework">Dependency Injection-friendly frameworks</a>, towards the end I touched on the importance of defining attributes <em>without</em> behaviour, but I didn't provide a constructive example of how to do this. In this article, I'll outline how to write a Dependency Injection-friendly attribute for use with <a href="http://www.asp.net/web-api">ASP.NET Web API</a>, but as far as I recall, you can do something similar with ASP.NET MVC.
+  </p>
+  <h3 id="8e939bc21a154490abc20a9d60418849">
+    Problem statement <a href="#8e939bc21a154490abc20a9d60418849" title="permalink">#</a>
+  </h3>
+  <p>
+    In ASP.NET Web API, you can adorn your Controllers and their methods with various <a href="http://msdn.microsoft.com/en-us/library/system.web.http.filters.filterattribute.aspx">Filter attributes</a>, which is a way to implement cross-cutting concerns, such as <a href="http://msdn.microsoft.com/en-us/library/system.web.http.filters.authorizationfilterattribute.aspx">authorization</a> or <a href="http://msdn.microsoft.com/en-us/library/system.web.http.filters.exceptionfilterattribute.aspx">error handling</a>. The problem with this approach is that attribute instances are created by the run-time, so you can't use proper Dependency Injection (DI) patterns such as Constructor Injection. If an attribute defines behaviour (which many of the Web API attributes do), the most common attempt at writing loosely coupled code is to resort to a static <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern">Service Locator (an anti-pattern)</a>.
+  </p>
+  <p>
+    This again seems to lead framework designers towards attempting to make their frameworks 'DI-friendly' by introducing a <a href="/2014/05/19/conforming-container">Conforming Container (another anti-pattern)</a>.
+  </p>
+  <p>
+    The solution is simple: define attributes without behaviour.
+  </p>
+  <h3 id="0d03d024f6784cd29c68aae10b81945f">
+    Metering example <a href="#0d03d024f6784cd29c68aae10b81945f" title="permalink">#</a>
+  </h3>
+  <p>
+    Common examples of cross-cutting concerns are authentication, authorization, error handling, logging, and caching. In these days of multi-tenant on-line services, another example would be metering, so that you can bill each user based on consumption.
+  </p>
+  <p>
+    Imagine that you're writing an HTTP API where some actions must be metered, whereas others shouldn't. It might be nice to adorn the metered actions with an attribute to indicate this:
+  </p>
+  <p>
+    <pre>[<span style="color:#2b91af;">Meter</span>]
+<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">IHttpActionResult</span>&nbsp;Get(<span style="color:blue;">int</span>&nbsp;id)</pre>
+  </p>
+  <p>
+    Metering is a good example of a cross-cutting concern with behaviour, because, in order to be useful, you'd need to <em>store</em> the metering records somewhere, so that you can bill your users based on these records.
+  </p>
+  <p>
+    A passive Meter attribute would simply look like this:
+  </p>
+  <p>
+    <pre>[<span style="color:#2b91af;">AttributeUsage</span>(<span style="color:#2b91af;">AttributeTargets</span>.Method,&nbsp;AllowMultiple&nbsp;=&nbsp;<span style="color:blue;">false</span>)]
+<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MeterAttribute</span>&nbsp;:&nbsp;<span style="color:#2b91af;">Attribute</span>
+{
+}</pre>
+  </p>
+  <p>
+    In order to keep the example simple, this attribute defines no data, and can only be used on methods, but nothing prevents you from adding (primitive) values to it, or extend its usage to classes as well as methods.
+  </p>
+  <p>
+    As you can tell from the example, the MeterAttribute has no behaviour.
+  </p>
+  <p>
+    In order to implement a metering cross-cutting concern, you'll need to define an <a href="http://msdn.microsoft.com/en-us/library/system.web.http.filters.iactionfilter.aspx">IActionFilter</a> implementation, but that's a 'normal' class that can take dependencies:
+  </p>
+  <p>
+    <pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">MeteringFilter</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IActionFilter</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">private</span>&nbsp;<span style="color:blue;">readonly</span>&nbsp;<span style="color:#2b91af;">IObserver</span>&lt;<span style="color:#2b91af;">MeterRecord</span>&gt;&nbsp;observer;
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;MeteringFilter(<span style="color:#2b91af;">IObserver</span>&lt;<span style="color:#2b91af;">MeterRecord</span>&gt;&nbsp;observer)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(observer&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">throw</span>&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">ArgumentNullException</span>(<span style="color:#a31515;">&quot;observer&quot;</span>);
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.observer&nbsp;=&nbsp;observer;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:#2b91af;">Task</span>&lt;<span style="color:#2b91af;">HttpResponseMessage</span>&gt;&nbsp;ExecuteActionFilterAsync(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">HttpActionContext</span>&nbsp;actionContext,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">CancellationToken</span>&nbsp;cancellationToken,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">Func</span>&lt;<span style="color:#2b91af;">Task</span>&lt;<span style="color:#2b91af;">HttpResponseMessage</span>&gt;&gt;&nbsp;continuation)
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;meterAttribute&nbsp;=&nbsp;actionContext
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.ActionDescriptor
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.GetCustomAttributes&lt;<span style="color:#2b91af;">MeterAttribute</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;.SingleOrDefault();
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">if</span>&nbsp;(meterAttribute&nbsp;==&nbsp;<span style="color:blue;">null</span>)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;continuation();
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;operation&nbsp;=&nbsp;actionContext.ActionDescriptor.ActionName;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;user&nbsp;=&nbsp;actionContext.RequestContext.Principal.Identity.Name;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;started&nbsp;=&nbsp;<span style="color:#2b91af;">DateTimeOffset</span>.Now;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;continuation().ContinueWith(t&nbsp;=&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;completed&nbsp;=&nbsp;<span style="color:#2b91af;">DateTimeOffset</span>.Now;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;duration&nbsp;=&nbsp;completed&nbsp;-&nbsp;started;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">var</span>&nbsp;record&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MeterRecord</span>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Operation&nbsp;=&nbsp;operation,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;User&nbsp;=&nbsp;user,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Started&nbsp;=&nbsp;started,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Duration&nbsp;=&nbsp;duration
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;};
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">this</span>.observer.OnNext(record);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;t.Result;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;});
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">bool</span>&nbsp;AllowMultiple
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">get</span>&nbsp;{&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">true</span>;&nbsp;}
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+  </p>
+  <p>
+    This MeteringFilter class implements IActionFilter. It looks for the <code>[Meter]</code> attribute. If it doesn't find the attribute on the method, it immediately returns; otherwise, it starts collecting data about the invoked action:
+    <ol>
+      <li>From <code>actionContext.ActionDescriptor</code> it retrieves the name of the operation. If you try this out for yourself, you may find that <code>ActionName</code> alone doesn't provide enough information to uniquely identify the method - it basically just contains the value "Get". However, the <code>actionContext</code> contains enough information about the action that you can easily build up a better string; I just chose to skip doing that in order to keep the example simple.</li>
+      <li>From <code>actionContext.RequestContext.Principal</code> you can get information about the current user. In order to be useful, the user must be authenticated, but if you need to meter the usage of your service, you'll probably not allow anonymous access.</li>
+      <li>Before invoking the <code>continuation</code>, the MeteringFilter records the current time.</li>
+      <li>After the <code>continuation</code> has completed, the MeteringFilter again records the current time and calculates the duration.</li>
+      <li>Finally, it publishes a MeterRecord to an injected dependency.</li>
+    </ol>
+    Notice that MeteringFilter uses normal Constructor Injection, which means that it can <a href="/2011/05/30/DesignSmellDefaultConstructor">protect its invariants</a>. In this example, I'm <a href="/2013/09/11/di-and-events-composition">using IObserver&lt;T&gt; as a dependency</a>, but obviously, you could use any dependency you'd like.
+  </p>
+  <h3 id="8123477447fe4287b6b667423efc45a0">
+    Configuring the service <a href="#8123477447fe4287b6b667423efc45a0" title="permalink">#</a>
+  </h3>
+  <p>
+    MeteringFilter is a normal class with behaviour, which you can register as a cross-cutting concern in your Web API service as easily as this:
+  </p>
+  <p>
+    <pre><span style="color:blue;">var</span>&nbsp;filter&nbsp;=&nbsp;<span style="color:blue;">new</span>&nbsp;<span style="color:#2b91af;">MeteringFilter</span>(observer);
+config.Filters.Add(filter);</pre>
+  </p>
+  <p>
+    where <code>observer</code> is your preferred implementation of IObserver&lt;MeterRecord&gt;. This example illustrates the <a href="/2014/06/10/pure-di">Pure DI</a> approach, but if you rather prefer to resolve MeteringFilter with your DI Container of choice, you can obviously do this as well.
+  </p>
+  <p>
+    The above code typically goes into your Global.asax file, or at least a class directly or indirectly invoked from Application_Start. This constitutes (part of) the <a href="/2011/07/28/CompositionRoot">Composition Root</a> of your service.
+  </p>
+  <h3 id="7097ad83d716407fac1098afec352c6e">
+    Summary <a href="#7097ad83d716407fac1098afec352c6e" title="permalink">#</a>
+  </h3>
+  <p>
+    Both ASP.NET Web API and ASP.NET MVC supports cross-cutting concerns in the shape of filters that you can add to the service. Such filters can look for passive attributes in order to decide whether or not to trigger. The advantage of this approach is that you can use normal Constructor Injection with these filters, which completely eliminates the need for a Service Locator or Conforming Container.
+  </p>
+  <p>
+    The programming model remains the same as with active attributes: if you want a particular cross-cutting concern to apply to a particular method or class, you adorn it with the appropriate attribute. Passive attributes have all the advantages of active attributes, but none of the disadvantages.
+  </p>
+</div>
+
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="6071edaa16fe4bf887deea0bc7334b42">
+	<div class="comment-author">Jonathan Ayoub</div>
+	<div class="comment-content">
+    Thanks for the article. I have a simple filter that I need to add, and I was just going to use service locator to get my dependency, but realized that would force me to do things I don't want to when writing a test for the filter. 
+    <br>
+    <br>
+    What if the dependency I'm injecting needs to be a transient dependency? Injecting a transient service into a singleton (the filter), would cause issues. My initial idea is to create an abstract factory as a dependency, then when the filter action executes, create the transient dependency, use it, and dispose. Do you have any better ideas? 
+  </div>
+	<div class="comment-date">2016-01-21 18:34 UTC</div>
+</div>
+  <div class="comment" id="0842455b7c6b4119ac121ec42c1cfe02">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Jonathan, thank you for writing. Does <a href="/2014/08/24/decoraptor">this article on the Decoraptor pattern</a> (and this <a href="http://stackoverflow.com/a/25489672/126014">Stack Overflow answer</a>) answer your question?
+      </p>
+    </div>
+    <div class="comment-date">2016-01-21 19:51 UTC</div>
+  </div>
+  <div class="comment" id="893f189b3ca74fa998c013d1cb4c9563">
+  	<div class="comment-author">Jonathan Ayoub</div>
+  	<div class="comment-content">
+      <p>
+        Yes, that's a good solution for this situation. Thanks!
+      </p>
+    </div>
+  	<div class="comment-date">2016-01-26 14:32 UTC</div>
+  </div>
+  <div class="comment" id="0cc223c3c22b480895eb83728976ec30">
+  	<div class="comment-author"><a href="http://blog.tech-fellow.net">Valdis Iljuconoks</a></div>
+  	<div class="comment-content">
+      <p>
+        Reading through Asp.Net Core <a href="https://docs.asp.net/en/latest/mvc/controllers/filters.html#configuring-filters">Type and Service Filters</a>, do you think it's sufficient to go that way (I know that TypeFilter is a bit clumsy), but let's assume that I need simple injection in my filter - ServiceFilterAttribute looks promising. Or you still would recomment to implement logic via traditional filter pipeline: `services.AddMvc(o => o.Filters.Add(...));`?
+      </p>
+    </div>
+  	<div class="comment-date">2016-08-21 17:20 UTC</div>
+  </div>
+  <div class="comment" id="8775195818304f0a800e18c66431c97f">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Valdis, thank you for writing. I haven't looked into the details of ASP.NET Core recently, but even so: on a more basic level, I don't understand the impulse to put behaviour into attributes. An attribute is an annotation. It's a declaration that a method, or type, is somehow special. Why not keep the annotation decoupled from the behaviour it 'triggers'? This would enable you to reuse the behaviour in other scenarios than by putting an attribute on a method.
+      </p>
+    </div>
+    <div class="comment-date">2016-08-22 16:21 UTC</div>
+  </div>
+  <div class="comment" id="beaa0debd0a84987aef95ce216b7b181">
+    <div class="comment-author"><a href="http://blog.tech-fellow.net">Valdis Iljuconoks</a></div>
+    <div class="comment-content">
+      <p>I got actually very similar feelings, just wanted to get your opinion. And by the way - there is a catch, you can mismatch type and will notice that only during runtime. For instance: `[ServiceFilter(typeof(HomeController))]` will generate exception, because given type is not derived from `IFilterMetadata`</p>
+    </div>
+    <div class="comment-date">2016-08-22 20:46 UTC</div>
+  </div>
+  <div class="comment" id="391e4f540b284e17a5d620e1af7c4ea1">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Indeed, one of the most problematic aspects of <a href="/2014/05/19/conforming-container">container-based DI</a> (as opposed to <a href="/2014/06/10/pure-di">Pure DI</a>) is the <a href="/2012/11/06/WhentouseaDIContainer">loss of compile-time safety</a> - to little advantage, I might add.
+      </p>
+    </div>
+    <div class="comment-date">2016-08-23 05:49 UTC</div>
+  </div>
+  <div class="comment" id="c85f9fc53aec48bb8c92c447c2e5424a">
+    <div class="comment-author"><a href="http://tyreejackson.com">Tyree Jackson</a></div>
+    <div class="comment-content">
+      <p>
+        I'm concerned with using attributes for AOP at all in these cases.  Obviously using attributes that define behaviors that rely on external depedencies is a bad idea as you and others have already previously covered.  But is using attributes that define metadata for custom behaviors all that much better?  For example, if one provides a framework with libraries containing common controllers, and another pulls those controllers into their composition root in order to host them, there is no indication at compile time that these custom attributes may be present.  Would it not be better to require that behavior be injected into the constructor and simply consume the behavior at the relevant points within the controller?  Or if attributes must be used, would it not be better for the component that implements the behavior to somehow be injected into the controller and given the opportunity to intercept requests to the controller earlier in the execution pipeline so that it can check for the attributes?  Due to the nature of the Web API and .Net MVC engines, attributes defined with behavior can enforce their behaviors to be executed by default.  And while attributes without behavior do indicate the need for a behavior to be executed for the class they are decorating, it does not appear that they can enforce said behavior to be executed by default.  They are too easy to miss or ignore.  There has got to be a better way.  I have encountered this problem while refactoring some code that I'm working on right now (retro fitting said code with more modern, DI based code).  I'm hoping to come up with a solution that informs the consuming developer in the composition root that this behavior is required, and still be able enforce the behavior with something closer to a decoration rather than a function call.
+      </p>
+    </div>
+    <div class="comment-date">2016-11-16 23:10 UTC</div>
+  </div>
+  <div class="comment" id="94cd1e6d9e2f4db3ac7b5693d3e14450">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Tyree, thank you for writing. That's a valid concern, but I don't think it's isolated to passive attributes. The problem you outline is also present if you attempt to address cross-cutting concerns with the <a href="https://en.wikipedia.org/wiki/Decorator_pattern">Decorator design pattern</a>, or with dynamic interception as I describe in chapter 9 of <a href="http://amzn.to/12p90MG">my book</a>. You also have this problem with the <a href="https://en.wikipedia.org/wiki/Composite_pattern">Composite pattern</a>, because you can't have any compile-time guarantee that you've remembered to compose all required elements into the Composite, or that they're defined in the appropriate order (if that matters).
+      </p>
+      <p>
+        In fact, you can extend this argument to any use of polymorphism: how can you guarantee, at compile-time, that a particular polymorphic object contains the behaviour that you desire, instead of, say, being a <a href="https://en.wikipedia.org/wiki/Null_Object_pattern">Null Object</a>? You can't. That's the entire point of polymorphism.
+      </p>
+      <p>
+        Even with attributes, how can you guarantee that the attributes stay there? What if another developer comes by and removes an attribute? The code is still going to compile.
+      </p>
+      <p>
+        Ultimately, code exists in order to implement some desired behaviour. There are guarantees you can get from the type system, but static typing can't provide <em>all</em> guarantees. If it could, you be in the situation where, <em>'if it compiles, it works'</em>. No programming language I've heard of provides that guarantee, although <a href="/2016/02/10/types-properties-software">there's a spectrum of languages with stronger or weaker type systems</a>. Instead, we'll have to <a href="/2011/04/29/Feedbackmechanismsandtradeoffs">get feedback from multiple sources</a>. Attributes often define cross-cutting concerns, and I find that these are often best verified with a set of integration tests.
+      </p>
+      <p>
+        As always in software development, you have to find the balance that's right for a particular scenario. In some cases, it's catastrophic if something is incorrectly configured; in other cases, it's merely unfortunate. More rigorous verification is required in the first case.
+      </p>
+    </div>
+    <div class="comment-date">2016-11-19 9:39 UTC</div>
+  </div>
+  <div class="comment" id="71a13527719f430c8d140cfde6f50d0f">
+    <div class="comment-author"><a href="http://crispinto.com">Cristian Pinto</a></div>
+    <div class="comment-content">
+      <p>
+        Thanks for the post, I tried to do the same for a class attribute (AttributeTargets.Class) and I am getting a null object every time I get the custom attributes. Does this only work for Methods? Or how can I make it work with classes? Thanks.
+      </p>
+    </div>
+    <div class="comment-date">2017-04-05 13:03 UTC</div>
+  </div>
+  <div class="comment" id="c81e478c5d5f480fba09438a54f989b8">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Cristian, thank you for writing. The example code shown in this article only looks in the action context's <code>ActionDescriptor</code>, which is an object that describes the action method. If you want to look for the attribute on the class, you should look in the action context's <code>ControllerDescriptor</code> instead, like this:
+      </p>
+      <p>
+        <pre><span style="color:blue;">var</span>&nbsp;meterAttribute&nbsp;=&nbsp;actionContext
+&nbsp;&nbsp;&nbsp;&nbsp;.ControllerContext
+&nbsp;&nbsp;&nbsp;&nbsp;.ControllerDescriptor
+&nbsp;&nbsp;&nbsp;&nbsp;.GetCustomAttributes&lt;<span style="color:#2b91af;">MeterAttribute</span>&gt;()
+&nbsp;&nbsp;&nbsp;&nbsp;.SingleOrDefault();</pre>
+      </p>
+      <p>
+        Obviously, if you want to support putting the attribute <em>both</em> on the class and the method, you'd need to look in both places, and decide which one to use if you find more than one.
+      </p>
+    </div>
+    <div class="comment-date">2017-04-25 6:12 UTC</div>
+  </div>
+  <div class="comment" id="fba09438a54f989b8c81e478c5d5f480">
+    <div class="comment-author">Ian Thomas</div>
+    <div class="comment-content">
+      <p>
+        I'm really struggling to get everything hooked up so it's initialised in the correct order, with one DbContext created per web request or scheduled task. The action filter is my biggest sticking point.
+      </p>
+      <p>
+        I had previously split an IAuthorizationFilter off from a WebAPI AuthorizationFilterAttribute following the advice of this article. I create my filter in WebApiConfig.Register, which is called from MvcApplication.Application_Start(). My problem is that I can't inject my UserService here, because this code is shared across requests, and I want to use one DbContext per request (UserService depends on DbContext). It works if I inject the DependencyResolver, but I realise that's an anti-pattern.
+      </p>
+      <p>
+        What am I missing? Should I new up a DbContext and UserService just for my AuthorizationFilter, that then gets shared acorss requests? Is there somewhere else I can add my ActionFilter, that gets called once per request? I can inject my service into the created AuthorizationFilterAttribute using the steps described at https://michael-mckenna.com/dependency-injection-for-asp-net-web-api-action-filters-in-3-easy-steps/ but would that just make it a captive dependency of an AuthorizationFilterAttribute that gets shared across multiple requests?
+      </p>
+    </div>
+    <div class="comment-date">2019-07-26 17:28 UTC</div>
+  </div>
+  <div class="comment" id="440097c5ad1e47ac8e6fe1d24abffeee">
+    <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+    <div class="comment-content">
+      <p>
+        Ian, thank you for writing. It sounds like you need a <a href="/2014/08/24/decoraptor">Decoraptor</a>.
+      </p>
+    </div>
+    <div class="comment-date">2019-07-28 12:58 UTC</div>
+  </div>
+</div>

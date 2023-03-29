@@ -1,0 +1,68 @@
+---
+layout: post
+tags: [AutoFixture, Unit Testing]
+date: 2010-04-06 05:22:32 UTC
+title: "Mapping types with AutoFixture"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>In my <a href="/2010/03/27/Freezingmocks">previous</a> <a href="/2010/03/26/Moreaboutfrozenpizza">posts</a> I demonstrated interaction-based unit tests that verify that a pizza is correctly being added to a shopping basket. An alternative is a state-based test where we examine the contents of the shopping basket after exercising the <a href="http://xunitpatterns.com/SUT.html">SUT</a>. Here's an initial attempt:</p>
+  <p>
+  	<pre style="margin: 0px">[<span style="color: #2b91af">TestMethod</span>]
+<span style="color: blue">public</span> <span style="color: blue">void</span> AddWillAddToBasket()
+{
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Fixture setup</span>
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> fixture = <span style="color: blue">new</span> <span style="color: #2b91af">Fixture</span>();
+&nbsp;&nbsp;&nbsp; fixture.Register&lt;<span style="color: #2b91af">IPizzaMap</span>&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fixture.CreateAnonymous&lt;<span style="color: #2b91af">PizzaMap</span>&gt;);
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> basket = fixture.Freeze&lt;<span style="color: #2b91af">Basket</span>&gt;();
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> pizza = fixture.CreateAnonymous&lt;<span style="color: #2b91af">PizzaPresenter</span>&gt;();
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> sut = fixture.CreateAnonymous&lt;<span style="color: #2b91af">BasketPresenter</span>&gt;();
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Exercise system</span>
+&nbsp;&nbsp;&nbsp; sut.Add(pizza);
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Verify outcome</span>
+&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Assert</span>.IsTrue(basket.Pizze.Any(p =&gt; 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; p.Name == pizza.Name), <span style="color: #a31515">"Basket has added pizza."</span>);
+&nbsp;&nbsp;&nbsp; <span style="color: green">// Teardown</span>
+}</pre>
+</p>
+<p>In this case the assertion examines the Pizze collection (you did know that the plural of <em>pizza</em> is <em>pizze</em>, right?) of the <a href="/2010/03/17/AutoFixtureFreeze">frozen Basket</a> to verify that it contains the added pizza.</p>
+<p>The tricky part is that the Pizze property is a collection of Pizza instances, and not PizzaPresenter instances. The injected IPizzaMap instance is responsible for mapping from PizzaPresenter to Pizza, but since we are rewriting this as a state-based test, I thought it would also be interesting to write the test without using <a href="http://code.google.com/p/moq/">Moq</a>. Instead, we can use the real implementation of IPizzaMap, but this means that we must instruct <a href="http://autofixture.codeplex.com/">AutoFixture</a> to map from the abstract IPizzaMap to the concrete PizzaMap.</p>
+<p>We see that happening in this line of code:</p>
+<p>
+	<pre style="margin: 0px">fixture.Register&lt;<span style="color: #2b91af">IPizzaMap</span>&gt;(
+&nbsp;&nbsp;&nbsp; fixture.CreateAnonymous&lt;<span style="color: #2b91af">PizzaMap</span>&gt;);</pre>
+</p>
+<p>Notice the method group syntax: we pass in a delegate to the CreateAnonymous method, which means that every time the fixture is asked to create an IPizzaMap instance, it invokes CreateAnonymous&lt;PIzzaMap&gt;() and uses the result.</p>
+<p>This is, obviously, a general-purpose way in which we can map compatible types, so we can write an extension method like this one:</p>
+<p>
+	<pre style="margin: 0px"><span style="color: blue">public</span> <span style="color: blue">static</span> <span style="color: blue">void</span> Register&lt;TAbstract, TConcrete&gt;(
+&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span> <span style="color: #2b91af">Fixture</span> fixture) <span style="color: blue">where</span> TConcrete : TAbstract
+{
+&nbsp;&nbsp;&nbsp; fixture.Register&lt;TAbstract&gt;(() =&gt;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fixture.CreateAnonymous&lt;TConcrete&gt;());
+}</pre>
+</p>
+<p>(I'm slightly undecided on the name of this method. <em>Map</em> might be a better name, but I just like the equivalence to some common DI Containers and their Register methods.) Armed with this Register overload, we can now rewrite the previous Register statement like this:</p>
+<p>
+	<pre style="margin: 0px">fixture.Register&lt;<span style="color: #2b91af">IPizzaMap</span>, <span style="color: #2b91af">PizzaMap</span>&gt;();</pre>
+</p>
+<p>It's the same amount of code lines, but I find it slightly more succinct and communicative.</p>
+<p>The real point of this blog post, however, is that you can map abstract types to concrete types, and that you can always write extension methods to encapsulate your own AutoFixture idioms.</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="6fc4061421b3438ab31eca27514eee6f">
+	<div class="comment-author"><a href="http://nikosbaxevanis.com/">Nikos Baxevanis</a></div>
+	<div class="comment-content">I also prefer Register (instead of Map). Because most of the times it will be like that: registering an interface to an implementation.</div>
+	<div class="comment-date">2011-03-13 10:06 UTC</div>
+</div>
+</div>

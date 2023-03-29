@@ -1,0 +1,268 @@
+---
+layout: post
+tags: [Dependency Injection, StructureMap, Unit Testing]
+date: 2011-12-21 13:25:32 UTC
+title: "Testing Container Configurations"
+description: "Should you unit test your DI Container configuration? I don't think so. Here's why."
+image: "/content/binary/Windows-Live-Writer/Testing-Container-Configurations_84D9/containersets_thumb.png"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		Here's a question I often get:
+	</p>
+	<blockquote>
+		<p>
+			“Should I test my DI Container configuration?”
+		</p>
+	</blockquote>
+	<p>
+		The motivation for asking mostly seems to be that people want to know whether or not their applications are correctly wired. That makes sense.
+	</p>
+	<p>
+		A related question I also often get is whether or not a particular container has a self-test feature? In this post I'll attempt to answer both questions.
+	</p>
+	<h3 id="9130110eee0c42ac88c93d0c0f0d2074">
+		Container Self-testing <a href="#9130110eee0c42ac88c93d0c0f0d2074" title="permalink">#</a>
+	</h3>
+	<p>
+		Some DI Containers have a method you can invoke to make it perform a consistency check on itself. As an example, <a href="http://structuremap.net/structuremap/">StructureMap</a> has the AssertConfigurationIsValid method that, according to documentation does “a full environment test of the configuration of [the] container.” It will “try to create every configured instance [...]”
+	</p>
+	<p>
+		Calling the method is <em>really</em> easy:
+	</p>
+	<p>
+		<pre style="margin: 0px"><font style="font-size: 10pt">container.AssertConfigurationIsValid();</font></pre>
+	</p>
+	<p>
+		Such a self-test can often be an expensive operation (not only for StructureMap, but in general) because it's basically attempting to create an instance of each and every Service registered in the container. If the configuration is large, it's going to take some time, but it's still going to be faster than performing a manual test of the application.
+	</p>
+	<p>
+		Two questions remain: Is it worth invoking this method? Why don't all containers have such a method?
+	</p>
+	<blockquote>
+		<p>
+			The quick answer is that such a method is close to worthless, which also explains why many containers don't include one.
+		</p>
+	</blockquote>
+	<p>
+		To understand the answer, consider the set of all components contained in the container in this figure:
+	</p>
+	<p>
+		<a href="/content/binary/Windows-Live-Writer/Testing-Container-Configurations_84D9/containersets_2.png"><img src="/content/binary/Windows-Live-Writer/Testing-Container-Configurations_84D9/containersets_thumb.png"></a>
+	</p>
+	<p>
+		The container contains the set of components IFoo, IBar, IBaz, Foo, Bar, Baz, and Qux so a self-test will try to create a single instance of each of these seven types. If all seven instances can be created, the test succeeds.
+	</p>
+	<p>
+		All this accomplishes is to verify that the configuration is internally <em>consistent.</em> Even so, an application could require instances of the ICorge, Corge or Grault types which are completely external to the configuration, in which case resolution would fail.
+	</p>
+	<p>
+		Even more subtly, resolution would also fail whenever the container is queried for an instance of IQux, since this interface isn't part of the configuration, even though it's related to the concrete Qux type which <em>is</em> registered in the container. A self-test only verifies that the concrete Qux class can be resolved, but it never attempts to create an instance of the IQux interface.
+	</p>
+	<p>
+		In short, the fact that a container's configuration is internally consistent doesn't guarantee that all services required by an application can be served.
+	</p>
+	<p>
+		Still, you may think that at least a self-test can constitute an early warning system: if the self-test fails, surely it must mean that the configuration is invalid? Unfortunately, that's not true either.
+	</p>
+	<p>
+		If a container is being configured using Auto-registration/Convention over Configuration to scan one or more assemblies and register certain types contained within, chances are that ‘too many' types will end up being registered  -  particularly if one or more of these assemblies are reusable libraries (as opposed to application-specific assemblies). Often, the number of redundant types added is negligible, but they <em>may</em> make the configuration internally <em>inconsistent</em>. However, if the inconsistency only affects the redundant types, it doesn't matter. The container will still be able to resolve <em>everything</em> the current application requires.
+	</p>
+	<p>
+		Thus, a container self-test method is worthless.
+	</p>
+	<p>
+		Then how can the container configuration be tested?
+	</p>
+	<h3 id="95309a518aa74183bdf6e1b41b6c4b85">
+		Explicit Testing of Container Configuration <a href="#95309a518aa74183bdf6e1b41b6c4b85" title="permalink">#</a>
+	</h3>
+	<p>
+		Since a container self-test doesn't achieve the desired goal, how can we ensure that an application can be composed correctly?
+	</p>
+	<p>
+		One option is to write an automated integration test (not a unit test) for each service that the application requires. Still, if done manually, you run the risk of forgetting to write a test for a specific service. A better option is to come up with a convention so that you can identify <em>all</em> the services required by a specific application, and then write a convention-based test to verify that the container can resolve them all.
+	</p>
+	<p>
+		Will this guarantee that the application can be correctly composed?
+	</p>
+	<p>
+		No, it only guarantees that it can be composed  -  not that this composition is <em>correct.</em>
+	</p>
+	<p>
+		Even when a composed instance can be created for each and every service, many things may still be wrong:
+	</p>
+	<ul>
+		<li>Composition is just plain wrong:
+			<ul>
+				<li>Decorators may be missing</li>
+				<li>Decorators may have been added in the wrong order</li>
+				<li>The wrong services are injected into consumers (this is more likely to happen when you follow the <a href="http://codemanship.co.uk/parlezuml/blog/?postid=934">Reused Abstractions Principle</a>, since there will be multiple concrete implementations of each interface)</li>
+			</ul></li>
+		<li>Configuration values like connection strings and such are incorrect  -  e.g. while a connection string is supplied to a constructor, it may not contain the correct values.</li>
+		<li>Even if <em>everything</em> is correctly composed, the run-time environment may prevent the application from working. As an example, even if an injected connection string is correct, there may not be any connection to the database due to network or security misconfiguration.</li>
+	</ul>
+	<p>
+		In short, a <a href="http://xunitpatterns.com/Layer%20Test.html">Subcutaneous Test</a> or full System Test is the only way to verify that <em>everything</em> is correctly wired. However, if you have good test coverage at the unit test level, a series of <a href="http://xunitpatterns.com/Smoke%20Test.html">Smoke Tests</a> is all that you need at the System Test level because in general you have good reason to believe that all behavior is correct. The remaining question is whether all this correct behavior can be correctly connected, and that tends to be an all-or-nothing proposition.
+	</p>
+	<h3 id="9e7ff4973fc44bffbc361afcf4a0b61c">
+		Conclusion <a href="#9e7ff4973fc44bffbc361afcf4a0b61c" title="permalink">#</a>
+	</h3>
+	<p>
+		While it would be possible to write a set of convention-based integration tests to verify the configuration of a DI Container, the return of investment is too low since it doesn't remove the need for a set of Smoke Tests at the System Test level.
+	</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="ada400a2d395482abf0eba4d2b111744">
+	<div class="comment-author">Graham</div>
+	<div class="comment-content">While you're correct that integration tests are not required, they can still provide value if they pin-point the problem more quickly.<br>
+<br>
+A failing smoke test won't always tell you exactly what went wrong (while that's a failing of the test, it's not always that easy to fix). Rather than investigating, I'd prefer to have a failing integration test that means the smoke test won't even be run.<br>
+<br>
+I find the most value comes from tests that try and resolve the root of the object graph from the bootstrapped container, i.e. anything I (or a framework) explicitly try and resolve at runtime.<br>
+<br>
+Their being green doesn't necessarily mean the application is fine, but their being red means it's definitely broken. It is a duplication of testing, but so are the smoke tests and some of the unit tests (hopefully!).</div>
+	<div class="comment-date">2011-12-22 11:18 UTC</div>
+</div>
+<div class="comment" id="1f55e95e42de4a8f932e68ae6ec56518">
+	<div class="comment-author">Jan</div>
+	<div class="comment-content">I am currently not quite sure whether an automated configuration test is really required or not.<br>
+<br>
+The correct wireing is already tested by the DI Container itself. An error prone configuration will be obvious in the first developer or at least user test.<br>
+So, is this kind of test overhead, useful or even necessary?<br>
+I probably wouldn't do these kind tests.</div>
+	<div class="comment-date">2011-12-22 20:36 UTC</div>
+</div>
+<div class="comment" id="c504f28423fa4b2887c1241df5a9a0de">
+	<div class="comment-author">Mike Bridge</div>
+	<div class="comment-content">In my application, I'd like to assert that my composition root will correctly instantiate a decorator in one situation and not in another.  I managed to miswire this on my first attempt and have been trying to figure out how to write a simple test to assert that I'd specified the dependencies correctly.<br>
+<br>
+Would it be worthwhile strategy to unit test my container's configuration by mocking the container's resolver?  I'd like to be able to run my registration on a container, then assert that the mocked resolver received the correct &quot;Resolve&quot; messages in the correct order.  Currently I'm using validating this with an integration test, but I was thinking that this would be much simpler---if my container supports it.<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+</div>
+	<div class="comment-date">2011-12-28 19:23 UTC</div>
+</div>
+<div class="comment" id="4e3f50d46d474552967dcfad05e460b1">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">That sounds like a brittle test, because instead of testing the 'what' you'd be testing the 'how'.</div>
+	<div class="comment-date">2011-12-29 07:50 UTC</div>
+</div>
+<div class="comment" id="33c72917604e44cf96982d8a2103e4bb">
+	<div class="comment-author">Mike Bridge</div>
+	<div class="comment-content">Thanks, that's probably a correct assessment.  I was intending it to be an interaction test which asserts &quot;given a certain input to my DI container initializer, my decorator should be created when the container instantiates my graph&quot;.<br>
+<br>
+I'll go back and think a bit more about how I can test the resulting behaviour instead of the implementation.</div>
+	<div class="comment-date">2011-12-29 17:12 UTC</div>
+</div>
+<div class="comment" id="f19cce6f7efa4b328a25aee820364b4a">
+	<div class="comment-author"><a href="Http://www.planetgeek.ch">Daniel Marbach</a></div>
+	<div class="comment-content">Hy<br>
+Nice post! We have a set of automated developer acceptance tests which start the system in an machine.specifications test, execute business commands, shuts down the system and does business asserts on the external subsystems which are stubbed away depending on the feature under test. With that we have an implicit container test: the system boots and behave as expected. If someone adds new ccomponents for that feature which are not properly registered the tests will fail.<br>
+<br>
+Daniel</div>
+	<div class="comment-date">2012-01-14 07:58 UTC</div>
+</div>
+<div class="comment" id="522069727e1340b4b18563070623aa0f">
+	<div class="comment-author">Thomas</div>
+	<div class="comment-content">Hi Mark,<br>
+<br>
+While I agree on the principle one question  came to my mind related to the first part. I don't understand why resolving IQux is an issue because even in runtime it's not required and not registered?<br>
+<br>
+Thanks<br>
+<br>
+Thomas</div>
+	<div class="comment-date">2012-02-03 18:16 UTC</div>
+</div>
+<div class="comment" id="ee82511037f147efa198687f711f1e57">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Thomas, the point of IQux is that, in the example, the container doesn't know about the IQux interface. A container self-test is only going to walk through all components to see if they can be resolved. However, such a test will never attempt to resolve IQux, since the container doesn't know about it.<br>
+<br>
+So, if an application code base requires IQux, the application is going to fail even when the container self-test succeeds.</div>
+	<div class="comment-date">2012-02-03 19:30 UTC</div>
+</div>
+<div class="comment" id="4889300d878b490ab015492fb28c4edf">
+	<div class="comment-author">Thomas</div>
+	<div class="comment-content">Mark, I understand that. However even in the production scenario when a code base requires IQux at some point in the time (for example Baz requires IQux in the constructor), it should be registered in the container, otherwise it won't work. I think I should miss something.</div>
+	<div class="comment-date">2012-02-05 11:10 UTC</div>
+</div>
+<div class="comment" id="610b2a029c124a02af55b08494835e3c">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">Yes - that's why a container self-test is worthless. The container doesn't know about the requirements of you application. All it can do is to test whether or not it's <em>internally</em> consistent. It doesn't tell you anything about its ability to resolve the object graphs your application is going to need.</div>
+	<div class="comment-date">2012-02-05 12:02 UTC</div>
+</div>
+<div class="comment" id="0b782a3dcec74f0aba1218c16398d24e">
+	<div class="comment-author">Rajkumar Srinivasan</div>
+	<div class="comment-content">Mark, Great post. In order to avoid violation of <strong>Resused Abstraction Principle</strong>, I infer from some of your other posts that we need to provide null object implementation for all interfaces or abstractions. I am just trying to confirm if my inference is correct.</div>
+	<div class="comment-date">2012-06-05 09:10 UTC</div>
+</div>
+<div class="comment" id="f196d5de2b7944469864d1902ac3c142">
+	<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+	<div class="comment-content">I'm not sure I can agree with that - that sounds a bit like Cargo Culting to me... The point of the RAP is that it tells us something about the degree of abstraction of our interfaces. If the sole purpose of adding a Null Object implementation is to adhere to the RAP, it may address the <em>mechanics</em> of the RAP, but not the <em />spirit&lt;/i&gt;.</div>
+	<div class="comment-date">2012-06-05 09:18 UTC</div>
+</div>
+<div class="comment" id="a78ea1ac7e0e43f8bf8d97bf35b76c41">
+<div class="comment-author"><a href="http://qujck.com">Peter Parker</a></div>
+<div class="comment-content">
+<p>You have made a very basic and primitive argument to sell a complex but feasible process as pointless: </p>
+<blockquote>
+<p>such a method is close to worthless</p>
+</blockquote>
+<p>and without a working example of a better way you explain why you are right. I am an avid reader of your posts and often reference them but IMO this particular argument is not well reasoned.</p>
+<p>Your opening argument explains why you may have an issue when using <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern/" target="_blank">the Service Locator anti-pattern</a>: </p>
+<blockquote>
+<p>an application could require instances of the ICorge, Corge or Grault types which are completely external to the configuration, in which case resolution would fail.</p>
+</blockquote>
+<p>Assertions such as the following would ideally be specified in a set of automated tests regardless of the method of composition </p>
+<blockquote>
+<p>Decorators may be missing</p>
+</blockquote>
+<p>&amp;</p>
+<blockquote>
+<p>Decorators may have been added in the wrong order</p>
+</blockquote>
+<p>And I fail to see how Pure DI would make the following into lesser issues </p>
+<blockquote>
+<p>Configuration values like connection strings and such are incorrect - e.g. while a connection string is supplied to a constructor, it may not contain the correct values</p>
+</blockquote>
+<p>&amp;</p>
+<blockquote>
+<p>the run-time environment may prevent the application from working</p>
+</blockquote>
+<hr>
+<p>My response was prompted by a statement made by you on <a href="http://stackoverflow.com/a/34195907">stackoverflow</a>. You are most highly regarded when it comes to .NET and DI and I feel statements such as <em>"Some people hope that you can ask a DI Container to self-diagnose, but you can't."</em> are very dangerous when they are out-of-date.</p>
+<p>Simple Injector will diagnose a number of issues beyond <em>"do I have a registration for X</em>". I'm not claiming that these tests alone are full-proof validation of your configuration but they are set of built in tests for issues that can occur in any configuration (including a <em>Pure</em> configuration) and these combined tests are far from worthless ...</p>
+<ul>
+<li>
+<strong>LifeStyle Mismatches</strong>: The component depends on a service with a lifestyle that is shorter than that of the component</li>
+<li>
+<strong>Short Circuited Dependencies</strong>: The component depends on an unregistered concrete type and this concrete type has a lifestyle that is different than the lifestyle of an explicitly registered type that uses this concrete type as its implementation</li>
+<li>
+<strong>Potential Single Responsibility Violations</strong>: The component depends on too many services</li>
+<li>
+<strong>Container-registered Type</strong>: A concrete type that was not registered explicitly and was not resolved using unregistered type resolution, but was created by the container using the default lifestyle</li>
+<li>
+<strong>Torn Lifestyle</strong>: Multiple registrations with the same lifestyle map to the same component</li>
+<li>
+<strong>Ambiguous Lifestyles</strong>: Multiple registrations with the different lifestyles map to the same component</li>
+<li>
+<strong>Disposable Transient Components</strong>: A registration has been made with the Transient lifestyle for a component that implements <code>IDisposable</code>
+</li>
+</ul>
+<p>Your claim that <em>"such a method is close to worthless"</em> may be true for the majority of the available .NET DI Containers but it does not take Simple Injector's <a href="https://simpleinjector.readthedocs.org/en/latest/diagnostics.html" target="_blank">diagnostic services</a> into consideration.</p></div>
+<div class="comment-date">2015-12-11 09:15 UTC</div>
+</div>
+</div>

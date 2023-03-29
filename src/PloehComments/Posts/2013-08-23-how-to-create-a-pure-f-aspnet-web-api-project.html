@@ -1,0 +1,225 @@
+---
+layout: post
+title: "How to create a pure F# ASP.NET Web API project"
+description: "How to create a single F# project for an ASP.NET Web API, without using an auxiliary C# or VB host project."
+date: 2013-08-23 09:13 UTC
+tags: [Services, Languages, F#, ASP.NET Web API]
+image: "/content/binary/initial-fsharp-project.png"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		Implementing an <a href="http://www.asp.net/web-api">ASP.NET Web API</a> service in F# is <a href="http://blogs.msdn.com/b/fsharpteam/archive/2012/09/04/exploring-the-online-templates-creating-a-web-api-with-f-and-asp-net.aspx">a relatively well-described process</a>, but everywhere I look, it seems that people are relying on a (Humble) C# Web Project to act as a host for a library written in F#. You can use an online Visual Studio template, or you can do this by hand - it's not particularly difficult. Where's the challenge in that?
+	</p>
+	<p>
+		Partly in a quest to demonstrate that F# is a general-purpose language, and partly just to see if it can be done, I wanted to create a pure F# ASP.NET Web API project, without relying on a C# host project. Most people on Twitter advised against it because <a href="https://twitter.com/tomaspetricek/status/370598327361863680">there's no F# support for Razor, *.aspx, or *.cshtml</a>. However, that's not a concern for a Web API, since it's not going to generate HTML anyway.
+	</p>
+	<p>
+		As <a href="https://twitter.com/dotnetnerd">@dotnetnerd</a> puts it:
+		<blockquote>"<a href="https://twitter.com/dotnetnerd/status/370546345360515072">not trivial but doable</a>"</blockquote>
+		That turns out to be quite an accurate description. Here's how.
+	</p>
+	<h3 id="4965dbf097d84c218c844b09ecfcce8e">
+		Create an F# library project <a href="#4965dbf097d84c218c844b09ecfcce8e" title="permalink">#</a>
+	</h3>
+	<p>
+		The first thing I did was to create a normal F# library project.
+	</p>
+	<p>
+		<img src="/content/binary/initial-fsharp-project.png">
+	</p>
+	<p>
+		As you can see, there's nothing in that project yet.
+	</p>
+	<h3 id="1f577784fa5c45e78758e6a3abce62a8">
+		Turn the project into a Web Project <a href="#1f577784fa5c45e78758e6a3abce62a8" title="permalink">#</a>
+	</h3>
+	<p>
+		In contrast to C# and VB, there's no built-in F# Web Project template. However, in order to work with a web project in Visual Studio 2012, it helps if the project is a 'real' Web Project, because it means that you can launch it in IIS Express, and such things.
+	</p>
+	<p>
+		Because there's no built-in Web Project template for F#, I'm not aware of a nice way to do this through the Visual Studio UI, but you can open your .fsproj file in an text editor and hand-edit it. In order to turn my project into a Web Project, I added this line of code to my .fsproj file (just below the Project/PropertyGroup/ProjectGuid element):
+	</p>
+	<p>
+<pre style="margin: 0px;"><span style="color: blue;">&lt;</span><span style="color: #a31515;">ProjectTypeGuids</span><span style="color: blue;">&gt;</span>{349c5851-65df-11da-9384-00065b846f21};{F2A71F9B-5D33-465A-A702-920D77279786}<span style="color: blue;">&lt;/</span><span style="color: #a31515;">ProjectTypeGuids</span><span style="color: blue;">&gt;</span></pre>
+	</p>
+	<p>
+		The 349c5851-65df-11da-9384-00065b846f21 GUID tells Visual Studio that this is a Web Project, while F2A71F9B-5D33-465A-A702-920D77279786 indicates an F# project.
+	</p>
+	<p>
+		This isn't entirely without drawbacks (that I'll get to in a minute), but you can now reload the project in Visual Studio, and you actually have an F# Web Project.
+	</p>
+	<h3 id="04a94f03ae794ae1965da7fd970c4413">
+		Turn on IIS Express <a href="#04a94f03ae794ae1965da7fd970c4413" title="permalink">#</a>
+	</h3>
+	<p>
+		One of the things you can do with a Web Project is to right-click in Solution Explorer and select "Use IIS Express...", so I did that.
+	</p>
+	<h3 id="bac43335a9d24aa5a01efddca14fa20c">
+		Add Web API dependencies <a href="#bac43335a9d24aa5a01efddca14fa20c" title="permalink">#</a>
+	</h3>
+	<p>
+		In order to use the ASP.NET Web API, you'll need to add the appropriate dependencies. I did that by adding the <a href="http://www.nuget.org/packages/Microsoft.AspNet.WebApi.WebHost/4.0.30506.0">Microsoft.AspNet.WebApi.WebHost</a> NuGet package.
+	</p>
+	<h3 id="7145d32e9adb4b6883beae916fe25a3f">
+		Add a code file <a href="#7145d32e9adb4b6883beae916fe25a3f" title="permalink">#</a>
+	</h3>
+	<p>
+		One of the disadvantages of creating an F# Web Project is that it's an unknown combination, so you can't add <em>anything</em> to the project:
+	</p>
+	<p>
+		<img src="/content/binary/no-items-found-for-fsharp-web-project.png">
+	</p>
+	<p>
+		In order to work around this problem, I again hand-edited the .fsproj file, temporarily commenting out the ProjectTypeGuids element I previously added. Then I added an F# code file, and finally added the ProjectTypeGuids element again.
+	</p>
+	<h3 id="e0e4a955d6e54957ad3b727e543b9cf6">
+		Change the output folder <a href="#e0e4a955d6e54957ad3b727e543b9cf6" title="permalink">#</a>
+	</h3>
+	<p>
+		The default output folder for the <em>debug</em> build is "bin\Debug". Although I'm not sure whether this is <em>strictly</em> necessary, I changed it to "bin" because that's how C# Web Projects work...
+	</p>
+	<h3 id="e91ab54b270e451689dd34a019b3829c">
+		Reference System.Web <a href="#e91ab54b270e451689dd34a019b3829c" title="permalink">#</a>
+	</h3>
+	<p>
+		In order to be able to derive a Global class from System.Web.HttpApplication, I added a reference to System.Web. This is a BCL library, so I added it by using the old-fashioned <em>Add reference</em> menu item (instead of using NuGet).
+	</p>
+	<h3 id="a94fe5d3188042ad9ae0d6955f16fe20">
+		Add Global.asax <a href="#a94fe5d3188042ad9ae0d6955f16fe20" title="permalink">#</a>
+	</h3>
+	<p>
+		Next, I added a Global.asax file with this content:
+	</p>
+	<p>
+<pre style="margin: 0px;"><span style="background: yellow;">&lt;%</span><span style="color: blue;">@</span> <span style="color: maroon;">Application</span> <span style="color: red;">Inherits</span><span style="color: blue;">="Ploeh.Samples.FebApi.Global"</span> <span style="background: yellow;">%&gt;</span></pre>
+	</p>
+	<p>
+		The class Ploeh.Samples.FebApi.Global doesn't exist yet, so if you try to run the site at this stage, it's going to fail.
+	</p>
+	<h3 id="e7c9a44feca148baa030211cae28cadd">
+		Add a Global class <a href="#e7c9a44feca148baa030211cae28cadd" title="permalink">#</a>
+	</h3>
+	<p>
+		In order to add the Ploeh.Samples.FebApi.Global class, I wrote the first F# code in the project:
+	</p>
+	<p>
+<pre style="margin: 0px;"><span style="color: blue;">namespace</span> Ploeh.Samples.FebApi
+&nbsp;
+<span style="color: blue;">open</span> System
+&nbsp;
+<span style="color: blue;">type</span> Global() =
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">inherit</span> System.Web.HttpApplication()
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">member</span> this.Application_Start (sender : obj) (e : EventArgs) =
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; ()</pre>
+	</p>
+	<p>
+		The site still can't run, but at least now it doesn't complain about a missing Global class.
+	</p>
+	<h3 id="79f6a9913c1f47b5bc777e202be9a6fe">
+		Add a Route <a href="#79f6a9913c1f47b5bc777e202be9a6fe" title="permalink">#</a>
+	</h3>
+	<p>
+		The next step was to add a default Web API route:
+	</p>
+	<p>
+<pre style="margin: 0px;"><span style="color: blue;">namespace</span> Ploeh.Samples.FebApi
+&nbsp;
+<span style="color: blue;">open</span> System
+<span style="color: blue;">open</span> System.Web.Http
+&nbsp;
+<span style="color: blue;">type</span> HttpRouteDefaults = { Controller : string; Id : obj }
+&nbsp;
+<span style="color: blue;">type</span> Global() =
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">inherit</span> System.Web.HttpApplication()
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">member</span> this.Application_Start (sender : obj) (e : EventArgs) =
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; GlobalConfiguration.Configuration.Routes.MapHttpRoute(
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: #a31515;">"DefaultAPI"</span>,
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; <span style="color: #a31515;">"{controller}/{id}"</span>,
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; { Controller = <span style="color: #a31515;">"Home"</span>; Id = RouteParameter.Optional }) |&gt; ignore</pre>
+	</p>
+	<p>
+		At this point, you actually have an ASP.NET Web API site, because now, when you attempt to run the site, you get this error message:
+		<blockquote>No HTTP resource was found that matches the request URI 'http://localhost:64176/'. No type was found that matches the controller named 'Home'.</blockquote>
+		Which is great, because this is known territory.
+	</p>
+	<h3 id="fd9af0a5544f46818edc30bb0d67e6df">
+		Add HomeController <a href="#fd9af0a5544f46818edc30bb0d67e6df" title="permalink">#</a>
+	</h3>
+	<p>
+		Adding the missing HomeController class is easy:
+	</p>
+	<p>
+<pre style="margin: 0px;"><span style="color: blue;">type</span> HomeController() =
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">inherit</span> ApiController()</pre>
+	</p>
+	<p>
+		Of course, it doesn't do anything yet, so when you browse to the API, you get this (entirely expected) error message:
+		<blockquote>The requested resource does not support http method 'GET'.</blockquote>
+		This problem is easy to solve:
+	</p>
+	<p>
+<pre style="margin: 0px;"><span style="color: blue;">type</span> HomeRendition() =
+&nbsp;&nbsp;&nbsp; [&lt;DefaultValue&gt;] <span style="color: blue;">val</span> <span style="color: blue;">mutable</span> Message : string
+&nbsp;&nbsp;&nbsp; [&lt;DefaultValue&gt;] <span style="color: blue;">val</span> <span style="color: blue;">mutable</span> Time : string
+&nbsp;
+<span style="color: blue;">type</span> HomeController() =
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">inherit</span> ApiController()
+&nbsp;&nbsp;&nbsp; <span style="color: blue;">member</span> this.Get() =
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; this.Request.CreateResponse(
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; HttpStatusCode.OK,
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; HomeRendition(
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Message = <span style="color: #a31515;">"Hello from F#"</span>,
+&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp; Time = DateTimeOffset.Now.ToString(<span style="color: #a31515;">"o"</span>)))</pre>
+	</p>
+	<p>
+		Now, when browsing to the API, you get something like this:
+	</p>
+	<p>
+<pre style="margin: 0px;"><span style="color: blue;">&lt;</span><span style="color: #a31515;">HomeRendition</span><span style="color: blue;"> </span><span style="color: red;">xmlns</span><span style="color: blue;">=</span>"<span style="color: blue;">http://schemas.datacontract.org/2004/07/Ploeh.Samples.FebApi</span>"<span style="color: blue;">&gt;</span>
+<span style="color: blue;">&nbsp; &lt;</span><span style="color: #a31515;">Message</span><span style="color: blue;">&gt;</span>Hello from F#<span style="color: blue;">&lt;/</span><span style="color: #a31515;">Message</span><span style="color: blue;">&gt;</span>
+<span style="color: blue;">&nbsp; &lt;</span><span style="color: #a31515;">Time</span><span style="color: blue;">&gt;</span>2013-08-23T10:26:40.8490741+02:00<span style="color: blue;">&lt;/</span><span style="color: #a31515;">Time</span><span style="color: blue;">&gt;</span>
+<span style="color: blue;">&lt;/</span><span style="color: #a31515;">HomeRendition</span><span style="color: blue;">&gt;</span></pre>
+	</p>
+	<p>
+		Success, of a sort!
+	</p>
+	<p>
+		This Web API now runs in IIS Express on my local machine. However, at this point, it still doesn't run in an Azure Web Site (which is something I also wanted to enable), but I'll cover how to do that in <a href="/2013/08/26/running-a-pure-f-web-api-on-azure-web-sites">a future post</a>.
+	</p>
+	<p>
+		<strong>Update 2013.19.12:</strong> It turns out that it's possible to <a href="http://bloggemdano.blogspot.dk/2013/11/adding-new-items-to-pure-f-aspnet.html">hack the registry</a> to make it possible to add standard F# project items to the project.
+	</p>
+	<p>
+		<strong>Update 2014.02.17:</strong> Since I wrote this article, <a href="http://blogs.msdn.com/b/fsharpteam/archive/2013/12/12/new-visual-f-templates-for-asp-net-web-api-mstest-and-nancy-now-available.aspx">new F# templates are now available for Visual Studio</a>, including <a href="http://bloggemdano.blogspot.dk/2013/12/a-new-f-aspnet-mvc-5-and-web-api-2.html">a template for F# ASP.NET MVC 5 and Web API 2 projects</a>.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">Comments</h2>
+	<div class="comment" id="7e7dff79b92040d5bf3eba7815652e15">
+		<div class="comment-author"><a href="http://scrambledbrains.net" name="comment-1">Mike McG</a></div>
+		<div class="comment-content">
+			<p>This is so awesome!</p>
+			<p>One note: For adding a new file, I simply used Ctrl+N (i.e. File&gt;New) to create a file in the Miscellaneous Files meta solution folder. I saved the file in the physical project folder, then in Solution Explorer I dragged it's icon from the Miscellaneous Files folder onto the F# Project node. Voila! New code file. Not as easy as it should be, but easier than unloading the project to edit the fsproj file.</p>
+		</div>
+		<div class="comment-date">2013-08-23 17:10 UTC</div>
+	</div>
+	<div class="comment" id="cf5a14be675f4848aa282c7e72df0554">
+		<div class="comment-author"><a href="/">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Mike, that's a great tip! Thank you.
+			</p>
+			<p>
+				Another option is to create the file in the file system (with Windows Explorer, or your preferred shell), and then add the existing file to the project.
+			</p>
+		</div>
+		<div class="comment-date">2013-08-24 09:49 UTC</div>
+	</div>
+</div>

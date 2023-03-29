@@ -1,0 +1,222 @@
+---
+layout: post
+title: "Some thoughts on anti-patterns"
+description: "What's an anti-pattern? Are there rules to identify them, or is it just name-calling? Before I use the term, I try to apply some rules of thumb."
+date: 2019-01-21 7:30 UTC
+tags: [Design Patterns]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		It takes time to write a book. Months, even years. It took me two years to write the first edition of <a href="http://amzn.to/12p90MG">Dependency Injection in .NET</a>. The <a href="/dippp">second edition of Dependency Injection in .NET</a> is also the result of much work; not so much by me, but by my co-author <a href="http://www.cuttingedge.it/blogs/steven">Steven van Deursen</a>.
+	</p>
+	<p>
+		When you write a book single-handedly, you can be as opinionated as you'd like. When you have a co-author, regardless of how much you think alike, there's bound to be some disagreements. Steven and I agreed about most of the changes we'd like to make to the second edition, but each of us had to yield or compromise a few times.
+	</p>
+	<p>
+		An interesting experience has been that on more than one occasion where I've reluctantly had to yield to Steven, over the time, I've come to appreciate his position. Two minds think better than one.
+	</p>
+	<h3 id="6497bdfd47db433c92a6ec4fabfd4e92">
+		Ambient Context <a href="#6497bdfd47db433c92a6ec4fabfd4e92" title="permalink">#</a>
+	</h3>
+	<p>
+		One of the changes that Steven wanted to make was that he wanted to change the status of the <em>Ambient Context</em> pattern to an anti-pattern. While I never use that pattern myself, I included it in the first edition in the spirit of the original <a href="http://amzn.to/XBYukB">Design Patterns</a> book. The <em>Gang of Four</em> made it clear that the patterns they'd described weren't invented, but rather discovered:
+		<blockquote>
+			<p>
+				"We have included only designs that have been applied more than once in different systems."
+			</p>
+			<footer><cite>Gamma et al, <em>Design Patterns</em>, 1994, p. 2</cite></footer>
+		</blockquote>
+		The spirit, as I understand it, is to identify solutions that already exist, and catalogue them. When I wrote the first edition of my book, I tried to do that as well.
+	</p>
+	<p>
+		I'd noticed what I eventually named the <em>Ambient Context</em> pattern several places in the .NET Base Class Library. Some of those APIs are still around today. <a href="https://docs.microsoft.com/dotnet/api/system.threading.thread.currentprincipal">Thread.CurrentPrincipal</a>, <a href="https://docs.microsoft.com/dotnet/api/system.globalization.cultureinfo.currentculture">CultureInfo.CurrentCulture</a>, <a href="https://en.wikipedia.org/wiki/Thread-local_storage">thread-local storage</a>, <a href="https://docs.microsoft.com/dotnet/api/system.web.httpcontext.current">HttpContext.Current</a>, and so on.
+	</p>
+	<p>
+		None of these really have anything to do with Dependency Injection (DI), but people sometimes attempt to use them to solve problems similar to the problems that DI addresses. For that reason, and because the pattern was so prevalent, I included it in the book - as a pattern, not an anti-pattern.
+	</p>
+	<p>
+		Steven wanted to make it an anti-pattern, and I conceded. I wasn't sure I was ready to explicitly call it out as an anti-pattern, but I agreed to the change. I'm becoming increasingly happy that Steven talked me into it.
+	</p>
+	<h3 id="08fbf0fd59154a57bbba936128f6c60e">
+		Pareto efficiency <a href="#08fbf0fd59154a57bbba936128f6c60e" title="permalink">#</a>
+	</h3>
+	<p>
+		I've heard said of me that I'm one of those people who call everything I don't like an anti-pattern. I don't think that's true.
+	</p>
+	<p>
+		I think people's perception of me is skewed because even today, the most visited page (my greatest hit, if you will) is an article called <a href="/2010/02/03/ServiceLocatorisanAnti-Pattern">Service Locator is an Anti-Pattern</a>. (It concerns me a bit that an article from 2010 seems to be my crowning achievement. I hope I haven't peaked yet, but the numbers tell a different tale.)
+	</p>
+	<p>
+		While I've used the term <em>anti-pattern</em> in other connections, I prefer to be conservative with my use of the word. I tend to use it only when I feel confident that something is, indeed, an anti-pattern.
+	</p>
+	<p>
+		What's an anti-pattern? <a href="https://amzn.to/2VHDX3m">AntiPatterns</a> defines it like this:
+		<blockquote>
+			<p>
+				"An AntiPattern is a literary form that describes a commonly occurring solution to a problem that generates decidedly negative consequences."
+			</p>
+			<footer><cite>Brown et al, <em>AntiPatterns</em>, 1998, p. 7</cite></footer>
+		</blockquote>
+		As definitions go, it's quite amphibolous. Is it the problem that generates negative consequences? Hardly. In the context, it's clear that it's the solution that causes problems. In any case, just because it's in a book doesn't necessarily make it right, but I find it a good start.
+	</p>
+	<p>
+		I think that the phrase <em>decidedly negative consequences</em> is key. Most solutions come with <em>some</em> disadvantages, but in order for a 'solution' to be an anti-pattern, the disadvantages must clearly outweigh any advantages produced.
+	</p>
+	<p>
+		I usually look at it another way. If I can solve the problem in a different way that generates at least as many advantages, but fewer disadvantages, then the first 'solution' might be an anti-pattern. This way of viewing the problem may stem from my background in economics. In that perspective, an anti-pattern simply isn't <a href="https://en.wikipedia.org/wiki/Pareto_efficiency">Pareto optimal</a>.
+	</p>
+	<h3 id="eb04af30ae5b40529fda1588525aee6d">
+		Falsifiability <a href="#eb04af30ae5b40529fda1588525aee6d" title="permalink">#</a>
+	</h3>
+	<p>
+		Another rule of thumb I employ to determine whether a solution could be an anti-pattern is <a href="https://en.wikipedia.org/wiki/Karl_Popper">Popper</a>'s concept of <a href="https://en.wikipedia.org/wiki/Falsifiability">falsifiability</a>. As a continuation of the Pareto efficiency perspective, an anti-pattern is a 'solution' that you can improve without any (significant) trade-offs.
+	</p>
+	<p>
+		That turns claims about anti-patterns into falsifiable statements, which I consider is the most intellectually honest way to go about claiming that things are bad.
+	</p>
+	<p>
+		Take, for example, the claim that <em>Service Locator is an anti-pattern</em>. In light of Pareto efficiency, that's a falsifiable claim. All you have to do to prove me wrong is to present a situation where Service Locator solves a problem, and I can't come up with a better solution.
+	</p>
+	<p>
+		I made the claim about Service Locator in 2010, and so far, no one has been able to present such a situation, even though several have tried. I'm fairly confident making that claim.
+	</p>
+	<p>
+		This way of looking at the term anti-pattern, however, makes me wary of declaiming solutions anti-patterns just because I don't like them. Could there be a counter-argument, some niche scenario, where the pattern actually couldn't be improved without trade-offs?
+	</p>
+	<p>
+		I didn't take it lightly when Steven suggested making Ambient Context an anti-pattern.
+	</p>
+	<h3 id="e027fe12038c4160a3be19bce065cd74">
+		Preliminary status <a href="#e027fe12038c4160a3be19bce065cd74" title="permalink">#</a>
+	</h3>
+	<p>
+		I've had some time to think about Ambient Context since I had the (civil) discussion with Steven. The more I think about it, the more I think that he's right; that Ambient Context really <em>is</em> an anti-pattern.
+	</p>
+	<p>
+		I never use that pattern myself, so it's clear to me that for all the situations that I typically encounter, there's always better solutions, with no significant trade-offs.
+	</p>
+	<p>
+		The question is: could there be some niche scenario that I'm not aware of, where Ambient Context is a bona fide good solution?
+	</p>
+	<p>
+		The more I think about this, the more I'm beginning to believe that there isn't. It remains to be seen, though. It remains to be falsified.
+	</p>
+	<h3 id="ed7478fa76324922a5543964e9c8c48e">
+		Summary <a href="#ed7478fa76324922a5543964e9c8c48e" title="permalink">#</a>
+	</h3>
+	<p>
+		I'm so happy that Steven van Deursen agreed to co-author the second edition of <em>Dependency Injection in .NET</em> with me. The few areas where we've disagreed, I've ultimately come around to agree with him. He's truly taken a good book and made it better.
+	</p>
+	<p>
+		One of the changes is that Ambient Context is now classified as an anti-pattern. Originally, I wasn't sure that this was the correct thing to do, but I've since changed my mind. I do think that Ambient Context belongs in the anti-patterns chapter.
+	</p>
+	<p>
+		I could be wrong, though. I was before.
+	</p>
+</div>
+
+<div id="comments">
+  <hr>
+  <h2 id="comments-header">
+    Comments
+  </h2>
+  <div class="comment" id="4493b077ecd84d6d8217d4944e11471a">
+    <div class="comment-author"><a href="https://rebus.fm">Mogens Heller Grabe</a></div>
+    <div class="comment-content">
+      <p>
+      	Thanks for great input for discussion :P
+      </p>
+      <p>
+      	Like with all other patterns and anti-patterns, I think there's a time and a place.
+      </p>
+      <p>
+      	Simply looking at it in a one-dimensional manner, i.e. asking "does there exist a solution to this problem with the same advantages but less downsides?" must be qualified with "IN THIS TIME AND PLACE", in my opinion.
+      </p>
+      <p>
+      	This way, the patterns/anti-patterns distinction does not make that much sense in a global perspective, because all patterns can be an anti-patterns in some situations, and vice versa.
+      </p>
+      <p>
+  		For example, I like what <em>Ambient Context</em> does in <a href="https://github.com/rebus-org/Rebus">Rebus</a>: It provides a mechanism that enables user code to transparently enlist its bus operations in a 
+  		unit of work, without requiring user code to pass that unit of work to each operation.
+      </p>
+      <p>
+  		This is very handy, e.g. in OWIN-based applications, where the unit of work can be managed by an OWIN middleware that uses a 
+  		<a href="https://github.com/rebus-org/Rebus/wiki/Transactions#i-am-not-in-a-transaction---i-want-to-either-publish-a-message-or-send-several-messages"><code>RebusTransactionScope</code></a>, 
+  		this way enlisting all send/publish operations on the bus in that unit of work.
+      </p>
+      <p>
+      	Had it not been possible to automatically pick up an ongoing ambient Rebus transaction context, one would probably need to pollute the interfaces of one's application with an <code>ITransactionContext</code> argument,
+      	thus not handling the cross-cutting concern of managing the unit of work in a cross-cutting manner.
+      </p>
+    </div>
+    <div class="comment-date">2019-01-21 12:37 UTC</div>
+  </div>
+
+	<div class="comment" id="6d2c0b22097341acadc41e37ce4f1dc8">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Mogens, thank you for writing. The reason I explicitly framed my treatment in a discourse related to <a href="https://en.wikipedia.org/wiki/Pareto_efficiency">Pareto efficiency</a> is exactly because this view on optima is multi-dimensional. When considering whether a 'solution coordinate' is Pareto-optimal or not, the question is exactly whether or not it's possible to improve at least one dimension without exacerbating any other dimension. If you can make one dimension better <em>without trade-offs</em>, then you can make a Pareto improvement. If you can only make one dimension better at the cost of one or more other dimensions, then you already have a Pareto-optimal solution.
+			</p>
+			<p>
+				The theory of Pareto efficiency doesn't say anything about the number of dimensions. Usually, as in the linked Wikipedia article, the concept is illustrated in the plane, but conceptually, it applies to an arbitrary number of dimensions.
+			</p>
+			<p>
+				In the context of anti-patterns, those dimensions include time and place, as you say.
+			</p>
+			<p>
+				I consider something to be an anti-pattern if I can make a change that constitutes an improvement in at least one dimension, without trading off of any other dimensions. In other words, in this article, I'm very deliberately not looking at it in a one-dimensional manner.
+			</p>
+			<p>
+				As I wrote, I'm still not sure that Ambient Context is an anti-pattern (although I increasingly believe it to be). How can we even test that hypothesis when we can't really quantify software design?
+			</p>
+			<p>
+				On the other hand, if we leave the question about Ambient Context for a moment, I feel confident that Service Locator is an anti-pattern, even in what you call a global perspective. The reason I believe that is that I made that falsifiable claim in 2010, and here, almost nine years later, no-one has successfully produced a valid counter-example.
+			</p>
+			<p>
+				I don't have the same long history with the claim about Ambient Context, so I could be wrong. Perhaps you are, right now, proving me wrong. I can't tell, though, because I don't (yet) know enough about Rebus to be able to tell whether what you describe is Pareto-optimal.
+			</p>
+			<p>
+				The question isn't whether the current design is 'handy'. The question is whether it's possible to come up with a design that's 'globally' better; i.e. either has all the advantages of the current design, but fewer disadvantages; or has more advantages, and only the same disadvantages.
+			</p>
+			<p>
+				I may be able to suggest such an improvement if provided with some code examples, but in the end we may never agree whether one design is better than another. After all, since we can't quantify software design, a subjective judgement will always remain.
+			</p>
+		</div>
+		<div class="comment-date">2019-01-24 8:00 UTC</div>
+	</div>
+	<div class="comment" id="2f2b71feaf034750bdddffdd66af1ab9">
+		<div class="comment-author"><a href="https://drew.from-wi.com/">Drew Douglas</a></div>
+		<div class="comment-content">
+			<p>
+				Mark, <br/>Thanks for this thoughtful meta-analysis of what it means to be an anti-pattern and how we think about them. What are some considerations when designing a replacement for ambient context objects? What patterns have you found succesful in object-oriented code? I'm sure you'd mention <a href="https://blog.ploeh.dk/2011/03/03/InjectionConstructorsshouldbesimple/">Constructor Injection</a> and <a href="https://msdn.microsoft.com/en-us/magazine/gg983487.aspx">CQRS</a> with <a href="https://blog.ploeh.dk/2011/03/22/CommandsareComposable/">decorators</a>. 
+			</p>
+			<p>How might one refactor ambient context out of a solution? Some say <a href="https://stackoverflow.com/questions/21050247/refactoring-out-singletons-globals-to-use-dependency-injection-for-unit-testing">passing around an object</a>, maybe some sort of <a href="https://en.wikipedia.org/wiki/Continuation-passing_style">continuation</a>?</p>
+			
+		</div>
+		<div class="comment-date">2019-04-12 6:09 UTC</div>
+	</div>
+		<div class="comment" id="86b35a424def4985a24f4ff2c5e06ef1">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Drew, thank you for writing. Indeed, in object-oriented code, I'd typically replace Ambient Contexts with either injected dependencies or Decorators. I'm not sure I see how CQRS fits into this picture.
+			</p>
+			<p>
+				When refactoring away an Ambient Context, it's typically, before the refactoring, used like <code>Context.DoSomething()</code>. The first step is often to inject a dependency and make it available to the class as a property called <code>Context</code>. IIRC, the C# overload resolution system should then pick the instance property over the static class, so that <code>Context.DoSomething()</code> calls <code>DoSomething</code> on the injected <code>Context</code> property.
+			</p>
+			<p>
+				There may be some static member that also use the Ambient Context. If that's the case, you'll first have to make those static members instance members.
+			</p>
+			<p>
+				Once you've made those replacements everywhere, you should be able to delete the Ambient Context.
+			</p>
+		</div>
+		<div class="comment-date">2019-04-13 16:43 UTC</div>
+	</div>
+</div>

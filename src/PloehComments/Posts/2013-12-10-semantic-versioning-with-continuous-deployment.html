@@ -1,0 +1,448 @@
+---
+layout: post
+title: "Semantic Versioning with Continuous Deployment"
+description: "When you use Semantic Versioning with Continuous Deployment, version numbers must be checked into source control systems by programmers."
+date: 2013-12-10 15:19 UTC
+tags: [Productivity]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		If you aren't already using <a href="http://semver.org">Semantic Versioning</a>, you should. It makes it <em>much</em> easier to figure out how to version your releases. Even if you're 'just' building software for your internal organization, or a single customer, <a href="/2012/12/18/ZookeepersmustbecomeRangers">you should still care about versioning of the software you release</a>. Instead of an ad-hoc versioning scheme, Semantic Versioning offers a set of easy-to-understand rules about when to increment which version number.
+	</p>
+	<p>
+		In short, you
+		<ul>
+			<li>increment the patch version (e.g. from 2.3.4 to 2.3.5) when you only release bug fixes and the like</li>
+			<li>increment the minor version (e.g. from 1.3.2 to 1.4.0) when you add new features</li>
+			<li>increment the major version (e.g. from 3.2.9 to 4.0.0) when you introduce breaking changes</li>
+		</ul>
+		This makes it much easier for you when you need to make a decision on a new version number, and it also makes it much easier for consumers of your software to understand when an update is 'safe', and when they should set aside some time to test compatibility.
+	</p>
+	<h3 id="4d69270dacf44904a67e785b6bad89d4">
+		Continuous Deployment <a href="#4d69270dacf44904a67e785b6bad89d4" title="permalink">#</a>
+	</h3>
+	<p>
+		While Semantic Versioning is great, it requires a bit of consideration when combined with <a href="http://puppetlabs.com/blog/continuous-delivery-vs-continuous-deployment-whats-diff">Continuous Deployment</a>. Every time you deploy a new version, you should increment the version number.
+	</p>
+	<p>
+		<a href="http://en.wikipedia.org/wiki/Continuous_delivery">Continuous Delivery</a> and Continuous Deployment rely on automation. A code check-in triggers an automated build, which is subsequently processed by a Deployment Pipeline, and potentially released to end-users. Each released (or releasable) build should have a unique version.
+	</p>
+	<p>
+		Traditionally, Build Servers have had the responsibility of incrementing version numbers - typically by incrementing a <em>build</em> number, like this:
+		<ol>
+			<li>3.7.11.942</li>
+			<li>3.7.12.958</li>
+			<li>3.7.13.959</li>
+			<li>3.7.14.979</li>
+			<li>3.7.15.987</li>
+		</ol>
+		where the fourth number is a <em>revision</em> number, that may correspond to a revision ID in a source control system (whether or not that makes sense, depends on which version control system you use).
+	</p>
+	<p>
+		Unfortunately, this versioning scheme is <em>wrong</em> if you combine Semantic Versioning with Continuous Deployment. Even if you throw away the fourth <em>build</em> number, you're left with a sequence like this:
+		<ol>
+			<li>3.7.11 (bug fix)</li>
+			<li>3.7.12 (partial new feature, hidden behind a <a href="http://martinfowler.com/bliki/FeatureToggle.html">Feature Toggle</a>.)</li>
+			<li>3.7.13 (performance improvement)</li>
+			<li>3.7.14 (completed feature initiated in 3.7.12)</li>
+			<li>3.7.15 (breaking changes in public API)</li>
+		</ol>
+		That's not Semantic Versioning.
+	</p>
+	<p>
+		Semantic Versioning might look like this:
+		<ol>
+			<li>3.7.11 (bug fix)</li>
+			<li>3.7.12 (partial new feature, hidden behind a <a href="http://martinfowler.com/bliki/FeatureToggle.html">Feature Toggle</a>.)</li>
+			<li>3.7.13 (performance improvement)</li>
+			<li>3.8.0 (completed feature initiated in 3.7.12)</li>
+			<li>4.0.0 (breaking changes in public API)</li>
+		</ol>
+		This doesn't work well with automatically incrementing the version number.
+	</p>
+	<h3 id="0db8ce54ad294235adfc11e92da8c139">
+		Versioning is a programmer decision <a href="#0db8ce54ad294235adfc11e92da8c139" title="permalink">#</a>
+	</h3>
+	<p>
+		With Continuous Deployment, every time you integrate code (check in, merge, rebase, whatever), you produce a version of the software that will be deployed. This means that every time you integrate, <em>something</em> or <em>somebody</em> should assign a new version to the software.
+	</p>
+	<p>
+		The rules of Semantic Versioning require explicit decisions to be made. Only the development team understands what a particular commit contains. Is it a fix? Is it a new feature? Is it a breaking change? A Build Server doesn't know how to answer these questions, but <em>you</em> do.
+	</p>
+	<p>
+		A few years ago, I changed the delivery scheme for my open source project <a href="https://github.com/AutoFixture/AutoFixture">AutoFixture</a> to use <a href="/2011/09/06/AutoFixturegoesContinuousDeliverywithSemanticVersioning">Semantic Versioning with Continuous Deployment</a>. When I did that, I realised that I could no longer rely on a Build Server for controlling the version. Instead, I would have to explicitly control the versioning as part of the commit process.
+	</p>
+	<p>
+		Because AutoFixture is a .NET project, I decided to use the version assignment mechanism already present in the framework: The <a href="http://msdn.microsoft.com/en-us/library/system.reflection.assemblyversionattribute.aspx">[AssemblyVersion]</a> and <a href="http://msdn.microsoft.com/en-us/library/system.reflection.assemblyfileversionattribute.aspx">[AssemblyFileVersion]</a> attributes that you typically put in AssemblyInfo files.
+	</p>
+	<p>
+		The version control system used for AutoFixture is <a href="http://git-scm.com">Git</a>, so it works like this in practice:
+		<ol>
+			<li>A programmer adds one or more commits to a branch.</li>
+			<li>The programmer sends a pull request.</li>
+			<li>I pull down the commits from the pull request.</li>
+			<li>I increment <em>all</em> the version attributes in <em>all</em> the AssemblyInfo files, and commit that change.</li>
+			<li>I push the commits to <em>master</em>.</li>
+			<li>The Build Server picks up the new commits, and the Deployment Pipeline kicks in.</li>
+		</ol>
+		This works well. You can see an example of this process if you examine <a href="https://github.com/AutoFixture/AutoFixture/commits/master">the commit log for AutoFixture</a>. The only problem is that AutoFixture has 28 AssemblyInfo files (each with two version attributes) that I must update and keep in sync. That's a lot of work, so obviously a target for automation, but that's the subject for <a href="/2013/12/11/zerotonine">another blog post</a>.
+	</p>
+	<p>
+		After more than two years of experience with this way of controlling software versions, I'm consistently using this approach for all <a href="https://github.com/ploeh">my open source software</a>, as well as the internal software we create in <a href="http://grean.com">Grean</a>.
+	</p>
+	<h3 id="080025496ea140b98bba612f9651fc55">
+		Summary <a href="#080025496ea140b98bba612f9651fc55" title="permalink">#</a>
+	</h3>
+	<p>
+		If you want to use Continuous Deployment (or Delivery) with Semantic Versioning, the assignment of a new version number is a programmer decision. Only a human understands when a commit constitutes a bug fix, a new feature, or a breaking change. The new version number must be committed to the version control system, so that whomever or whatever compiles and/or releases the software will always use the same version number for the same version of the source code.
+	</p>
+	<p>
+		The version number is kept in the source control system, together with the source code. It's not the realm of a Build Server.
+	</p>
+</div>
+
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+	<div class="comment" id="4826b4ebbc04458ab7618594cc19de72">
+		<div class="comment-author"><a href="http://www.augi.cz">Augi</a></div>
+		<div class="comment-content">You wrote Build Server doesn't know how to answer some questions. I think that it could - if every commit contains link to issue ID and Build Server is able to check type, state, etc. of issues related to given build then the Build Server could theoreticaly make the decision about version incrementing.</div>
+		<div class="comment-date">2013-12-10 17:02 UTC</div>
+	</div>
+	<div class="comment" id="dcefe24f0be548798f7db78bcb4b6adb">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Augi, it's true that you can create other approaches in order to attempt to address the issue, but the bottom line remains that a <em>human being</em> must make the decision about how to increment the version number. As you suggest, you can put information guiding that decision outside the source code itself, but then you'd be introducing another movable part that can break. If you do something like you suggest, you'll still need to add some machine-readable metadata to the linked issue ID. To add spite to injury, this also makes it more difficult to reproduce what the Build Server does on your local machine - particularly if you're attempting to build while offline.
+			</p>
+			<p>
+				While it sounds like it would be possible, what do you gain by doing something like that?
+			</p>
+		</div>
+		<div class="comment-date">2013-12-10 19:16 UTC</div>
+	</div>
+
+	<div class="comment" id="f895893358e941be82256ca74fc631ef">
+		<div class="comment-author"><a href="https://github.com/nuggetboy">Chris Simmons</a></div>
+		<div class="comment-content">
+			<p>
+				Mark, I also have a Visual Studio solution or two with multiple AssemblyInfo.cs files (although not as many
+				as you) and wish to use a common version number for each contained project.  I came up with the following
+				approach, which doesn't require any automation.  It only uses the Visual Studio/MSBuild
+				&lt;Link /&gt; functionality.  The key is simply to use the
+				<a href="http://msdn.microsoft.com/en-us/library/windowsphone/develop/jj714082(v=vs.105).aspx">Add As Link</a>
+				functionality for common attributes.
+			</p>
+			<p>
+				Simply put, I split out the common information (Version info and company/copyright/trademark info) from
+				projects' AssemblyInfo.cs files into another file called SolutionAssemblyInfo.cs.  I place that file at the
+				root of the solution (outside of any project folders).  Then, for each project, remove the version information
+				from the AssemblyInfo.cs file and use the 'Add As Link' function in the 'Add Existing Item'
+				function in Visual Studio to link to the SolutionAssemblyInfo.cs file.  With that, you have only one place
+				to update the version information: the SolutionAssemblyInfo.cs file.  Any change to that version
+				information will be included in each project.
+			</p>
+			<p>
+				That might be enough information to get you going, but if not, I'll expand and outline the specific process.
+				The basic idea is to look at the AssemblyInfo.cs file as having two sets of metadata:
+				<ul>
+					<li>Metadata specific to the project itself:
+						<ul>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.assemblytitleattribute.aspx">[AssemblyTitle]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.AssemblyDescriptionattribute.aspx">[AssemblyDescription]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.AssemblyConfigurationattribute.aspx">[AssemblyConfiguration]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.AssemblyProductattribute.aspx">[AssemblyProduct]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.AssemblyCultureattribute.aspx">[AssemblyCulture]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/System.Runtime.InteropServices.ComVisibleAttribute.aspx">[ComVisible]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/System.Runtime.InteropServices.GuidAttribute.aspx">[Guid]</a></li>
+						</ul>
+					</li>
+					<li>Metadata that really should be shared amongst all projects in the solution.  Specifically:
+						<ul>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.assemblyversionattribute.aspx">[AssemblyVersion]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.assemblyfileversionattribute.aspx">[AssemblyFileVersion]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.assemblyinformationalversionattribute.aspx">[AssemblyInformationalVersion]</a> (Although, depending on your needs, you may choose to leave this attribute in the project-specifics AssemblyInfo.cs)</li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.AssemblyCompanyattribute.aspx">[AssemblyCompany]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.AssemblyCopyrightattribute.aspx">[AssemblyCopyright]</a></li>
+							<li><a href="http://msdn.microsoft.com/en-us/library/system.reflection.AssemblyTrademarkattribute.aspx">[AssemblyTrademark]</a></li>
+						</ul>
+					</li>
+				</ul>
+			</p>
+			<p>
+				You can separate the shared metadata into a common AssemblyInfo.cs
+				file.  Then, by linking to that common file in each project (as opposed to including), you won't need
+				to update 28 files; you'll only need to update the common one.
+			</p>
+			<p>
+				Assume I have the following AssemblyInfo.cs file for one of my projects:
+				<blockquote><pre>
+// AssemblyInfo.cs
+using System.Reflection;
+using System.Runtime.InteropServices;
+
+[assembly: AssemblyTitle("SampleProject")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("Company Name")]
+[assembly: AssemblyProduct("SampleProject")]
+[assembly: AssemblyCopyright("Copyright (c) Company Name 2013")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+[assembly: ComVisible(false)]
+
+[assembly: Guid("7ae5f3ab-e519-4c44-bb65-489305fc36b0")]
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+				</pre></blockquote>
+
+				I split this out into two files:
+				<blockquote><pre>
+// AssemblyInfo.cs
+using System.Reflection;
+using System.Runtime.InteropServices;
+
+[assembly: AssemblyTitle("SampleProject")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyProduct("SampleProject")]
+[assembly: AssemblyCulture("")]
+
+[assembly: ComVisible(false)]
+
+[assembly: Guid("7ae5f3ab-e519-4c44-bb65-489305fc36b0")]
+				</pre></blockquote>
+	and
+				<blockquote><pre>
+// SolutionAssemblyInfo.cs
+using System.Reflection;
+
+[assembly: AssemblyCompany("Company Name")]
+[assembly: AssemblyCopyright("Copyright (c) Company Name 2013")]
+[assembly: AssemblyTrademark("")]
+
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+// Depending on your needs, AssemblyInformationalVersion as well?
+				</pre></blockquote>
+			</p>
+			<p>
+				The SolutionAssemblyInfo.cs goes in the root of your solution and should
+				initially not be included in any projects.  Then, for each project:
+				<ul>
+					<li>Remove all attributes that went into SolutionAssemblyInfo.cs</li>
+					<li>Right-click the project and &quot;Add..., Existing Item...&quot;</li>
+					<li>Navigate to the SolutionAssemblyInfo.cs file</li>
+					<li>Instead of clicking the &quot;Add&quot; button, click the little drop-down on it and select
+					&quot;Add As Link&quot;</li>
+					<li>If you want the new linked SolutionAssemblyInfo.cs file to show up under the Properties folder
+					(like the AssesmblyInfo.cs file), just drag it from the project root into the Properties folder.
+					Unfortunately, you can't simply add the link to the Properties folder directly (at least not in VS 2012).</li>
+				</ul>
+
+				(Note: it looks like there may be an easier method in VS 2012+ only to get the &quot;Add As Link&quot; function, mentioned
+				<a href="http://stackoverflow.com/a/12858818/208990">on StackOverflow</a>, by simply dragging and dropping while
+				holding the Alt key.)
+			</p>
+			<p>
+				That's it.  Now, you will be able to access this SolutionAssemblyInfo.cs file from any of your projects
+				and any changes you make to that file will persist into the linked file, being shared with all projects.
+			</p>
+			<p>
+				The downside to this, as opposed to an automation solution, is that you need to repeat this process
+				(starting with &quot;Remove all attributes...&quot;) for all new projects you add.  However, in my
+				opinion, that's a small, one-time-per-project price to pay.  With the above, you let the established
+				tool work for you with built-in features.
+			</p>
+		</div>
+		<div class="comment-date">2013-12-10 18:00 UTC</div>
+	</div>
+
+	<div class="comment" id="a9a88b94f4e44f06819425e73e453931">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Chris, thank you for your comment. That may actually be a good way to do it, too. While I did know about the <em>add as link</em> feature of Visual Studio, I've had bad experiences with it in the past. This may actually be a <a href="http://en.wikipedia.org/wiki/Classical_conditioning">Pavlovian reaction</a> on my part, because I must admit that I can no longer remember what those bad experiences were :$
+			</p>
+		</div>
+		<div class="comment-date">2013-12-10 20:38 UTC</div>
+	</div>
+	<div class="comment" id="42b5485f59e945e5923f956d9c232954">
+		<div class="comment-author">Laurence Evans</div>
+		<div class="comment-content">
+			<p>
+				I had been thinking about this a bit myself and I believe an easy solution to this is to just make use of a modified branching structure in the same/similar setup as the versioning. So you'd have your major/minor/build branches and your build server could increment numbers differently depending on which branch you update which would fully take care of the automation side of things for you. This would be rather trivial to setup and maintain but fulfill your requirements set out in the post.
+			</p>
+			<p>
+				Of course you would have to be quite disciplined as to which branch you commit your code to but I don't see that being too much of an overhead, you usually know when you're going to be patching/creating new featuresd or introducing breaking changes before you start working. Worst case make use of git stash save/pop to move work between branches.
+			</p>
+			<p>
+				Could call this semantic branching?
+			</p>
+		</div>
+		<div class="comment-date">2013-12-10 23:54 UTC</div>
+	</div>
+	<div class="comment" id="f0cb6cbe392a470998c8334ffa5b43e0">
+		<div class="comment-author"><a href="https://github.com/serra">marijn van der Zee</a></div>
+		<div class="comment-content">
+			<blockquote>
+			<p>
+				Could call this semantic branching?
+			</p>
+			</blockquote>
+			
+			<p>
+			You might be interested in <a href="https://github.com/Particular/GitFlowVersion">the GitFlowVersion project</a>,
+			which leverages some of the concepts you mention.
+			</p>
+		</div>
+		<div class="comment-date">2013-12-11 09:54 UTC</div>
+	</div>
+	<div class="comment" id="f27c2a785c9d49cd9fa406a47107bc6a">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Laurence, Marijn, thank you for your comments. As cool as Git is (currently, I'm not aware of anything better), I don't like coupling a process unnecessarily to a particular tool. What if, some day, something better than Git arrives?
+			</p>
+			<p>
+				Additionally, I agree with Martin Fowler, Jez Humble, and others, that branching is essentially evil, so I don't think it's a good idea building an entire versioning scheme around branches.
+			</p>
+			<p>
+				As an alternative, I've <a href="/2013/12/11/zerotonine">introduced ZeroToNine</a>, a command-line tool (and library) that works independently of any version control system.
+			</p>
+		</div>
+		<div class="comment-date">2013-12-11 12:55 UTC</div>
+	</div>
+	
+	<div class="comment" id="ba51505868d348ee9e9fd2206946e113">
+		<div class="comment-author"><a href="http://grenade.github.io">Rob Thijssen</a></div>
+		<div class="comment-content">
+			<p>
+				<quote>you'd be introducing another movable part that can break...<br />
+				...sounds like it would be possible, what do you gain by doing something like that?</quote>
+			</p>
+			<p>
+				Humans are/have moving parts that can break too ;). In large organisations there are often as many differences of opinion as there are people. One developer's "breaking change" or "feature" is another's "improvement" or "bugfix". Human decision making also introduces arbitrarily variable logic. Software projects rotate developers in and out all the time. Will they all apply consistent logic to their versioning decisions?
+			</p>
+			<p>
+				Developers can make a decision about releases without incrementing a number in a file. They can for example click on a "Push to NuGet" or "Release to GitHub" button (which is a human, developer decision). It's then trivial for a CI server to calculate or increment a PATCH number based on the last NuGet or GitHub Push/Release. A MINOR version can be easily determined by linking to an issue tracker with issues that are linked to milestones. A MAJOR version is probably simplest when a human increments it, but I see no reason why it couldn't also be triggered by monitoring changes or breakages to existing unit tests (for example). Considering the clarity of the semver MAJOR.MINOR.PATCH definitions, I think an algorithm determining the version number is more consistent than a human decision. For example (in pseudo-code):
+			</p>
+			<pre>while (a release request is in progress)
+    if (app has previously been 'released' to some repository AND has subsequently changed in any way)
+        increment PATCH...
+            unless (all issues and features in next milestone have been marked closed, subsequent to last release)
+                increment MINOR and reset PATCH to zero...
+                    unless (unit tests that predate release have changed OR dependent application unit tests are failing OR some other determination of breaking change) 
+                        increment MAJOR and reset MINOR and PATCH to zero...</pre>
+		</div>
+		<div class="comment-date">2014-04-02 17:25 UTC</div>
+	</div>
+
+	<div class="comment" id="06ee47201d8a4fb9b8459be2c2b36dde">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Rob, thank you for writing. If I could have defined a trustworthy automated system to figure out semantic versioning, I would have done it. Is your proposed algorithm sufficiently robust?
+				<ul>
+					<li>How does the algorithm determine if all issues and features in the 'next milestone' have been marked closed? What if your issue tracking system is off-line?</li>
+					<li>Considering that the context here is <em>Continuous Delivery</em>, would one really have to create and maintain a 'milestone' for every update?</li>
+					<li>When an 'issue' is resolved, how does the algorithm know if it was a new feature, or a bug fix?</li>
+					<li>How does the algorithm determine if a unit test has changed in a breaking fashion? A unit test could have been refactored simply to make it easier to read, without actually changing the behaviour of the system.</li>
+					<li>How does the algorithm determine if a failing test was due to a breaking change, or that the actual reason was a badly written test?</li>
+				</ul>
+			</p>
+		</div>
+		<div class="comment-date">2014-04-04 18:11 UTC</div>
+	</div>
+	<div class="comment" id="27b27185ba774f4c82189f8eb3b9fe1b">
+		<div class="comment-author"><a href="http://gusvmx.blogspot.mx/">Gus Vargas</a></div>
+		<div class="comment-content">
+			<p>
+				What about versioning based on the branch names. I mean, what if we name a branch regarding to what it is suposed to do at the end. For instance, naming branches as feature-xxx, major-xxx, patch-xxx.
+				
+				Where I want to go is to automate the semantic versioning everytime a pull/merge request is accepted. So then the CI/CD tool, through a shell for instance, can just look at the last commit comment which is usually 'Merge branch xxx into master' (where xxx can be feature-yyy, major-yyy, patch-yyy) and increment the version acording to the branch merged.
+				
+				If it's a feature it increases the digit in the middle and resets the last one. On the other hand it it's a patch it only increases the last digit.
+				
+				Would it work? I mean the assignment of the new version is still a programmer decision which is done when they branch from master.
+			</p>
+		</div>
+		<div class="comment-date">2015-08-06 00:02 UTC</div>
+	</div>
+	<div class="comment" id="ab32464380184f268c8dd8b0e372acbf">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Gus, thank you for writing. I think your suggestion could work as well, although I haven't tried it.
+			</p>
+			<p>
+				The advantage of your suggestion is that it's more declarative. You address the question of <em>what</em> should happen (major, minor, patch), instead of <em>how</em> it should happen (which number). That's usually a good thing.
+			</p>
+			<p>
+				The disadvantage is that you push the burden of this to a central build step (on a build server, I presume), so it introduces more moving parts into the process, as well as a single point of failure.
+			</p>
+			<p>
+				Fortunately, the evaluation of advantages versus disadvantages can be a personal (or team) decision, so one can choose the option one likes best. It's always good to have options to choose from in the first place, so thank you for sharing!
+			</p>
+		</div>
+		<div class="comment-date">2015-08-06 06:06 UTC</div>
+	</div>
+  <div class="comment" id="5e1cee2478184a9a9befe237fc503099">
+    <div class="comment-author"><a href="https://github.com/jwstric2/">Jonathan Strickland</a></div>
+    <div class="comment-content">
+      <p>
+        Mark, I feel a bit outdated responding to a post that has a 4th birthday coming up.  I completely agree with Semantic versioning, even for cloud application deployments which my team is working with at this moment.  I am intrigued to how your workflow is working.
+      </p>
+      <p>
+        In our current workflow, we are forcing a version and changelog to be associated with a Pull Request.  Thus, the developer is incrementing this as part of the PR and our auditor pipeline is ensuring that the version/changelog is updated.  The team of course still have to ensure this version is correct, ie are you sure this is a micro change, look like a new feature to me or looks to me like you broke API compatibility and this is a major increment.  The issue we are starting to hit with this early model is our team is growing and we are facing constant merge conflicts with our version file and Changelog (its a ruby on rails project thus we use a config.yml for the version which is read in at runtime by our app and displayed properly as a link on the apps's page back to our Changelog version)
+      </p>
+      <p>
+        It appears in your workflow that you have hooks set up so that these are initiated by the person merging the code such these files are only changed post-merge and commited then.  If this is elaborated on in one of your books, let me know and my team could take a "work" break to go do some reading.  I appreciate your time on the matter.
+      </p>
+    </div>
+    <div class="comment-date">2017-08-09 17:54 UTC</div>
+  </div>
+
+  <div class="comment" id="7ae4b9e0bc9e44738e62ab8430a45ec5">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Jonathan, thank you for writing, and don't worry about the age of the post. It only pleases me that apparently I've managed to produce something durable enough to be of interest four years later.
+			</p>
+			<p>
+				In the interest of full disclosure, the busiest code base on which I've ever used this technique is <a href="https://github.com/AutoFixture/AutoFixture">AutoFixture</a>, and to be clear, <a href="https://github.com/AutoFixture/AutoFixture/issues/703">I've handed off the reigns of that project</a>. I've worked on bigger and more busy code bases than that, but these were internal enterprise code bases that didn't use Semantic Versioning.
+			</p>
+			<p>
+				Based on my experience with AutoFixture, I'd still use the process I used back then. It went something like this:
+				<ol>
+					<li>If a code review resulted in my decision to accept a pull request, I'd pull it down on my laptop.</li>
+					<li>Once on my laptop, I'd run the entire build locally. While I do realise that GitHub has a <em>merge</em> button, I regarded this as an extra verification step. While we had CI servers running, I think it never hurts to verify that it also builds on a developer's machine. Otherwise, you'd just have a problem the next time someone pulls <em>master</em>.</li>
+					<li>If the build passed, I'd merge the branch locally.</li>
+					<li>I'd then run <em>a single</em> <a href="https://github.com/ploeh/ZeroToNine">Zero29</a> command to update all version information in all appropriate files.</li>
+					<li>This single command would modify a set of text files, which I'd then check in. If you look at the AutoFixture commit history, you'll see lots of those check-ins.</li>
+					<li>Once checked in, I'd tag the commit with the version. Often I'd use a cryptic bash command that I no longer remember to first read the current version with Zero29, then pipe that number to some other utility that could produce the appropriate tag, and then pipe that to <code>git tag</code>. The point is: that could be an automated step as well.</li>
+					<li>Then I'd build the release binaries. That would be one other command.</li>
+					<li>Penultimately, I'd publish the release by pushing all binaries to NuGet.org. That would be one other bash command.</li>
+					<li>Finally, I'd push <em>master</em> and the new tag to GitHub.</li>
+				</ol>
+				As you can tell, that's less than a dozen bash commands. I could have automated most of it to one or two shell scripts, but I never got around to do that because I rather enjoyed the process. Consider that I didn't do this every day. If I had to do it several times a day, I would probably automate it more.
+			</p>
+			<p>
+				I'm sure you could even write a server-side script with a Web UI that could do this, if you wanted to, but I've always preferred doing a local build as part of the verification process.
+			</p>
+			<p>
+				I don't think I've written much more about this, rather than the <a href="/2013/12/11/zerotonine">announcement post for ZeroToNine</a>, as well as the documentation for it.
+			</p>
+		</div>
+		<div class="comment-date">2017-08-09 20:09 UTC</div>
+	</div>
+</div>

@@ -1,0 +1,129 @@
+---
+layout: post
+title: "Functors, applicatives, and friends"
+description: "Functors and related data structures are containers of values. It's a family of abstractions. An overview for object-oriented programmers."
+date: 2018-03-19 8:35 UTC
+tags: [Software Design]
+image: "/content/binary/functors-applicatives-bifunctors.png"
+image_alt: "Functors, applicative functors, and bifunctors as subsets of each other."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article series is part of <a href="/2017/10/04/from-design-patterns-to-category-theory">an even larger series of articles about the relationship between design patterns and category theory.</a>
+	</p>
+	<p>
+		If you've worked with C# or Java recently, you've most likely encountered types such as <code>Foo&lt;T&gt;</code> or <code>Bar&lt;T&gt;</code> (specifically, on .NET, e.g. <a href="https://msdn.microsoft.com/en-us/library/6sh2ey19">List&lt;T&gt;</a>). Perhaps you've also noticed that often, you can translate the type inside of <a href="https://bartoszmilewski.com/2014/01/14/functors-are-containers">the container</a>. For example, if you have a <code>Foo&lt;string&gt;</code>, perhaps you can call some method on it that returns a <code>Foo&lt;int&gt;</code>. If so, it may be a <em>functor</em>.
+	</p>
+	<p>
+		Not all generic types are functors. In order to be a functor, a generic type must obey a couple of intuitive laws. You'll learn about those in future articles.
+	</p>
+	<p>
+		Some functors have extra capabilities, and you'll learn about some of those as well. Some are called <em>applicative functors</em>, and some are called <em>bifunctors</em>. There are others, as well.
+	</p>
+	<p>
+		<img src="/content/binary/functors-applicatives-bifunctors.png" alt="Functors, applicative functors, and bifunctors as subsets of each other.">
+	</p>
+	<p>
+		All applicative functors are functors, and this is true for bifunctors as well.
+	</p>
+	<p>
+		In this article series, you'll learn about the following categories:
+		<ul>
+			<li><a href="/2018/03/22/functors">Functors</a>
+				<ul>
+					<li><a href="/2018/03/26/the-maybe-functor">The Maybe functor</a></li>
+					<li><a href="/2019/01/14/an-either-functor">An Either functor</a></li>
+					<li><a href="/2018/08/06/a-tree-functor">A Tree functor</a></li>
+					<li><a href="/2019/08/19/a-rose-tree-functor">A rose tree functor</a></li>
+					<li><a href="/2018/08/13/a-visitor-functor">A Visitor functor</a></li>
+					<li><a href="/2018/08/20/reactive-functor">Reactive functor</a></li>
+					<li><a href="/2018/09/03/the-identity-functor">The Identity functor</a></li>
+					<li><a href="/2018/09/10/the-lazy-functor">The Lazy functor</a></li>
+					<li><a href="/2018/09/24/asynchronous-functors">Asynchronous functors</a></li>
+					<li><a href="/2021/07/19/the-state-functor">The State functor</a></li>
+					<li><a href="/2021/08/30/the-reader-functor">The Reader functor</a></li>
+					<li><a href="/2020/06/22/the-io-functor">The IO functor</a></li>
+					<li><a href="/2020/10/19/monomorphic-functors">Monomorphic functors</a></li>
+					<li><a href="/2018/12/03/set-is-not-a-functor">Set is not a functor</a></li>
+				</ul>
+			</li>
+			<li><a href="/2018/10/01/applicative-functors">Applicative functors</a>
+				<ul>
+					<li><a href="/2018/10/08/full-deck">Full deck</a></li>
+					<li><a href="/2018/10/15/an-applicative-password-list">An applicative password list</a></li>
+					<li><a href="/2018/10/22/applicative-combinations-of-functions">Applicative combinations of functions</a></li>
+					<li><a href="/2018/10/29/the-maybe-applicative-functor">The Maybe applicative functor</a></li>
+					<li><a href="/2018/11/05/applicative-validation">Applicative validation</a></li>
+					<li><a href="/2018/11/26/the-test-data-generator-applicative-functor">The Test Data Generator applicative functor</a></li>
+					<li><a href="/2018/12/10/danish-cpr-numbers-in-f">Danish CPR numbers in F#</a></li>
+					<li><a href="/2018/12/17/the-lazy-applicative-functor">The Lazy applicative functor</a></li>
+					<li><a href="/2019/04/22/applicative-monoids">Applicative monoids</a></li>
+				</ul>
+			</li>
+			<li><a href="/2018/12/24/bifunctors">Bifunctors</a>
+				<ul>
+					<li><a href="/2018/12/31/tuple-bifunctor">Tuple bifunctor</a></li>
+					<li><a href="/2019/01/07/either-bifunctor">Either bifunctor</a></li>
+					<li><a href="/2019/08/12/rose-tree-bifunctor">Rose tree bifunctor</a></li>
+				</ul>
+			</li>
+			<li><a href="/2021/09/02/contravariant-functors">Contravariant functors</a>
+				<ul>
+					<li><a href="/2021/09/06/the-command-handler-contravariant-functor">The Command Handler contravariant functor</a></li>
+					<li><a href="/2021/09/09/the-specification-contravariant-functor">The Specification contravariant functor</a></li>
+					<li><a href="/2021/09/27/the-equivalence-contravariant-functor">The Equivalence contravariant functor</a></li>
+					<li><a href="/2021/10/04/reader-as-a-contravariant-functor">Reader as a contravariant functor</a></li>
+					<li><a href="/2021/10/25/functor-variance-compared-to-cs-notion-of-variance">Functor variance compared to C#'s notion of variance</a></li>
+					<li><a href="/2022/03/21/contravariant-dependency-injection">Contravariant Dependency Injection</a></li>
+				</ul>
+			</li>
+			<li><a href="/2021/11/01/profunctors">Profunctors</a>
+				<ul>
+					<li><a href="/2021/11/08/reader-as-a-profunctor">Reader as a profunctor</a></li>
+				</ul>
+			</li>
+			<li><a href="/2022/08/01/invariant-functors">Invariant functors</a>
+				<ul>
+					<li><a href="/2022/08/08/endomorphism-as-an-invariant-functor">Endomorphism as an invariant functor</a></li>
+					<li><a href="/2022/08/29/natural-transformations-as-invariant-functors">Natural transformations as invariant functors</a></li>
+					<li><a href="/2022/12/26/functors-as-invariant-functors">Functors as invariant functors</a></li>
+					<li><a href="/2023/02/06/contravariant-functors-as-invariant-functors">Contravariant functors as invariant functors</a></li>
+				</ul>
+			</li>
+			<li><a href="/2022/03/28/monads">Monads</a>
+				<ul>
+					<li><a href="/2022/04/04/kleisli-composition">Kleisli composition</a></li>
+					<li><a href="/2022/04/11/monad-laws">Monad laws</a></li>
+					<li><a href="/2022/04/19/the-list-monad">The List monad</a></li>
+					<li><a href="/2022/04/25/the-maybe-monad">The Maybe monad</a></li>
+					<li><a href="/2022/05/09/an-either-monad">An Either monad</a></li>
+					<li><a href="/2022/05/16/the-identity-monad">The Identity monad</a></li>
+					<li><a href="/2022/05/30/the-lazy-monad">The Lazy monad</a></li>
+					<li><a href="/2022/06/06/asynchronous-monads">Asynchronous monads</a></li>
+					<li><a href="/2022/06/20/the-state-monad">The State monad</a></li>
+					<li><a href="/2022/11/14/the-reader-monad">The Reader monad</a></li>
+					<li><a href="/2023/01/09/the-io-monad">The IO monad</a></li>
+					<li><a href="/2023/02/27/test-data-generator-monad">Test Data Generator monad</a></li>
+				</ul>
+			</li>
+			<li><a href="/2022/07/11/functor-relationships">Functor relationships</a>
+				<ul>
+					<li><a href="/2022/07/18/natural-transformations">Natural transformations</a></li>
+					<li>Traversals</li>
+					<li>Functor compositions</li>
+					<li>Functor products</li>
+					<li>Functor sums</li>
+				</ul>
+			</li>
+		</ul>
+		You'll see plenty of examples along the way. Most examples will be in C#, but some articles will have code examples in <a href="http://fsharp.org">F#</a> or <a href="https://www.haskell.org">Haskell</a>. You can read or skip those articles as you prefer.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2018/03/22/functors">Functors</a>.
+	</p>
+</div>

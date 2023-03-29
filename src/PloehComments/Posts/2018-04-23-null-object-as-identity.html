@@ -1,0 +1,381 @@
+---
+layout: post
+title: "Null Object as identity"
+description: "When can you implement a Null Object? When the return types of your methods are monoids."
+date: 2018-04-23 7:55 UTC
+tags: [Software Design, Haskell, Design Patterns]
+image: "/content/binary/null-object-identity-set-diagram.png"
+image_alt: "Set diagram showing identity as a subset of Null Object."
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		This article is part of <a href="/2018/03/05/some-design-patterns-as-universal-abstractions">a series of articles about design patterns and their category theory counterparts</a>. In a <a href="/2018/03/12/composite-as-a-monoid">previous article</a> you learned how there's a strong relationship between the <a href="https://en.wikipedia.org/wiki/Composite_pattern">Composite</a> design pattern and <a href="/2017/10/06/monoids">monoids</a>. In this article you'll see that the <a href="https://en.wikipedia.org/wiki/Null_Object_pattern">Null Object</a> pattern is essentially a special case of the Composite pattern.
+	</p>
+	<p>
+		I also think that there's a relationship between monoidal <em>identity</em> and the Null Object pattern similar to the relationship between Composite and monoids in general:
+	</p>
+	<p>
+		<img src="/content/binary/null-object-identity-set-diagram.png" alt="Set diagram showing identity as a subset of Null Object.">
+	</p>
+	<p>
+		Once more, I don't claim that an isomorphism exists. You may be able to produce Null Object examples that aren't monoidal, but on the other hand, I believe that all identities are Null Objects.
+	</p>
+	<h3 id="b082690114af4768ac6171438c7c7657">
+		Null Object <a href="#b082690114af4768ac6171438c7c7657" title="permalink">#</a>
+	</h3>
+	<p>
+		While the Null Object design pattern isn't one of the patterns covered in <a href="http://amzn.to/XBYukB">Design Patterns</a>, I consider it a <em>structural pattern</em> because Composite is a structural pattern, and Null Object is a special case of Composite.
+	</p>
+	<p>
+		Bobby Woolf's <a href="http://amzn.to/1dEKjcj">original text</a> contains an example in <a href="https://en.wikipedia.org/wiki/Smalltalk">Smalltalk</a>, and while I'm no Smalltalk expert, I think a fair translation to C# would be an interface like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">interface</span>&nbsp;<span style="color:#2b91af;">IController</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">bool</span>&nbsp;IsControlWanted();
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">bool</span>&nbsp;IsControlActive();
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">void</span>&nbsp;Startup();
+}</pre>
+	</p>
+	<p>
+		The idea behind the Null Object pattern is to add an implementation that 'does nothing', which in the example would be this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;<span style="color:blue;">class</span>&nbsp;<span style="color:#2b91af;">NullController</span>&nbsp;:&nbsp;<span style="color:#2b91af;">IController</span>
+{
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">bool</span>&nbsp;IsControlActive()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">false</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">bool</span>&nbsp;IsControlWanted()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">return</span>&nbsp;<span style="color:blue;">false</span>;
+&nbsp;&nbsp;&nbsp;&nbsp;}
+ 
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:blue;">public</span>&nbsp;<span style="color:blue;">void</span>&nbsp;Startup()
+&nbsp;&nbsp;&nbsp;&nbsp;{
+&nbsp;&nbsp;&nbsp;&nbsp;}
+}</pre>
+	</p>
+	<p>
+		Woolf calls his implementation <code>NoController</code>, but I find it more intent-revealing to call it <code>NullController</code>. Both of the Boolean methods return <code>false</code>, and the <code>Startup</code> method literally does nothing.
+	</p>
+	<h3 id="862afa3095a847ba82c234ee1371dd70">
+		Doing nothing <a href="#862afa3095a847ba82c234ee1371dd70" title="permalink">#</a>
+	</h3>
+	<p>
+		What exactly does it mean to 'do nothing'? In the case of the <code>Startup</code> method, it's clear, because it's a bona fide <a href="https://en.wikipedia.org/wiki/NOP">no-op</a>. This is possible for all methods without return values (i.e. methods that return <code>void</code>), but for all other methods, the compiler will insist on a return value.
+	</p>
+	<p>
+		For <code>IsControlActive</code> and <code>IsControlWanted</code>, Woolf solves this by returning <code>false</code>.
+	</p>
+	<p>
+		Is <code>false</code> always the correct 'do nothing' value for Booleans? And what should you return if a method returns an integer, a string, or a custom type? The original text is vague on that question:
+		<blockquote>
+			"Exactly what "do nothing" means is subjective and depends on the sort of behavior the Client is expecting."
+		</blockquote>
+		Sometimes, you can't get any closer than that, but I think that often it's possible to be more specific.
+	</p>
+	<h3 id="786916d104f949ce913ab94e6a0fafdc">
+		Doing nothing as identity <a href="#786916d104f949ce913ab94e6a0fafdc" title="permalink">#</a>
+	</h3>
+	<p>
+		From <a href="/2018/01/15/unit-isomorphisms">unit isomorphisms</a> you know that methods without return values are isomorphic to methods that return <em>unit</em>. You also know that <em>unit</em> is a monoid. What does <em>unit</em> and <code>bool</code> have in common? They both form monoids; <code>bool</code>, in fact, forms four different monoids, of which <em>all</em> and <em>any</em> are the best-known.
+	</p>
+	<p>
+		In my experience, you can implement the Null Object pattern by returning various 'do nothing' values, depending on their types:
+		<ul>
+			<li>For <code>bool</code>, return a constant value. Usually, <code>false</code> is the appropriate 'do nothing' value, but it does depend on the semantics of the operation.</li>
+			<li>For <code>string</code>, return <code>""</code>.</li>
+			<li>For collections, return an empty collection.</li>
+			<li>For numbers, return a constant value, such as <code>0</code>.</li>
+			<li>For <code>void</code>, do nothing, which is equivalent to returning <em>unit</em>.</li>
+		</ul>
+		What all of these have in common is that they return the <em>identity</em> of the monoid in question. Keep in mind that for some types, such as <code>bool</code> and <code>int</code>, more than one monoid exist, and the identity depends on which one you pick:
+		<ul>
+			<li>The identity for the <em>any</em> monoid is <code>false</code>.</li>
+			<li>The <a href="/2017/10/10/strings-lists-and-sequences-as-a-monoid">identity for <code>string</code> is <code>""</code></a>.</li>
+			<li>The identity for collections is the empty collection.</li>
+			<li>The identity for the <em>addition</em> monoid is <code>0</code>.</li>
+			<li>The identity for <em>unit</em> is <em>unit</em>.</li>
+		</ul>
+		Recall what the <em>identity</em> of a monoid is: it's the value that, when applied to another value, doesn't change the other value:
+	</p>
+	<p>
+		<pre>foo.Op(<span style="color:#2b91af;">Foo</span>.Identity)&nbsp;==&nbsp;foo</pre>
+	</p>
+	<p>
+		In other words: the <em>identity does nothing!</em>
+	</p>
+	<p>
+		As a preliminary result, then, when all return values of your interface form monoids, you can create a Null Object.
+	</p>
+	<h3 id="ec81b9f4281e4c4c909d1dc606056967">
+		Relationship with Composite <a href="#ec81b9f4281e4c4c909d1dc606056967" title="permalink">#</a>
+	</h3>
+	<p>
+		In the previous article, you saw how the Composite design pattern was equivalent with the <a href="https://www.haskell.org">Haskell</a> function <code>mconcat</code>:
+	</p>
+	<p>
+		<pre>mconcat :: Monoid a =&gt; [a] -&gt; a</pre>
+	</p>
+	<p>
+		This function, however, seems more limited than it has to be. It says that if you have a linked list of monoidal values, you can reduce them to a single monoidal value. Is this only true for linked lists?
+	</p>
+	<p>
+		After all, in a language like C#, you'd typically express a Composite as a container of 'some collection' of objects, typically modelled by the <code>IReadOnlyCollection&lt;T&gt;</code> interface. There are several implementations of that interface, including lists, arrays, collections, and so on.
+	</p>
+	<p>
+		It seems as though we ought to be able to generalise <code>mconcat</code>, and, indeed, we can. The <code>Data.Foldable</code> module defines a function called <code>fold</code>:
+	</p>
+	<p>
+		<pre>fold :: (Monoid m, Foldable t) =&gt; t m -&gt; m</pre>
+	</p>
+	<p>
+		Let me decipher that for you. It says that any monoid <code>m</code> contained in a 'foldable' container <code>t</code> can be reduced to a single value (still of the type <code>m</code>). You can read <code>t m</code> as 'a foldable container that contains monoids'. In C#, you could attempt to express it as <code>IFoldable&lt;TMonoid&gt;</code>.
+	</p>
+	<p>
+		In other words, the Composite design pattern is equivalent to <code>fold</code>. Here's how it relates to the Null Object pattern:
+	</p>
+	<p>
+		As a first step, consider methods like those defined by the above <code>IController</code> interface. In order to implement <code>NullController</code>, all of those methods ignore their (non-existent) input and return an identity value. In other words, we're looking for a Haskell function of the type <code>Monoid m =&gt; a -&gt; m</code>; that is: a function that takes input of the type <code>a</code> and returns a monoidal value <code>m</code>.
+	</p>
+	<p>
+		You can do that using <code>fold</code>:
+	</p>
+	<p>
+		<pre><span style="color:#600277;">nullify</span>&nbsp;::&nbsp;<span style="color:blue;">Monoid</span>&nbsp;m&nbsp;<span style="color:blue;">=&gt;</span>&nbsp;a&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;m
+nullify&nbsp;<span style="color:#666666;">=</span>&nbsp;fold&nbsp;(<span style="color:#dd0000;">Identity</span>&nbsp;<span style="color:#666666;">$</span>&nbsp;const&nbsp;mempty)</pre>
+	</p>
+	<p>
+		Recall that the input to <code>fold</code> must be a <code>Foldable</code> container. The good old <code>Identity</code> type is, among other capabilities, <code>Foldable</code>. That takes care of the container. The value that we put into the container is a single function that ignores its input (<code>const</code>) and always returns the identity value (<code>mempty</code>). The result is a function that always returns the identity value.
+	</p>
+	<p>
+		This demonstrates that Null Object is a special case of Composite, because <code>nullify</code> is a special application of <code>fold</code>.
+	</p>
+	<p>
+		There's no reason to write <code>nullify</code> in such a complicated way, though. You can simplify it like this:
+	</p>
+	<p>
+		<pre><span style="color:#600277;">nullify</span>&nbsp;::&nbsp;<span style="color:blue;">Monoid</span>&nbsp;m&nbsp;<span style="color:blue;">=&gt;</span>&nbsp;a&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;m
+nullify&nbsp;<span style="color:#666666;">=</span>&nbsp;const&nbsp;mempty</pre>
+	</p>
+	<p>
+		Once you recall, however, that <a href="/2017/11/06/function-monoids">functions are monoids if their return values are monoids</a>, you can simplify it even further:
+	</p>
+	<p>
+		<pre><span style="color:#600277;">nullify</span>&nbsp;::&nbsp;<span style="color:blue;">Monoid</span>&nbsp;m&nbsp;<span style="color:blue;">=&gt;</span>&nbsp;a&nbsp;<span style="color:blue;">-&gt;</span>&nbsp;m
+nullify&nbsp;<span style="color:#666666;">=</span>&nbsp;mempty</pre>
+	</p>
+	<p>
+		The identity element for monoidal functions is exactly a function that ignores its input and returns <code>mempty</code>.
+	</p>
+	<h3 id="11c3a2cefcb74f7096e588c530a699a8">
+		Controller identity <a href="#11c3a2cefcb74f7096e588c530a699a8" title="permalink">#</a>
+	</h3>
+	<p>
+		Consider the <code>IController</code> interface. According to <a href="/2018/02/12/object-isomorphisms">object isomorphisms</a>, you can represent this interface as a tuple of three functions:
+	</p>
+	<p>
+		<pre><span style="color:blue;">type</span>&nbsp;<span style="color:#dd0000;">Controller</span>&nbsp;<span style="color:#666666;">=</span>
+&nbsp;&nbsp;(<span style="color:#dd0000;">ControllerState</span>&nbsp;<span style="color:#666666;">-&gt;</span>&nbsp;<span style="color:#dd0000;">Any</span>,&nbsp;<span style="color:#dd0000;">ControllerState</span>&nbsp;<span style="color:#666666;">-&gt;</span>&nbsp;<span style="color:#dd0000;">Any</span>,&nbsp;<span style="color:#dd0000;">ControllerState</span>&nbsp;<span style="color:#666666;">-&gt;</span>&nbsp;<span style="color:blue;">()</span>)</pre>
+	</p>
+	<p>
+		This is cheating a little, because the third tuple element (the one that corresponds to <code>Startup</code>) is <a href="https://en.wikipedia.org/wiki/Pure_function">pure</a>, although I strongly suspect that the intent is that it should mutate the state of the Controller. Two alternatives are to change the function to either <code>ControllerState -&gt; ControllerState</code> or <code>ControllerState -&gt; IO ()</code>, but I'm going to keep things simple. It doesn't change the conclusion.
+	</p>
+	<p>
+		Notice that I've used <code>Any</code> as the return type for the two first tuples. As I've previously covered, Booleans form monoids like <em>any</em> and <em>all</em>. Here, we need to use <code>Any</code>.
+	</p>
+	<p>
+		This tuple is a monoid because all three functions are monoids, and <a href="/2017/10/30/tuple-monoids">a tuple of monoids is itself a monoid</a>. This means that you can easily create a Null Object using <code>mempty</code>:
+	</p>
+	<p>
+		<pre>λ&gt; nullController = mempty :: Controller</pre>
+	</p>
+	<p>
+		The <code>nullController</code> is a triad of functions. You can access them by pattern-matching them, like this:
+	</p>
+	<p>
+		<pre>λ&gt; (isControlWanted, isControlActive, startup) = nullController</pre>
+	</p>
+	<p>
+		Now you can try to call e.g. <code>isControlWanted</code> with various values in order to verify that it always returns false. In this example, I cheated and simply made <code>ControllerState</code> an alias for <code>String</code>:
+	</p>
+	<p>
+		<pre>λ&gt; isControlWanted "foo"
+Any {getAny = False}
+λ&gt; isControlWanted "bar"
+Any {getAny = False}</pre>
+	</p>
+	<p>
+		You'll get similar behaviour from <code>isControlActive</code>, and <code>startup</code> always returns <code>()</code> (<em>unit</em>).
+	</p>
+	<h3 id="e8bd7e04148143039708a179441b7da5">
+		Relaxation <a href="#e8bd7e04148143039708a179441b7da5" title="permalink">#</a>
+	</h3>
+	<p>
+		As Woolf wrote in the original text, what 'do nothing' means is subjective. I think it's perfectly reasonable to say that monoidal identity fits the description of doing nothing, but you could probably encounter APIs where 'doing nothing' means something else.
+	</p>
+	<p>
+		As an example, consider avatars for online forums, such as Twitter. If you don't supply a picture when you create your profile, you get a default picture. One way to implement such a feature could be by having a 'null' avatar, which is used in place of a proper avatar. Such a default avatar object could (perhaps) be considered a Null Object, but wouldn't necessarily be monoidal. There may not even be a binary operation for avatars.
+	</p>
+	<p>
+		Thus, it's likely that you could encounter or create Null Objects that aren't monoids. That's the reason that I don't claim that a Null Object always is monoidal identity, although I do think that the reverse relationship holds: if it's <em>identity</em>, then it's a Null Object.
+	</p>
+	<h3 id="91d9a7608c884a0d9fe5d01b61d539f5">
+		Summary <a href="#91d9a7608c884a0d9fe5d01b61d539f5" title="permalink">#</a>
+	</h3>
+	<p>
+		Monoids are associative binary operations with identity. The identity is the value that 'does nothing' in that binary operation, like, for example, <em>0</em> doesn't 'do' anything under addition. Monoids, however, can be more complex than operations on primitive values. Functions, for example, can be monoids as well, as can tuples of functions.
+	</p>
+	<p>
+		The implication of that is that objects can be monoids as well. When you have a monoidal object, then its <em>identity</em> is the 'natural' Null Object.
+	</p>
+	<p>
+		The question was: <em>when can you implement the Null Object pattern?</em> The answer is that you can do that when all involved methods return monoids.
+	</p>
+	<p>
+		<strong>Next:</strong> <a href="/2020/02/17/builder-as-a-monoid">Builder as a monoid</a>.
+	</p>
+</div>
+<div id="comments">
+	<hr />
+	<h2 id="comments-header">Comments</h2>
+	
+    <div class="comment" id="37c2c03b75684696bb16afebcbe2458d">
+        <div class="comment-author">
+            Ciprian Vilcan
+        </div>
+        <div class="comment-content">
+		<p>
+		All the examples of using Maybe I recall seeing always wrapped a data type that had a neutral element. So Maybe&lt;int&gt; would resolve to 0 or 1, 
+		while Maybe&lt;string&gt; to string.Empty. But what about data types that do not have a neutral element?
+		</p>
+		<p>
+		Suppose we have this DDD value object, NonEmptyString, written in C#. It has no public constructor and it is instantiated through a 
+		static factory method that returns a Maybe&lt;NonEmptyString&gt; containing an initialized NonEmptyString if the given input is not null
+		or whitespace and None otherwise. 
+		</p>
+		<p>
+		How do you treat the None case when calling the maybe.Match method? Since the neutral element for 
+		string concatenation is string.empty, an invalid value for this value object, this type has no possibility of having a Null Object.<br>
+		Can this situation be resolved in the functional way (without throwing an exception) or does it warrant throwing an exception?
+		</p>
+        </div>
+        <div class="comment-date">2018-05-07 08:21 UTC</div>
+    </div>
+
+	<div class="comment" id="be75b93e68a8441f9bf9cea62a1d94a5">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Ciprian, thank you for writing. I'm not sure I understand what you man by <em>Maybe</em> wrapping a neutral element. I hope that's not how <a href="/2018/03/26/the-maybe-functor">my introduction to Maybe</a> comes across. Could you point to specific examples?
+			</p>
+			<p>
+				If <code>NonEmptyString</code> is, as the name implies, a <code>string</code> guaranteed to be non-empty, isn't it just a specialisation of <a href="/2017/12/11/semigroups-accumulate/#68b942712506472ebe4c6933ca7dbd56">NotEmptyCollection&lt;T&gt;</a>? If so, indeed, there's no <em>identity</em> for <code>NonEmptyString</code> (but it does form a <a href="/2017/11/27/semigroups">Semigroup</a>).
+			</p>
+			<p>
+				Since it's a semigroup, though, <a href="/2018/04/03/maybe-monoids/#79ed6bcdafca4afd91cd22f6f9cbc4a2">you can lift it to a monoid my wrapping it in Maybe</a>. If you do that, the identity of <code>Maybe&lt;NonEmptyString&gt;</code> would be <em>nothing</em>.
+			</p>
+		</div>
+		<div class="comment-date">2018-05-08 1:53 UTC</div>
+	</div>
+	
+	<div class="comment" id="f78e2713d0634dd39c1674ebcda763dd">
+        <div class="comment-author">
+            Ciprian Vilcan
+        </div>
+		<div class="comment-content">
+			<p>
+				You are right, Mark. The <code>NonEmptyString</code> class is indeed a semigroup, thus has no neutral element. <br>
+				This is not what confuses me, but what function to supply in the None case of a <code>Maybe&lt;SomeSemigroup&gt;</code> when calling the <code>.Match</code> method.
+				In the case of <code>Maybe&lt;SomeMonoid&gt;</code>, it's simple and intuitive, as you simply supply a function that returns the neutral element of that monoid. <br>
+				But what about semigroups?
+			</p>
+			<p>
+				Here's a couple of generalized examples to better illustrate the question I'm having: <br>
+				<code>
+				Maybe&lt;SomeMonoid&gt; firstMaybe = someService.GetSomeMonoid(); <br>
+				SomeMonoid value = firstMaybe.Match(Some: containedValue => containedValue, None: () => SomeMonoid.NeutralElement); <br>
+				<br>
+				Maybe&lt;SomeSemigroup&gt; secondMaybe = someService.GetSomeSemigroup(); <br>
+				SomeSemigroup someSemigroup = secondMaybe.Match(Some: containedValue => containedValue, None: () => /*What to do here? Is it appropriate to throw an exception?*/);
+				</code>
+			</p>
+			<p>
+				I hope this time my question became clearer. I'm still in the process of wrapping my head around functional and category theory concepts, so my terminology may not be pinpoint accurate.
+			</p>
+		</div>
+        <div class="comment-date">2018-05-11 06:44 UTC</div>
+    </div>
+
+    <div class="comment" id="2cae69987a0443a191f21d1bf4930ab1">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Ciprian, that's the problem with semigroups, isn't it? There's no single natural element to use in the absence of data.
+			</p>
+			<p>
+				Lifting a semigroup to a Maybe is one way to resolve that problem. Since <a href="/2018/03/26/the-maybe-functor">Maybe is a functor</a>, you can map the contents of the Maybe until you've mapped it into a value for which an identity exists.
+			</p>
+			<p>
+				In some cases, you can also fold a Maybe value by supplying a default value that makes sense in the specific context. A default value can be an appropriate fall-back value in a given context, even if it isn't a general identity.
+			</p>
+		</div>
+		<div class="comment-date">2018-05-12 8:20 UTC</div>
+	</div>
+	
+	<div class="comment" id="9640402dd2834ba0b75d4c1f810dfeaa">
+        <div class="comment-author">
+            Ciprian Vilcan
+        </div>
+		<div class="comment-content">
+			<p>
+				I think I got it!<br> 
+				If you want to process that <code>Maybe&lt;SomeSemigroup&gt;</code> in a functional way, using the .Match(Some: ..., None: ...) method, 
+				you actually have to transform the method using it from a mostly statement based one, to a mostly expression based one. You have to 
+				pretend you don't know what's inside that Maybe for as long as possible, similar to using Lazy (or lazy evaluation in general).
+			</p>
+			<p>
+				In <a href="https://dotnetfiddle.net/8vP47X">this</a> fiddle I've played around and created both an imperative and functional query method for retrieving a book by title and author, 
+				in order to prove myself that they can be made isomorphic. These two methods are GetBookFunctional and GetBookImperative.<br>
+				However, I'm now trying to transform the GetBookImperativeWithoutElses into something functional using that .Match method, but I don't think it's possible.<br>
+				The .Match method's signature is, practically speaking, equivalent to the if-else statement, whereas the GetBookImperativeWithoutElses method uses the if statement, 
+				meaning the functional approach will be forced to treat the elses, whereas the imperative one won't.				
+			</p>
+			<p>
+				Wow, so if you want to use this Maybe of semigroup and/or go fully functional, you really have to go deep down the functional rabbit hole.<br>
+				Also, my guess is there is no guarantee that going from imperative to functional does not introduce more redundancy (like the elses in the second set of methods) into your system.<br>
+			</p>
+			<p>
+				Am I right in these regards?
+			</p>
+		</div>
+        <div class="comment-date">2018-05-12 13:45 UTC</div>
+    </div>
+
+    <div class="comment" id="fc2325a9be294305916c8bfbdac119bf">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Ciprian, thank you for the link to the code. This explains why you're running into trouble. You absolutely can address the scenario that causes you trouble in a nice functional style, but once you start having the need to keep track of error data as well as happy-path data, <em>Maybe</em> is no longer the data structure you need.
+			</p>
+			<p>
+				<em>Maybe</em> enables you to model a case where data may or may not be available. It enables you distinguish something from nothing. On the other hand, in the absence of data, you have no information about the reason that data is missing.
+			</p>
+			<p>
+				In order to keep track of such information, you need <em>Either</em>, which models data that's either this or that.
+			</p>
+			<p>
+				I'll cover <em>Either</em> in future posts.
+			</p>
+		</div>
+		<div class="comment-date">2018-05-13 14:44 UTC</div>
+	</div>
+</div>

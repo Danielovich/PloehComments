@@ -1,0 +1,154 @@
+---
+layout: post
+tags: [AutoFixture]
+date: 2009-11-07 19:56:05 UTC
+title: "Creating length-constrained strings with AutoFixture"
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		The <a href="http://autofixture.codeplex.com/WorkItem/View.aspx?WorkItemId=2987">following feature suggestion</a> was recently posted in the <a href="http://autofixture.codeplex.com/">AutoFixture</a>&nbsp;<a href="http://autofixture.codeplex.com/WorkItem/List.aspx">Issue Tracker</a> board:
+	</p>
+	<blockquote>
+		<p>
+			"We're using AutoFixture to create random rows of data in our DB. A lot of times though, it creates strings that are too long for the database columns. It would be nice if the .With&lt;string&gt; method had an overload that took in a min/max length. We want the random data, but capped at a limit.
+		</p>
+		<p>
+			"fixture.Build&lt;MyObject&gt;.With(x = x.MyString, 0, 100);
+		</p>
+		<p>
+			"As an aside, this is for a project that uses Nhibernate and Fluent Nhibernate, which has these lengths already defined. I would be nice if AutoFixture could automatically pick up on that somehow."
+		</p>
+	</blockquote>
+	<p>
+		I think such an feature is an excellent idea, but I don't think I will include in AutoFixture. Why not?
+	</p>
+	<p>
+		So far, I have kept the AutoFixture API pretty clean and very generic, and it is my belief that this is one of the main reasons it is so expressive and flexible. There are no methods that only work on specific types (such as strings), and I am reluctant to introduce them now.
+	</p>
+	<p>
+		In the last six months, I have identified a lot of specialized usage idioms that I would love to package into a reusable library, but I think that they will pollute the core AutoFixture API, so I'm going to put those in one or more optional 'add-on' libraries.
+	</p>
+	<p>
+		The ability to define strings that are constrained on length could be one such feature, but rather than wait for a helper library, I will show you have you can implement such a method yourself.
+	</p>
+	<p>
+		The first thing we need is a method that can create anonymous strings given length constraints. One possible implementation is this ConstrainedStringGenerator class:
+	</p>
+	<p>
+		<pre><span style="color: blue">public</span> <span style="color: blue">class</span> <span style="color: #2b91af">ConstrainedStringGenerator</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">readonly</span> <span style="color: blue">int</span> minimumLength;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">private</span> <span style="color: blue">readonly</span> <span style="color: blue">int</span> maximumLength;
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> ConstrainedStringGenerator(<span style="color: blue">int</span> minimumLength, 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">int</span> maximumLength)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">if</span> (maximumLength &lt; 0)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">throw</span> <span style="color: blue">new</span> <span style="color: #2b91af">ArgumentOutOfRangeException</span>(<span style="color: #a31515">"..."</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">if</span> (minimumLength &gt; maximumLength)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">throw</span> <span style="color: blue">new</span> <span style="color: #2b91af">ArgumentOutOfRangeException</span>(<span style="color: #a31515">"..."</span>);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.minimumLength = minimumLength;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span>.maximumLength = maximumLength;
+&nbsp;&nbsp;&nbsp; }
+&nbsp;
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">string</span> CreateaAnonymous(<span style="color: blue">string</span> seed)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> s = <span style="color: blue">string</span>.Empty;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">while</span> (s.Length &lt; <span style="color: blue">this</span>.minimumLength)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; s += <span style="color: #2b91af">GuidStringGenerator</span>.CreateAnonymous(seed);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">if</span> (s.Length &gt; <span style="color: blue">this</span>.maximumLength)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; s = s.Substring(0, <span style="color: blue">this</span>.maximumLength);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; }
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> s;
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+	</p>
+	<p>
+		The CreateAnonymous method uses AutoFixture's GuidStringGenerator class to create anonymous strings of the required length. For this implementation I chose a basic algorithm, but I'm sure you can create one that is more sophisticated if you need it.
+	</p>
+	<p>
+		The next thing we need to do is to implement the desired With method. That can be done with an extension method works on ObjectBuilder&lt;T&gt;:
+	</p>
+	<p>
+		<pre><span style="color: blue">public</span> <span style="color: blue">static</span> <span style="color: blue">class</span> <span style="color: #2b91af">ObjectBuilderExtension</span>
+{
+&nbsp;&nbsp;&nbsp; <span style="color: blue">public</span> <span style="color: blue">static</span> <span style="color: #2b91af">ObjectBuilder</span>&lt;T&gt; With&lt;T&gt;(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">this</span> <span style="color: #2b91af">ObjectBuilder</span>&lt;T&gt; ob,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: #2b91af">Expression</span>&lt;<span style="color: #2b91af">Func</span>&lt;T, <span style="color: blue">string</span>&gt;&gt; propertyPicker,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">int</span> minimumLength,
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">int</span> maximumLength)
+&nbsp;&nbsp;&nbsp; {
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> me = (<span style="color: #2b91af">MemberExpression</span>)propertyPicker.Body;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> name = me.Member.Name;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> generator =
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">new</span> <span style="color: #2b91af">ConstrainedStringGenerator</span>(
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; minimumLength, maximumLength);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">var</span> value = generator.CreateaAnonymous(name);
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <span style="color: blue">return</span> ob.With(propertyPicker, value);
+&nbsp;&nbsp;&nbsp; }
+}</pre>
+	</p>
+	<p>
+		The method takes the same input as ObjectBuilder&lt;T&gt;'s With method, plus the two integers that constrain the length. Note that the propertyPicker expression has been constrained to deal only with strings.
+	</p>
+	<p>
+		In this implementation, we use the ConstrainedStringGenerator class to generate the desired value for the property, where after we can use the existing With method to assign the value to the property in question.
+	</p>
+	<p>
+		This now allows us to write Build statements like the one originally requested:
+	</p>
+	<p>
+		<pre><span style="color: blue">var</span> mc = fixture.Build&lt;<span style="color: #2b91af">MyClass</span>&gt;()
+&nbsp;&nbsp;&nbsp; .With(x =&gt; x.SomeText, 0, 100)
+&nbsp;&nbsp;&nbsp; .CreateAnonymous();</pre>
+	</p>
+	<p>
+		The other part of the request, regarding NHibernate integration, I will leave to the interested reader  -  mostly because I have never used NHibernate, so I have no clue how to do it. I would, however, love to see a blog post with that addition.
+	</p>
+	<p>
+		This entire example is now part of the AutoFixture test suite, so if you are interested in looking at it in more detail, you can get it from the AutoFixture source code (available at CodePlex).
+	</p>
+</div>
+	
+<div id="comments">
+<hr>
+<h2 id="comments-header">
+	Comments
+</h2>
+	<div class="comment" id="7811bca8456640879a27ff35efa14f51">
+	<div class="comment-author">Troy</div>
+	<div class="comment-content">I see that you have added a ConstrainedStringGenerator class to AutoFixture now but I haven't found any example of how to use it in its new form. What I'm doing currently is providing an ICustomization implementation for domain data that takes max field lengths into consideration. My first question is, is this the right place to do that? If so, how do I reliably get the ISpecimenContext to pass to the Create method? Right now I am creating a SpecimenContext instance myself but again I'm not sure where I should be getting my ISpecimenBuilder instance to pass to it. The 2 leading candidates right now are the Engine property of a Fixture instance that I pass in the constructor as a ISpecimenBuilder or create a StringGenerator instance. If the StringGenerator is what I should use though what should I pass to it in its constructor? Here is an example in case that isn't clear.<br>
+<br>
+fixture.Customize&lt;NwCategory&gt;<br>
+(<br>
+    x =&gt; x<br>
+        .Without(m =&gt; m.CategoryID)<br>
+	.Without(m =&gt; m.ProductSet)<br>
+	.With(m =&gt; m.CategoryName, (String)stringGenerator.Create(new ConstrainedStringRequest(NwCategory.MaxLength_CategoryName), new SpecimenContext(this.SpecimenBuilder)))<br>
+);</div>
+	<div class="comment-date">2012-04-26 14:32 UTC</div>
+</div>
+<div class="comment" id="fb8ca75d3d234dc2bf9e867fa6cf9cb0">
+	<div class="comment-author"><a href="/">Mark Seemann</a></div>
+	<div class="comment-content">IIRC the ConstrainedStringGenerator class was added to <a href="http://www.nikosbaxevanis.com/bonus-bits/2011/09/stringlengthattribute-support-in-autofixture.html">support the [StringLength] attribute</a>. Does this do what you'd like it to do?<br>
+<br>
+There's also a <a href="http://stackoverflow.com/q/10125199/126014">recent discussion about the subject on Stack Overflow</a>.<br>
+<br>
+Finally, perhaps you'll find <a href="/2010/10/19/Convention-basedCustomizationswithAutoFixture">this post</a> helpful.<br>
+<br>
+If none of these links answer your question, please feel free to ask again. However, Stack Overflow or the AutoFixture discussion list might be better forums, as they are better targeted at Q&amp;A.<br>
+<br>
+HTH</div>
+	<div class="comment-date">2012-04-27 18:43 UTC</div>
+</div>
+</div>

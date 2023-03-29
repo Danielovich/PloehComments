@@ -1,0 +1,65 @@
+---
+layout: post
+title: "ZeroToNine"
+description: "Introducing ZeroToNine, a tool for maintaining .NET Assembly versions across multiple files."
+date: 2013-12-11 12:37 UTC
+tags: [Productivity, F#]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+        <em>{{ page.description }}</em>
+	</p>
+	<p>
+		When working with <a href="http://semver.org">Semantic Versioning</a> in my .NET projects, <a href="/2013/12/10/semantic-versioning-with-continuous-deployment">I prefer to explicitly update the version information in all relevant AssemblyInfo files</a>. However, doing that by hand is quite tedious when you have many AssemblyInfo files, so instead, I rely on an automated tool.
+	</p>
+	<p>
+		For years, I used a PowerShell script, but recently, I decided to start over and write a 'real' tool, deployable via <a href="http://www.nuget.org">NuGet</a>. It's called <a href="https://github.com/ploeh/ZeroToNine">ZeroToNine</a>, is free, and open source. Using it looks like this:
+		<pre>Zero29 -i minor</pre>
+		This increments the minor version in all AssemblyInfo files in all subdirectories beneath your present working directory.
+	</p>
+	<p>
+		This is great, because it enables me to do a complete pull of a pull request, build it and run all tests, assign a new version, and push it, without ever leaving the command-line. Since I already do all my <a href="http://git-scm.com">Git</a> work in Git Bash, modifying the AssemblyVersion files was the last step I needed to make available from the command line. The main logic is implemented in a library, so if you don't like command-line tools, but would like to build another tool based on ZeroToNine, you can do that too.
+	</p>
+	<p>
+		It's available <a href="https://www.nuget.org/packages/Zero29">via NuGet</a>, and is written in F#.
+	</p>
+</div>
+
+<div id="comments">
+    <hr>
+    <h2 id="comments-header">
+        Comments
+    </h2>
+    <div class="comment" id="adf28150a22d4763bfe6bc7dd9de9c07">
+        <div class="comment-author">Jeff Soper</div>
+        <div class="comment-content">
+        	<p>Can you clarify where one would install this when adding the NuGet package to a solution of several projects?</p>
+        	<p>Your documentation says that it will update AssemblyInfo files in all subdirectories beneath the present working directory, but I thought that NuGet packages are applied at a project level, not at a solution level. So, wouldn't this mean that I would be running your tool from one of the many project directories, in which only that project's AssemblyInfo file would be affected?</p>
+        	<p>I'm sure I'm not grasping something simple, but I'm anxious to incorporate this into my workflow!</p>
+        </div>
+        <div class="comment-date">2014-01-23 19:26 UTC</div>
+    </div>
+    <div class="comment" id="1531cb31261446ceb2578339d5e06105">
+        <div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+        <div class="comment-content">
+        	<p>
+        		NuGet packages <a href="http://stackoverflow.com/q/9494144/126014">can contain executable tools</a> as well as, or instead of, libraries. These executables can be found in the package's <em>tools</em> folder. This is what the <a href="http://www.nuget.org/packages/Zero29">Zero29</a> package does. It's not associated with any particular Visual Studio project.
+        	</p>
+        	<p>
+        		As an example, using Zero29 from the root of the <a href="https://github.com/ploeh/Albedo">Albedo</a> folder, you can do this:
+        	</p>
+        	<p>
+        		<code>$ Src/packages/Zero29.0.4.0/tools/Zero29.exe -l</code>
+        	</p>
+        	<p>
+        		There are other NuGet packages that work in the same way; e.g. <a href="http://www.nuget.org/packages/NuGet.CommandLine">NuGet.CommandLine</a> and <a href="http://www.nuget.org/packages/xunit.runners">xunit.runners</a>.
+        	</p>
+        	<p>
+        		The <a href="http://www.nuget.org/packages/ZeroToNine">ZeroToNine NuGet package</a>, on the other hand, is a 'normal' library, so installs as a reference to a particular Visual Studio project.
+        	</p>
+        </div>
+        <div class="comment-date">2014-01-24 19:42 UTC</div>
+    </div>
+</div>

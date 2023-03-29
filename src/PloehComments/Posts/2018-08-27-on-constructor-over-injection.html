@@ -1,0 +1,215 @@
+---
+layout: post
+title: "On Constructor Over-injection"
+description: "Constructor Over-injection is a code smell, not an anti-pattern."
+date: 2018-08-27 7:11 UTC
+tags: [Dependency Injection]
+---
+{% include JB/setup %}
+
+<div id="post">
+	<p>
+		<em>{{ page.description }}</em>
+	</p>
+	<p>
+		Sometimes, people struggle with how to deal with the Constructor Over-injection code smell. Often, you can address it by <a href="/2010/02/02/RefactoringtoAggregateServices">refactoring to Facade Services</a>. This is possible when constructor arguments fall in two or more natural clusters. Sometimes, however, that isn't possible.
+	</p>
+	<h3 id="6ef3c9728f4f46e5a0a6c694b115705a">
+		Cross-cutting concerns <a href="#6ef3c9728f4f46e5a0a6c694b115705a" title="permalink">#</a>
+	</h3>
+	<p>
+		Before we get to the heart of this post, I want to get something out of the way. Sometimes constructors have too many arguments because they request various 	services that represent cross-cutting concerns:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;Foo(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IBar</span>&nbsp;bar,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IBaz</span>&nbsp;baz,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IQux</span>&nbsp;qux,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IAuthorizationManager</span>&nbsp;authorizationManager,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">ILog</span>&nbsp;log,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">ICache</span>&nbsp;cache,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">ICircuitBreaker</span>&nbsp;breaker)</pre>
+	</p>
+	<p>
+		This <code>Foo</code> class has seven dependencies passed via the constructor. Three of those (<code>bar</code>, <code>baz</code>, and <code>qux</code>) are regular dependencies. The other four are various incarnations of cross-cutting concerns: logging, caching, authorization, stability. As I describe in <a href="http://amzn.to/12p90MG">my book</a>, cross-cutting concerns are better addressed with <a href="https://en.wikipedia.org/wiki/Decorator_pattern">Decorators</a> or the <a href="https://en.wikipedia.org/wiki/Chain-of-responsibility_pattern">Chain of Responsibility</a> pattern. Thus, such a <code>Foo</code> constructor ought really to take just three arguments:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;Foo(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IBar</span>&nbsp;bar,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IBaz</span>&nbsp;baz,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IQux</span>&nbsp;qux)</pre>		
+	</p>
+	<p>
+		Making cross-cutting concerns 'disappear' like that could decrease the number of constructor arguments to an acceptable level, thereby effectively dealing with the Constructor Over-injection smell. Sometimes, however, that's not the issue.
+	</p>
+	<h3 id="00cc1f6794244596ac665cbc9e0919da">
+		No natural clusters <a href="#00cc1f6794244596ac665cbc9e0919da" title="permalink">#</a>
+	</h3>
+	<p>
+		Occasionally, a class has many dependencies, and the dependencies form no natural clusters:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;Ploeh(
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IBar</span>&nbsp;bar,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IBaz</span>&nbsp;baz,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IQux</span>&nbsp;qux,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IQuux</span>&nbsp;quux,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IQuuz</span>&nbsp;quuz,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">ICorge</span>&nbsp;corge,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IGrault</span>&nbsp;grault,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IGarply</span>&nbsp;garply,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IWaldo</span>&nbsp;waldo,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IFred</span>&nbsp;fred,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IPlugh</span>&nbsp;plugh,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IXyzzy</span>&nbsp;xyzzy,
+&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#2b91af;">IThud</span>&nbsp;thud)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Bar&nbsp;=&nbsp;bar;
+&nbsp;&nbsp;&nbsp;&nbsp;Baz&nbsp;=&nbsp;baz;
+&nbsp;&nbsp;&nbsp;&nbsp;Qux&nbsp;=&nbsp;qux;
+&nbsp;&nbsp;&nbsp;&nbsp;Quux&nbsp;=&nbsp;quux;
+&nbsp;&nbsp;&nbsp;&nbsp;Quuz&nbsp;=&nbsp;quuz;
+&nbsp;&nbsp;&nbsp;&nbsp;Corge&nbsp;=&nbsp;corge;
+&nbsp;&nbsp;&nbsp;&nbsp;Grault&nbsp;=&nbsp;grault;
+&nbsp;&nbsp;&nbsp;&nbsp;Garply&nbsp;=&nbsp;garply;
+&nbsp;&nbsp;&nbsp;&nbsp;Waldo&nbsp;=&nbsp;waldo;
+&nbsp;&nbsp;&nbsp;&nbsp;Fred&nbsp;=&nbsp;fred;
+&nbsp;&nbsp;&nbsp;&nbsp;Plugh&nbsp;=&nbsp;plugh;
+&nbsp;&nbsp;&nbsp;&nbsp;Xyzzy&nbsp;=&nbsp;xyzzy;
+&nbsp;&nbsp;&nbsp;&nbsp;Thud&nbsp;=&nbsp;thud;
+}</pre>
+	</p>
+	<p>
+		This seems to be an obvious case of the Constructor Over-injection code smell. If you can't refactor to Facade Services, then what other options do you have?
+	</p>
+	<h3 id="486abcae3b934d958f8c3f0575e58db5">
+		Introducing a Parameter Object isn't likely to help <a href="#486abcae3b934d958f8c3f0575e58db5" title="permalink">#</a>
+	</h3>
+	<p>
+		Some people, when they run into this type of situation, attempt to resolve it by <a href="https://refactoring.com/catalog/introduceParameterObject.html">introducing a Parameter Object</a>. In its simplest form, the Parameter Object is just a collection of properties that client code can access. In other cases, the Parameter Object is a <a href="https://en.wikipedia.org/wiki/Facade_pattern">Facade</a> over a DI Container. Sometimes, the Parameter Object is defined as an interface with read-only properties.
+	</p>
+	<p>
+		One way to use such a Parameter Object could be like this:
+	</p>
+	<p>
+		<pre><span style="color:blue;">public</span>&nbsp;Ploeh(<span style="color:#2b91af;">DependencyCatalog</span>&nbsp;catalog)
+{
+&nbsp;&nbsp;&nbsp;&nbsp;Bar&nbsp;=&nbsp;catalog.Bar;
+&nbsp;&nbsp;&nbsp;&nbsp;Baz&nbsp;=&nbsp;catalog.Baz;
+&nbsp;&nbsp;&nbsp;&nbsp;Qux&nbsp;=&nbsp;catalog.Qux;
+&nbsp;&nbsp;&nbsp;&nbsp;Quux&nbsp;=&nbsp;catalog.Quux;
+&nbsp;&nbsp;&nbsp;&nbsp;Quuz&nbsp;=&nbsp;catalog.Quuz;
+&nbsp;&nbsp;&nbsp;&nbsp;Corge&nbsp;=&nbsp;catalog.Corge;
+&nbsp;&nbsp;&nbsp;&nbsp;Grault&nbsp;=&nbsp;catalog.Grault;
+&nbsp;&nbsp;&nbsp;&nbsp;Garply&nbsp;=&nbsp;catalog.Garply;
+&nbsp;&nbsp;&nbsp;&nbsp;Waldo&nbsp;=&nbsp;catalog.Waldo;
+&nbsp;&nbsp;&nbsp;&nbsp;Fred&nbsp;=&nbsp;catalog.Fred;
+&nbsp;&nbsp;&nbsp;&nbsp;Plugh&nbsp;=&nbsp;catalog.Plugh;
+&nbsp;&nbsp;&nbsp;&nbsp;Xyzzy&nbsp;=&nbsp;catalog.Xyzzy;
+&nbsp;&nbsp;&nbsp;&nbsp;Thud&nbsp;=&nbsp;catalog.Thud;
+}</pre>
+	</p>
+	<p>
+		Alternatively, some people just store a reference to the Parameter Object and then access the read-only properties on an as-needed basis.		
+	</p>
+	<p>
+		None of those alternatives are likely to help. One problem is that such a <code>DependencyCatalog</code> will be likely to violate the <a href="https://en.wikipedia.org/wiki/Interface_segregation_principle">Interface Segregation Principle</a>, unless you take great care to make a 'dependency catalogue' per class. For instance, you'd be tempted to add <code>Wibble</code>, <code>Wobble</code>, and <code>Wubble</code> properties to the above <code>DependencyCatalog</code> class, because some other <code>Fnaah</code> class needs those dependencies in addition to <code>Bar</code>, <code>Fred</code>, and <code>Waldo</code>.
+	</p>
+	<h3 id="b6d3204fb4ad4e72a835b28f9aa2305b">
+		Deodorant <a href="#b6d3204fb4ad4e72a835b28f9aa2305b" title="permalink">#</a>
+	</h3>
+	<p>
+		Fundamentally, Constructor Over-injection is a code smell. This means that it's an indication that something is not right; that there's an area of code that bears investigation. Code smells aren't problems in themselves, but rather symptoms.
+	</p>
+	<p>
+		Constructor Over-injection tends to be a symptom that a class is doing too much: that it's violating the <a href="https://en.wikipedia.org/wiki/Single_responsibility_principle">Single Responsibility Principle</a>. Reducing thirteen constructor arguments to a single Parameter Object doesn't address the underlying problem. It only applies deodorant to the smell.
+	</p>
+	<p>
+		Address, if you can, the underlying problem, and the symptom is likely to disappear as well.
+	</p>
+	<h3 id="ac21c35680d34943a1827d94e2e18533">
+		Guidance, not law <a href="#ac21c35680d34943a1827d94e2e18533" title="permalink">#</a>
+	</h3>
+	<p>
+		This is only guidance. There could be cases where it's genuinely valid to have dozens of dependencies. I'm being deliberately vague, because I don't wish to go into an elaborate example. Usually, there's more than one way to solve a particular problem, and occasionally, it's possible that collecting many services in a single class would be appropriate. (This sounds like a case for the <a href="https://en.wikipedia.org/wiki/Composite_pattern">Composite</a> design pattern, but let's assume that there could be cases where that's not possible.)
+	</p>
+	<p>
+		This is similar to using <a href="https://en.wikipedia.org/wiki/Cyclomatic_complexity">cyclomatic complexity</a> as a guide. Every now and then, a big, flat switch statement is just the best and most maintainable solution to a problem, even when it has a cyclomatic complexity of 37...
+	</p>
+	<p>
+		Likewise, there could be cases where it's genuinely not a problem with dozens of constructor arguments.
+	</p>
+	<h3 id="7032a437458e45e58abd262b882b1442">
+		Summary <a href="#7032a437458e45e58abd262b882b1442" title="permalink">#</a>
+	</h3>
+	<p>
+		Constructor Over-injection is a code smell, not an <a href="/2019/01/21/some-thoughts-on-anti-patterns">anti-pattern</a>. It's a good idea to be aware of the smell, and address it when you discover it. You should, however, deal with the problem instead of applying deodorant to the smell. The underlying problem is usually that the class with the many dependencies has too many responsibilities. Address that problem, and the smell is likely to evaporate as well.
+	</p>
+</div>
+<div id="comments">
+	<hr>
+	<h2 id="comments-header">
+		Comments
+	</h2>
+
+	<div class="comment" id="f9c87aff3c034c138a69e74568b90ce8">
+        <div class="comment-author">Dominik Jeske</div>
+        <div class="comment-content">
+			<p>Hi Mark, I have question about “Parameter Object” approach you mentioned. In my previous project we was using this approach heavily. I know disadvantages you described and honestly I was against this approach but after some time I saw some advantages I want to discuss. </p>
+			<p>We have a lot of services that was reading data from some external databases, do some basic validation and fixing and than save to other database – so it was most integration code. Every of our services had bootstrapper attached by attribute that was describing dependencies. Each have only one parameter with so called “catalog” that was façade over DI with read only properties (sometimes even in tree structure to make it simpler to use like Catalog.Repositories.Server.SomeRepository). We have some base class for common dependencies like logging, common infrastructure services etc (we also use interceptor for cross cutting concerns but sometimes we have to log something explicitly).  </p>
+			<p>In unit tests we used same bootstrapper that service was using with repositories changed to mocks. Advantage that I’m seeing is that when using lot of unit tests and service like this when we are maintain the code when something is changing in service we don’t had to touch any unit test – it is similar to using parameter object in general even outside the scope of constructor – when using single complex object as input parameter there is also no problem when on 100 unit test break after we change add some method parameter. It is service locator antipattern but only in one place – other code is not using DI. </p>
+			<p>Sometimes when I’m thinking about anti pattern approach in general I have a feeling similar to you when you was explaining other approach to async injection “you cannot do that” – “Oh, really”? Maybe pattern police will hunt me but is this really so bad? </p>
+        </div>
+        <div class="comment-date">2019-08-01 9:07 UTC</div>
+    </div>
+
+    <div class="comment" id="db9222ef894548369ad2f7ab8c10084c">
+		<div class="comment-author"><a href="{{ HOME_PATH }}">Mark Seemann</a></div>
+		<div class="comment-content">
+			<p>
+				Dominik, thank you for writing. To be clear: there's no <em>pattern police</em>. Design patterns is (or was) an attempt to establish a vocabulary that can act as short-cuts for long, elaborate chains of arguments. The same goes for anti-patterns.
+			</p>
+			<p>
+				Most experienced programmers over time discover that certain ways of doing things yield more benefits than disadvantages (patterns) or yield more disadvantages than benefits (anti-patterns). Instead of having to explain the possible consequences every time we run into such situations, we can reach for a generalised description and refer to it by names such as <em>Composite</em>, <em>Decorator</em>, <em>Service Locator</em>, etc.
+			</p>
+			<p>
+				The same goes for more basic design principles such as the <a href="https://en.wikipedia.org/wiki/SOLID">SOLID</a> principles. If you find yourself writing code such as <code>Catalog.Repositories.Server.SomeRepository</code>, you're already in territory where the <a href="https://en.wikipedia.org/wiki/Law_of_Demeter">Law of Demeter</a> (or <a href="https://twitter.com/martinfowler/status/1649793241">the Occasionally Useful Suggestion of Demeter</a>) applies. The Law of Demeter is less than a law and more like a code smell. If you find yourself 'dotting into' a deep object graph like that, you should stop and consider how that's going to impact long-term maintainability.
+			</p>
+			<p>
+				Either an object doesn't need everything that a service catalogue exposes, in which case it'd be at odds with the <a href="https://en.wikipedia.org/wiki/Interface_segregation_principle">Interface Segregation Principle</a>, or it <em>does</em> need all of those services, in which case the class in question most likely violates the <a href="https://en.wikipedia.org/wiki/Single_responsibility_principle">Single Responsibility Principle</a>.
+			</p>
+			<p>
+				You can address the first of these concerns by injecting only the services that a class needs. If you're concerned about the impact on unit tests of changing dependencies, consider using an <a href="/2013/03/11/auto-mocking-container">Auto-mocking Container</a>.
+			</p>
+			<p>
+				You can address the second of the above concerns by <a href="/2010/02/02/RefactoringtoAggregateServices">refactoring to Facade Services</a>.
+			</p>
+		</div>
+		<div class="comment-date">2019-08-03 10:17 UTC</div>
+	</div>
+
+	<div class="comment" id="49bb0398acb24d9ba84290adaee64c78">
+        <div class="comment-author">Dominik Jeske</div>
+        <div class="comment-content">
+			<p>Mark, thanks for detailed answer (as always). </p>
+			<p>In matter of catalog approach it was always smelly for me and honestly I was against using it but sometimes I had no good arguments to get rid of it. Automocking container is very promising for me – as matter of fact I saw this approach when analyzing one of your github samples and for start it looked like magic when xunit+autofixture+automoq was used and I have to admit it was love at first sight and I will absolutely deep dive into this topic. </p>
+			<p>When talking about pattern police I was some kind of joking. I understand the source and meaning of the patterns and it is very good that we have them but sometimes they are problematic. Many times some question / discussion on places like stuckoverflow is broken by some “police man” that is saying that “your approach is antipattern”. Even if this maybe is true it sometimes kills some new approaches because people are real believers and they believe in patterns as if they were some religion and they will be fight for it instead of discuss and assume that maybe it is not always true or maybe this case is not really antipattern. </p>
+			<p>Other thing is that people forgot after some time what is the real purpose / source of the pattern – the just use it automatically. My favorite anecdote/joke illustrate this
+				<ul>
+					<li>Mom why you are cutting edges of the cake</li>
+					<li>Becouse we should do this</li>
+					<li>But why</li>
+					<li>Becoue we have to</li>
+					<li>But why</li>
+					<li>Becouse… my mom did this</li>
+					<li>Grandma why you are cutting edges of the cake</li>
+					<li>Becouse… my mom did this</li>
+					<li>Great grandma why you are cutting edges of the cake</li>
+					<li>Becouse I have small stove</li>
+				</ul> 
+			After your explanation I’m closer to see why this is antipattern but for understand thing like this for real it is no enough to say that this is antipattern but this ability is not given to all people 😊
+			</p>		
+        </div>
+        <div class="comment-date">2019-08-05 20:50 UTC</div>
+    </div>
+</div>
