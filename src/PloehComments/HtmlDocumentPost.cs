@@ -44,7 +44,7 @@ public class HtmlDocumentPost
                     // let's append a new link to that comment-author
                     if (commentAuthorNode is not null)
                     {
-                        commentAuthorNode.InnerHtml += $"<a href=\"#{postId}\">#</a>";
+                        commentAuthorNode.InnerHtml += $" <a href=\"#{postId}\">#</a>";
                     }
                 }
             }
