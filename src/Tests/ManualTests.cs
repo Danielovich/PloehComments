@@ -4,11 +4,11 @@ namespace Tests;
 
 public class ManualTests
 {
-    //[Fact]
-    [Fact(Skip = "manual")]
+    [Fact]
+    //[Fact(Skip = "manual")]
     public async Task Append_Links_And_Save_Html_Document_For_All_Posts()
     {
-        // what dir holds the posts 
+        // posts are located at this dir path
         var postDirectoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Posts");
 
         // all posts in the dir
@@ -19,15 +19,22 @@ public class ManualTests
         {
             var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Posts", postFileName);
 
-            // load it
+            // load the original blog post
             var postLoader = new PostLoader(filePath);
-            var blogpost = await postLoader.PostToStringAsync();
+            var originalPost = await postLoader.PostToStringAsync();
 
-            // parse it to html
+            // parse the post to html
             var htmlPost = new HtmlDocumentPost();
-            var htmlDocument = await htmlPost.PostToHtmlDocumentAsync(blogpost);
+            var htmlDocument = await htmlPost.PostToHtmlDocumentAsync(originalPost);
 
+            // append links to the blog post
             await htmlPost.AppendCommentLinkAsync(htmlDocument);
+
+            // assert anchors on the blog post before we save a copy
+            var updatedPost = htmlDocument.DocumentNode.WriteTo();
+            await PostDiff.AssertAnchors(originalPost, updatedPost);
+
+            // save an updated copy of the post. Now with anchors
             await htmlPost.SaveDocumentAsync(htmlDocument, postFileName);
         }
     }

@@ -1,4 +1,5 @@
 ﻿using HtmlAgilityPack;
+using System.Collections;
 
 namespace PloehComments;
 
@@ -25,8 +26,10 @@ public class HtmlDocumentPost
         await Task.CompletedTask;
     }
 
-    public async Task AppendCommentLinkAsync(HtmlDocument htmlDocument)
+    public async Task<IEnumerable<PloehPostLink>> AppendCommentLinkAsync(HtmlDocument htmlDocument)
     {
+        var appendedAnchors = new List<PloehPostLink>();
+        
         foreach (var documentNode in htmlDocument.DocumentNode.Descendants())
         {
             if (documentNode.NodeType != HtmlNodeType.Text)
@@ -48,12 +51,15 @@ public class HtmlDocumentPost
                     // let's append a new link to that comment-author
                     if (commentAuthorNode is not null)
                     {
-                        commentAuthorNode.InnerHtml += $" <a href=\"#{postId}\">#</a>";
+                        var anchorLink = new PloehPostLink(postId);
+                        appendedAnchors.Add(anchorLink);
+
+                        commentAuthorNode.InnerHtml += anchorLink.Link;
                     }
                 }
             }
         }
 
-        await Task.CompletedTask;
+        return await Task.FromResult(appendedAnchors.AsEnumerable());
     }
 }
