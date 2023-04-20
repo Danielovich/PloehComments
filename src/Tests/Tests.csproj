@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="AnchoredPosts\TextFile1.txt">
+    <None Update="AnchoredPosts\not-empty-since-its-folder-wont-be-copied-to-bin.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
