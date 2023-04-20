@@ -12,13 +12,6 @@ namespace Tests
         /// <returns></returns>
         public static async Task AssertAnchors(string originalPost, string updatedPost)
         {
-            // diff the two posts
-            var differ = SideBySideDiffBuilder.Diff(originalPost, updatedPost);
-            var d = differ.NewText.Lines
-                .Where(d => d.Type == DiffPlex.DiffBuilder.Model.ChangeType.Modified)
-                .AsEnumerable();
-
-
             var diff = InlineDiffBuilder.Diff(originalPost, updatedPost);
 
             // what has been inserted to the updated post ?
