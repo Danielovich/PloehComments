@@ -2,13 +2,15 @@ using PloehComments;
 
 namespace Tests;
 
-public class PostCommentsTests
+public class HtmlDocumentPostTests
 {
     [Fact]
-    public async Task Append_Links_And_Save_Html_Document()
+    public async Task Append_Links_To_Post_And_Save_As_An_Updated_Post()
     {
+        var postName = "2011-11-08-Independency.html";
+
         // path to orginal post
-        string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Posts", "2011-11-08-Independency.html");
+        string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Posts", postName);
 
         // load it
         var postLoader = new PostLoader(filePath);
@@ -20,10 +22,10 @@ public class PostCommentsTests
 
         // append new links and save a copy
         await htmlPost.AppendCommentLinkAsync(htmlDocument);
-        await htmlPost.SaveDocumentAsync(htmlDocument, "2011-11-08-Independency.html");
+        await htmlPost.SaveDocumentAsync(htmlDocument, postName);
 
         // path to the new post with new links
-        filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AnchoredPosts", "2011-11-08-Independency.html");
+        filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AnchoredPosts", postName);
 
         // etc...
         postLoader = new PostLoader(filePath);
