@@ -38,4 +38,68 @@ public class HtmlDocumentPostTests
         Assert.True(blogpost.IndexOf("<a href=\"#95ce4e4b469847cea860f8a778ed1b6a\">#</a>") > 0);
         Assert.True(blogpost.IndexOf("<a href=\"#05d451209f714c029c143fd420c6ff99\">#</a>") > 0);
     }
+
+    [Fact]
+    public async Task Post_Comment_Id_Length_Is_32()
+    {
+        // what dir holds the posts 
+        var postDirectoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Posts");
+
+        // all posts in the dir
+        var postNameRetriver = new PostsNameRetriever(postDirectoryPath);
+        var posts = await postNameRetriver.PostsInDirectory() ?? Enumerable.Empty<string>();
+
+        foreach (var postFileName in posts)
+        {
+            var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Posts", postFileName);
+
+            // load it
+            var postLoader = new PostLoader(filePath);
+            var blogpost = await postLoader.PostToStringAsync();
+
+            // parse it to html
+            var htmlPost = new HtmlDocumentPost();
+
+            var comments = htmlPost.CommentIndex(blogpost);
+
+            foreach (var commentCandidate in comments)
+            {
+                var commentId = htmlPost.GetCommentId(commentCandidate, blogpost);
+
+                Assert.True(commentId.Length == 32);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Post_Comment_Id_Length_Is_321()
+    {
+        // what dir holds the posts 
+        var postDirectoryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Posts");
+
+        // all posts in the dir
+        var postNameRetriver = new PostsNameRetriever(postDirectoryPath);
+        var posts = await postNameRetriver.PostsInDirectory() ?? Enumerable.Empty<string>();
+
+        foreach (var postFileName in posts)
+        {
+            var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Posts", postFileName);
+
+            // load it
+            var postLoader = new PostLoader(filePath);
+            var blogpost = await postLoader.PostToStringAsync();
+
+            // parse it to html
+            var htmlPost = new HtmlDocumentPost();
+
+            var comments = htmlPost.CommentIndex(blogpost);
+
+            foreach (var commentCandidate in comments)
+            {
+                var commentId = htmlPost.GetCommentId(commentCandidate, blogpost);
+
+                Assert.True(commentId.Length == 32);
+            }
+        }
+    }
 }

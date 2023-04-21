@@ -56,4 +56,33 @@ public class HtmlDocumentPost
 
         await Task.CompletedTask;
     }
+
+    private List<int> commentIndexes = new List<int>();
+
+    public List<int> CommentIndex(string blogpost, int startIndex = 0)
+    {
+        var searchFor = blogpost.IndexOf("<div class=\"comment\" id=\"", startIndex);
+
+        if (searchFor == -1 || searchFor == 0)
+        {
+            return commentIndexes;
+        }
+
+        var commentIdStart = (searchFor + 25);
+
+        commentIndexes.Add(commentIdStart);
+
+        return CommentIndex(blogpost, commentIdStart);
+
+    }
+
+    public string GetCommentId(int commentSectionStartIndex, string blogpost)
+    {
+        if (commentSectionStartIndex <= 0)
+            return string.Empty;
+
+        var commentIdLength = 32;
+
+        return blogpost.Substring(commentSectionStartIndex, commentIdLength);
+    }
 }
