@@ -4,13 +4,16 @@ namespace PloehComments;
 
 public class HtmlDocumentPost
 {
-    public async Task<HtmlDocument> PostToHtmlDocumentAsync(string htmlCandidate)
+    static HtmlDocumentPost()
     {
         //ensure </p> is kept as-is. If true </p> is stripped.
         HtmlDocument.DisableBehaviorTagP = false;
+    }
 
+    public async Task<HtmlDocument> PostToHtmlDocumentAsync(string htmlCandidate)
+    {
         var htmlDocument = new HtmlDocument();
-        
+
         htmlDocument.LoadHtml(htmlCandidate);
 
         return await Task.FromResult(htmlDocument);
